@@ -1,0 +1,436 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: -0;
+    background-color: rgba(240, 240, 240, 0.9);
+    text-align: center;
+    overflow-x: hidden;
+}
+.fondo {
+    position: fixed; /* Fija la imagen de fondo */
+    top: 0;
+    left: 0;
+    width: 100vw; /* Cubre toda la pantalla */
+    height: 100vh;
+    object-fit: cover; /* Ajusta la imagen sin distorsionarla */
+    z-index: -1; /* La envía al fondo */
+}
+
+.techo-container {
+    display: flex;
+    width: 100vw;
+    height: 100vh;
+    transition: all 0.5s ease;
+}
+
+.techo {
+    width: 50%;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    transition: width 0.5s ease;
+    padding: 20px;
+    color: white;
+}
+
+.techo-estandar {
+    background-color: #007bff;
+}
+
+.techo-premium {
+    background-color: #28a745;
+}
+
+.techo img {
+    width: 60%;
+    border-radius: 10px;
+    transition: transform 0.3s ease;
+}
+
+.techo h2, .techo p, .techo ul, .techo button {
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.techo ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+.techo li {
+    margin: 5px 0;
+}
+
+.techo button {
+    background-color: white;
+    color: black;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    margin-top: 10px;
+}
+
+.techo button:hover {
+    background-color: rgba(255, 255, 255, 0.8);
+}
+
+.expandido .techo {
+    width: 30%;
+}
+
+.techo.activo {
+    width: 70%;
+}
+
+.techo.activo img {
+    transform: scale(1.1);
+}
+
+.techo.activo h2, .techo.activo p, .techo.activo ul, .techo.activo button {
+    transform: translateY(-10px);
+    opacity: 1;
+}
+header {
+    display: flex;
+    justify-content: flex-end;
+    padding: 10px;
+}
+
+.logo-container {
+    width: 100px;
+    position: fixed; /* Fija el logo en la pantalla */
+}
+
+.logo {
+    width: 100%;
+}
+
+/* Estilos para los botones */
+.btn-cotizar {
+    display: inline-block;
+    background-color: #ce0000;
+    color: white;
+    font-size: 20px;
+    font-weight: bold;
+    padding: 15px 30px;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    margin-top: 20px;
+    text-align: center;
+}
+
+.btn-cotizar:hover {
+    background-color: #0056b3;
+    transform: scale(1.1);
+}
+.logo-container {
+    position: fixed;
+    top: 20px;
+    right: 100px;
+    z-index: 1000; /* Asegura que el logo esté encima de otros elementos */
+    width: 200px; /* Define el tamaño del contenedor */
+    height: 200px; /* Define la altura del contenedor */
+    border-radius: 50%; /* Hace el contenedor redondo */
+    overflow: hidden; /* Asegura que la imagen se ajuste al contenedor redondo */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: box-shadow 0.3s ease; /* Suaviza la transición del efecto de la luz */
+  }
+  
+  /* Estilo del logo */
+  .logo {
+    width: 100%; /* Hace que la imagen ocupe todo el contenedor */
+    height: 100%; /* Asegura que la imagen cubra todo el contenedor */
+    object-fit: cover; /* Asegura que la imagen se recorte si es necesario */
+    transition: transform 0.3s ease;
+  }
+  
+  /* Efecto de iluminación al pasar el mouse por encima */
+  .logo-container:hover {
+    box-shadow: 0 0 20px 8px rgba(255, 255, 255, 0.7); /* Luz redonda al pasar el mouse */
+  }
+  
+  .logo-container:hover .logo {
+    transform: scale(1.3); /* Aumenta el tamaño de la imagen ligeramente */
+  }
+  @media (max-width: 708px) { /* Ajusta el ancho según necesites */
+    .logo-container {
+        display: none;
+    }
+  }
+  @media (max-width: 768px) { /* Ajusta el ancho según necesites */
+    .left-column {
+        display: none;
+    }
+  }
+  /* Contenedor general ocupa toda la pantalla */
+  .container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px; /* Espacio entre las cajas */
+    max-height: 90vh; /* Ajusta según sea necesario */
+    padding: 20px;
+}
+
+
+.row {
+    display: flex;
+    justify-content: center;
+    gap: 100px; /* Espacio entre las columnas */
+    margin-bottom: 85px; /* Espacio entre las filas */
+}
+
+.box {
+    width: 250px;
+    height: 150px;
+    background-color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: bold;
+    color: #495057;
+    border: 1px solid #ced4da;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: transform 0.3s ease-in-out;
+    position: relative;
+}
+
+/* Efecto hover */
+
+
+
+
+/* Nombre de la caja debajo */
+.box p {
+    position: absolute;
+    bottom: 30px;
+    width: 100%;
+    text-align: center;
+    font-size: 14px;
+    font-weight: bold;
+    color: #333;
+}
+
+/* Botón "Comprar" en hover con icono de WhatsApp */
+.box::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 0;
+    height: 15%;
+    background-color: #25D366;
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+    text-align: center;
+    line-height: 200%; /* Ajusta alineación */
+    transition: width 0.3s ease-in-out;
+}
+
+.box:hover::after {
+    content: "Comprar \f232"; /* WhatsApp */
+    font-family: FontAwesome;
+    width: 100%;
+}
+.box-title {
+    margin-top: 5px;
+    font-size: 15px;
+    font-weight: bold;
+    text-align: center;
+    color: #495057;
+}
+.box img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease-in-out;
+}
+
+
+.cotizar-link {
+    font-size: 12px; /* Texto pequeño */
+    text-decoration: underline; /* Subrayado */
+    color: gray; /* Color gris */
+}
+.modal-dialog {
+    max-width: 500px;
+}
+#portfolioModal1 .modal-dialog {
+    display: block !important;
+    margin: auto;
+}
+#portfolioModal1 {
+    position: end !important;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    background: rgb(61, 61, 61); /* Fondo oscuro semi-transparente */
+}
+/* Estilos generales para el cotizador */
+#cotizadorTable {
+    border-collapse: collapse;
+    width: 100%;
+    background: #ffffff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+#cotizadorTable th, #cotizadorTable td {
+    border: 1px solid #ddd;
+    padding: 12px;
+    text-align: center;
+}
+
+#cotizadorTable th {
+    background: #007bff;
+    color: white;
+    font-weight: bold;
+}
+
+/* Inputs */
+input[type="number"], input[type="tel"] {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #ddd;
+    border-radius: 5px;
+    font-size: 16px;
+    transition: all 0.3s ease-in-out;
+}
+
+input[type="number"]:focus, input[type="tel"]:focus {
+    border-color: #007bff;
+    outline: none;
+    box-shadow: 0px 0px 5px rgba(0, 123, 255, 0.5);
+}
+
+/* Botón de cotizar */
+button.btn-primary {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    font-size: 18px;
+    font-weight: bold;
+    border: none;
+    border-radius: 5px;
+    background: #007bff;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease-in-out;
+}
+
+button.btn-primary:hover {
+    background: #0056b3;
+    transform: scale(1.05);
+}
+
+/* Contenedor del formulario */
+.mb-3 {
+    margin-bottom: 20px;
+}
+
+/* Asegura que FontAwesome esté cargado */
+@import url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css");
+
+/* Estilos para las etiquetas */
+label {
+    display: block;
+    font-family:Arial, sans-serif ;
+    color: white;
+    text-align: left;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+/* Permitir editar el tamaño fácilmente */
+.label-metros {
+    font-size: 18px; /* Cambia este valor para ajustar el tamaño */
+}
+
+.label-telefono {
+    font-size: 18px; /* Cambia este valor para ajustar el tamaño */
+}
+/* Estilos para el título */
+h3 {
+    font-size: 13px; /* Tamaño más pequeño y discreto */
+    font-weight: normal;
+    text-transform: uppercase;
+    text-align: center;
+    color: white;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+}
+
+.cotizacion-opcion {
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+    color: #6c757d;
+    font-weight: 400;
+    font-family: 'Arial', sans-serif;
+    margin-bottom: 8px;
+}
+
+.cotizacion-opcion input {
+    width: 18px;
+    height: 18px;
+    margin-right: 8px;
+    cursor: pointer;
+}
+.titulo-catalogo-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin: -70px 0; /* Espaciado arriba y abajo */
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500&family=Playfair+Display:wght@600&display=swap');
+
+.titulo-catalogo {
+    font-family: 'Playfair Display', serif;
+    font-size: 15px;
+    font-weight: bold;
+    text-align: center;
+    text-transform: uppercase; /* Opcional: convierte el texto en mayúsculas */
+    letter-spacing: 1px; /* Da un pequeño espaciado entre letras */
+    color: #333; /* Color oscuro para mejor contraste */
+}
+.titulo-catalogo2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 10px;
+    font-weight: bold;
+    text-align: center; 
+    text-transform: uppercase; /* Opcional: convierte el texto en mayúsculas */
+    letter-spacing: 1px; /* Da un pequeño espaciado entre letras */
+    color: #333; /* Color oscuro para mejor contraste */
+}
+.exit-icon {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    font-size: 24px;
+    color: #333;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.8);
+    padding: 10px;
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+    transition: background 0.3s ease;
+}
+
+.exit-icon:hover {
+    background: rgba(200, 200, 200, 0.8);
+}

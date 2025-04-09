@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALUMAS </title>
+    <!-- Favicon-->
+    <link rel="icon" type="image/svg+xml" href="./img/LOGO3.png" />
+
+    <link rel="stylesheet" href="./css/guardaescoba.css"> <!-- Enlace al CSS externo -->
+</head>
+
+<div class="exit-icon" onclick="window.history.back();">
+    <i class="fas fa-arrow-left"></i>
+</div>
+<body>
+    <div class="container">
+        <div class="circular-slider">
+            <div class="slider-sections" id="sections-container"></div>
+            <div class="center-circle">
+                <span id="center-text">Overview</span>
+            </div>
+            <div class="section-labels" id="labels-container"></div>
+        </div>
+        <br>
+        <br>
+        <br>
+        <div class="navigation-controls">
+            <button class="nav-button" id="prev-btn">← Anterior</button>
+            <button class="nav-button" id="next-btn">Siguiente →</button>
+        </div>
+        
+        <div class="current-section-indicator" id="section-indicator">
+            Sección actual: Overview
+        </div>
+    </div>
+
+    <script>
+const sections = [
+    { name: "1", fragmentImage: "./img/guardaescoba/grecia.jpg", backgroundImage: "./img/guardaescoba/fondo-grecia.png" },
+    { name: "2", fragmentImage: "./img/guardaescoba/esmeralda.png", backgroundImage: "./img/guardaescoba/fondo-esmeralda.png" },
+    { name: "3", fragmentImage: "./img/guardaescoba/sandy.png", backgroundImage: "./img/guardaescoba/fondo-sandy.png" },
+    { name: "4", fragmentImage: "./img/guardaescoba/metropolitano.png", backgroundImage: "./img/guardaescoba/fondo-metropolitano.png" },
+    { name: "5", fragmentImage: "./img/guardaescoba/wengueoscuro.png", backgroundImage: "./img/guardaescoba/fondo-wengueoscuro.png" },  
+    { name: "5", fragmentImage: "./img/guardaescoba/blanco.png", backgroundImage: "./img/guardaescoba/fondo-blanco.png" },  
+    { name: "5", fragmentImage: "./img/guardaescoba/amarillo.png", backgroundImage: "./img/guardaescoba/fondo-amarillo.png" },  
+    { name: "Modelo Vintage", fragmentImage: "./img/modelo-vintage.jpg", backgroundImage: "./img/fondo-vintage.jpg" },
+    { name: "GRECIA", fragmentImage: "./img/guardaescoba/grecia.jpg", backgroundImage: "./img/guardaescoba/fondo-grecia.jpg" },
+    { name: "Modelo Moderno", fragmentImage: "./img/modelo-moderno.jpg", backgroundImage: "./img/fondo-moderno.jpg" },
+    { name: "Modelo Rústico", fragmentImage: "./img/modelo-rustico.jpg", backgroundImage: "./img/fondo-rustico.jpg" },
+    { name: "Modelo Elegante", fragmentImage: "./img/modelo-elegante.jpg", backgroundImage: "./img/fondo-elegante.jpg" },
+    { name: "Modelo Industrial", fragmentImage: "./img/modelo-industrial.jpg", backgroundImage: "./img/fondo-industrial.jpg" },
+    { name: "Modelo Vintage", fragmentImage: "./img/modelo-vintage.jpg", backgroundImage: "./img/fondo-vintage.jpg" },
+    { name: "Modelo Vintage", fragmentImage: "./img/modelo-vintage.jpg", backgroundImage: "./img/fondo-vintage.jpg" },
+    { name: "Modelo Vintage", fragmentImage: "./img/modelo-vintage.jpg", backgroundImage: "./img/fondo-vintage.jpg" },
+    { name: "Modelo Vintage", fragmentImage: "./img/modelo-vintage.jpg", backgroundImage: "./img/fondo-vintage.jpg" },
+    { name: "GRECIA", fragmentImage: "./img/guardaescoba/grecia.jpg", backgroundImage: "./img/guardaescoba/fondo-grecia.jpg" },
+    { name: "Modelo Moderno", fragmentImage: "./img/modelo-moderno.jpg", backgroundImage: "./img/fondo-moderno.jpg" },
+    { name: "Modelo Rústico", fragmentImage: "./img/modelo-rustico.jpg", backgroundImage: "./img/fondo-rustico.jpg" },
+    { name: "Modelo Elegante", fragmentImage: "./img/modelo-elegante.jpg", backgroundImage: "./img/fondo-elegante.jpg" },
+    { name: "Modelo Industrial", fragmentImage: "./img/modelo-industrial.jpg", backgroundImage: "./img/fondo-industrial.jpg" },
+    { name: "Modelo Vintage", fragmentImage: "./img/modelo-vintage.jpg", backgroundImage: "./img/fondo-vintage.jpg" }
+];
+
+const sectionsContainer = document.getElementById('sections-container');
+const labelsContainer = document.getElementById('labels-container');
+const prevBtn = document.getElementById('prev-btn');
+const nextBtn = document.getElementById('next-btn');
+const centerText = document.getElementById('center-text');
+const sectionIndicator = document.getElementById('section-indicator');
+
+let currentRotation = 0;
+let currentSectionIndex = 0;
+
+function createSectionClipPath() {
+    const centerX = 250;
+    const centerY = 250;
+    const outerRadius = 250;
+    const rotationOffset = -90;
+    const sectionAngle = 360 / sections.length;
+
+    return (index) => {
+        const startAngle = (index * sectionAngle + rotationOffset) * Math.PI / 180;
+        const endAngle = ((index + 1) * sectionAngle + rotationOffset) * Math.PI / 180;
+
+        const x1 = centerX + outerRadius * Math.cos(startAngle);
+        const y1 = centerY + outerRadius * Math.sin(startAngle);
+        const x2 = centerX + outerRadius * Math.cos(endAngle);
+        const y2 = centerY + outerRadius * Math.sin(endAngle);
+
+        return `M${centerX} ${centerY} L${x1} ${y1} A${outerRadius} ${outerRadius} 0 0 1 ${x2} ${y2} Z`;
+    };
+}
+
+const getSectionClipPath = createSectionClipPath();
+
+sections.forEach((section, index) => {
+    // Crear el fragmento de la ruleta
+    const sectionElement = document.createElement('div');
+    sectionElement.classList.add('section');
+    
+    // Aplicar clip-path para definir la forma del fragmento
+    sectionElement.style.clipPath = `path('${getSectionClipPath(index)}')`;
+    
+    // **Colocar la imagen dentro del fragmento**
+    sectionElement.style.backgroundImage = `url('${section.fragmentImage}')`;
+    sectionElement.style.backgroundSize = "cover";
+    sectionElement.style.backgroundPosition = "center";
+    
+    sectionsContainer.appendChild(sectionElement);
+
+    // Crear el texto de la sección
+    const label = document.createElement('div');
+    label.classList.add('section-label');
+    label.textContent = section.name;
+
+    // Posicionar el texto en la ruleta
+    const radius = 300;
+    const sectionAngle = 360 / sections.length;
+    const angle = ((index * sectionAngle + sectionAngle / 2) * Math.PI / 180);
+    
+    const x = 250 + radius * Math.cos(angle);
+    const y = 250 + radius * Math.sin(angle);
+    
+    label.style.left = `${x}px`;
+    label.style.top = `${y}px`;
+    label.style.transform = `translate(-50%, -50%) rotate(${index * sectionAngle + 90}deg)`;
+    
+    labelsContainer.appendChild(label);
+});
+
+function rotateSlider(direction) {
+    currentSectionIndex = direction === 'next' 
+        ? (currentSectionIndex + 1) % sections.length
+        : (currentSectionIndex - 1 + sections.length) % sections.length;
+
+    currentRotation += direction === 'next' ? -(360 / sections.length) : (360 / sections.length);
+    
+    // Girar la ruleta
+    sectionsContainer.style.transform = `rotate(${currentRotation - 90}deg)`;
+    
+    // **Cambiar el fondo de la página**
+    document.body.style.backgroundImage = `url('${sections[currentSectionIndex].backgroundImage}')`;
+    document.body.style.backgroundSize = "cover";
+    document.body.style.backgroundPosition = "center";
+    
+    // Actualizar el texto central y el indicador
+    centerText.textContent = sections[currentSectionIndex].name;
+    sectionIndicator.textContent = `Sección actual: ${sections[currentSectionIndex].name}`;
+}
+
+nextBtn.addEventListener('click', () => rotateSlider('next'));
+prevBtn.addEventListener('click', () => rotateSlider('prev'));
+
+// **Inicializar el fondo de la página con la primera imagen**
+document.body.style.backgroundImage = `url('${sections[0].backgroundImage}')`;
+document.body.style.backgroundSize = "cover";
+document.body.style.backgroundPosition = "center";
+
+    </script>
+</body>
+</html>

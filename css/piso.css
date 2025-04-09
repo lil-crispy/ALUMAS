@@ -1,0 +1,283 @@
+/* Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    background: #111;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column; /* Asegura que el header y las tarjetas se acomoden en columna */
+    min-height: 100vh;
+    padding-top: 50px; /* Espacio extra en la parte superior */
+}
+
+header {
+    width: 100%;
+    text-align: center;
+    padding: 20px 0;
+    background: #222;
+    box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.3);
+    margin-bottom: 30px; /* Espacio entre el header y las tarjetas */
+}
+
+.container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+    max-width: 1200px;
+}
+
+.card {
+    background: #222;
+    width: 300px;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0px 5px 15px rgba(0, 0, 0, 0.3);
+    transition: transform 0.3s;
+    position: relative;
+    cursor: pointer;
+}
+
+.card:hover {
+    transform: scale(1.05);
+}
+
+
+
+.card img {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+}
+
+.content {
+    padding: 15px;
+    text-align: center;
+}
+
+.date {
+    font-size: 0.9em;
+    font-weight: bold;
+    display: block;
+    margin-bottom: 10px;
+}
+
+h3 {
+    font-size: 1.4em;
+    margin-bottom: 10px;
+}
+
+p {
+    font-size: 0.9em;
+    margin-bottom: 15px;
+}
+
+.card {
+    background: #222;
+    width: 300px;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0px 5px 15px rgba(0, 0, 0, 0.3);
+    transition: transform 0.3s;
+    position: relative;
+    cursor: pointer;
+}
+
+.card:hover {
+    transform: scale(1.05);
+}
+
+/* Contenedor de la barra */
+.stats {
+    padding: 10px;
+    font-size: 0.9em;
+    display: flex;
+    justify-content: center;
+    font-weight: bold;
+    align-items: center;
+    color: white;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 5px;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Efecto de barra que crece */
+.stats::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 100%;
+    width: 100%;
+    height: 100%;
+    background: #4caf50; /* Verde */
+    transition: right 0.3s ease-in-out;
+}
+
+/* Texto del precio por defecto */
+.precio {
+    position: relative;
+    z-index: 2;
+    transition: opacity 0.2s ease-in-out;
+}
+
+/* Texto de comprar (inicialmente oculto) */
+.comprar {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    position: absolute;
+    z-index: 2;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+}
+
+/* Icono de WhatsApp */
+.comprar img {
+    width: 20px;
+    height: 20px;
+}
+
+/* Al hacer hover, la barra verde se desplaza de derecha a izquierda */
+.card:hover .stats::before {
+    right: 0;
+}
+
+/* Al hacer hover, el precio se desvanece */
+.card:hover .precio {
+    opacity: 0;
+}
+
+/* Al hacer hover, "Comprar" aparece */
+.card:hover .comprar {
+    opacity: 1;
+}
+
+
+.grey { background:rgb(100, 100, 100); }
+.roble { background: #C4A98A; }
+.cafesito { background: #9C7C64; }
+.beige { background: #C4A98A; }
+.claro { background:#C0C0C0; }
+.natural { background:#ffd093; }
+.rojizo { background:#72503f; }
+.ocre { background:#7D6B5A; }
+.vainilla { background:#AA957A; }
+.blanco { background:#C4C4C0; }
+.grafito { background:#8E939C; }
+.chocolate { background:#4E2A1E; }
+
+
+
+
+.titulo-catalogo-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin: 20px 0; /* Espaciado para evitar que quede muy pegado */
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500&family=Playfair+Display:wght@600&display=swap');
+
+.titulo-catalogo {
+    font-family: 'Playfair Display', serif;
+    font-size: 18px;
+    font-weight: bold;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: white; /* Mejor contraste con el fondo */
+    background: #222; /* Se mantiene el fondo oscuro de la página */
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.3);
+}
+.logo-container {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 1000; /* Asegura que el logo esté encima de otros elementos */
+    width: 170px; /* Define el tamaño del contenedor */
+    height: 170px; /* Define la altura del contenedor */
+    border-radius: 50%; /* Hace el contenedor redondo */
+    overflow: hidden; /* Asegura que la imagen se ajuste al contenedor redondo */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: box-shadow 0.3s ease; /* Suaviza la transición del efecto de la luz */
+    filter: grayscale(100%);
+  }
+  
+  /* Estilo del logo */
+  .logo {
+    width: 100%; /* Hace que la imagen ocupe todo el contenedor */
+    height: 100%; /* Asegura que la imagen cubra todo el contenedor */
+    object-fit: cover; /* Asegura que la imagen se recorte si es necesario */
+    transition: transform 0.3s ease;
+  }
+  
+  /* Efecto de iluminación al pasar el mouse por encima */
+  .logo-container:hover {
+    box-shadow: 0 0 20px 8px rgba(255, 255, 255, 0.7); /* Luz redonda al pasar el mouse */
+  }
+  
+  .logo-container:hover .logo {
+    transform: scale(1.1); /* Aumenta el tamaño de la imagen ligeramente */
+  }
+  @media (max-width: 768px) { /* Ajusta el ancho según necesites */
+    .logo-container {
+        display: none;
+    }
+  }
+  @media (max-width: 768px) { /* Ajusta el ancho según necesites */
+    .left-column {
+        display: none;
+    }
+  }
+
+  .fondo {
+    position: fixed; /* Fija la imagen de fondo */
+    top: 0;
+    left: 0;
+    width: 100vw; /* Cubre toda la pantalla */
+    height: 100vh;
+    object-fit: cover; /* Ajusta la imagen sin distorsionarla */
+    z-index: -1; /* La envía al fondo */
+}
+.btn-ver-guardaescobas {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: #ff5733;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    animation: pulse 1.5s infinite;
+}
+
+.btn-ver-guardaescobas:hover {
+    background-color: #e04e2b;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+    }
+}

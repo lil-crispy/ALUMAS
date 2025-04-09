@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Selección de Techo PVC</title>
+    <link rel="stylesheet" href="./css/techopvc.css">
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+</head>
+<body>
+
+    <!-- Contenedor para el logo -->
+    <header>
+        <div class="logo-container">
+            <img src="./img/LOG1.png" alt="Logo" class="logo" onclick="window.location.href='index.html';">
+        </div>
+    </header>
+
+    <section class="techo-container">
+        <div class="techo techo-estandar" onmouseover="expandir('techo-estandar')" onmouseout="restaurar()">
+            <h2>Techo PVC Estándar (25cm)</h2>
+            <img src="./img/TECHOPVC/TECHO25REF.png" alt="Techo PVC 25cm">
+            <br><br>
+            <ul>
+                <li><strong>FÁCIL Y ECONÓMICO.</strong></li>
+                <li><strong>DISEÑO LIGERO Y DURADERO.</strong></li>
+                <li><strong>VARIEDAD DE DISEÑOS.</strong></li>
+                <li><strong>DOMÉSTICO Y SUPERLAVABLE.</strong></li>
+                <li><strong>65% PVC Y 35% RESINA.</strong></li>
+            </ul>
+            <a href="./estandar.html" class="btn-cotizar">VER DISEÑOS</a>
+        </div>
+
+        <div class="techo techo-premium" onmouseover="expandir('techo-premium')" onmouseout="restaurar()">
+            <h2>Techo PVC Premium (30cm)</h2>
+            <img src="./img/TECHOPVC/TECHO30REF.png" alt="Techo PVC 30cm">
+            <br><br>
+            <ul>
+                <li><strong>MAYOR GROSOR Y RESISTENCIA.</strong></li>
+                <li><strong>MAYOR CAPACIDAD DE IMPACTO.</strong></li>
+                <li><strong>ACABADO PREMIUM CON MEJOR AISLAMIENTO TÉRMICO.</strong></li>
+                <li><strong>IDEAL PARA TRÁFICO PESADO E INDUSTRIAL.</strong></li>
+                <li><strong>80% PVC Y 20% RESINA.</strong></li>
+            </ul>
+            <a href="./premium.html" class="btn-cotizar">VER DISEÑOS</a>
+        </div>
+    </section>
+
+    <script>
+        function expandir(seccion) {
+            document.querySelector('.techo-container').classList.add('expandido');
+            document.querySelector('.' + seccion).classList.add('activo');
+        }
+
+        function restaurar() {
+            document.querySelector('.techo-container').classList.remove('expandido');
+            document.querySelectorAll('.techo').forEach(el => el.classList.remove('activo'));
+        }
+    </script>
+
+</body>
+</html>

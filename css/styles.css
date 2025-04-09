@@ -1,0 +1,254 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    background-color: #e6f0ff; /* Azul claro para el fondo general */
+    color: #333;
+    line-height: 1.6;
+}
+ /* Contenedor de los íconos */
+ .iconos {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+/* Estilo básico de cada ícono */
+.iconos a {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 40px; /* Ancho inicial */
+    height: 40px;
+    background-color: #f0f0f0;
+    border-radius: 12px; /* Esquinas redondeadas */
+    overflow: hidden;
+    transition: width 0.7s ease; /* Animación de expansión más lenta */
+}
+
+/* Ícono dentro del cuadrado */
+.iconos img {
+    width: 24px;
+    height: 24px;
+    margin-left: 8px; /* Posiciona el ícono hacia la izquierda */
+    transition: transform 0.3s ease; /* Suaviza el efecto del ícono */
+}
+
+/* Texto oculto inicialmente */
+.iconos span {
+    position: absolute;
+    left: 50px; /* Comienza fuera del contenedor */
+    opacity: 0; /* Oculto inicialmente */
+    white-space: nowrap;
+    color: black;
+    font-size: 14px;
+    transition: opacity 0.3s ease, transform 0.3s ease; /* Suaviza la aparición */
+    transform: translateX(-10px); /* Texto desplazado hacia la izquierda */
+}
+
+/* Efecto al pasar el mouse */
+.iconos a:hover {
+    width: 240px; /* Se expande más para dar espacio al texto */
+    background-color: #e0e0e0; /* Cambia ligeramente el fondo */
+}
+
+.iconos a:hover span {
+    opacity: 1; /* Muestra el texto */
+    transform: translateX(0); /* Mueve el texto a su posición */
+}
+
+.iconos a:hover img {
+    transform: scale(1.1); /* El ícono crece ligeramente */
+}
+
+header {
+    text-align: center;
+    background-color: #f5f5f5; /* Blanco hueso para el fondo */
+    border: 4px solid #0078ff; /* Borde azul alrededor del encabezado */
+    padding: 1.5rem;
+    color: rgb(7, 77, 95);
+    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center; /* (Opcional) Centrar verticalmente */
+    flex-direction: column; /* Asegurar alineación vertical */
+}
+
+/* Definimos la animación de palpito */
+@keyframes heartbeat {
+    0%, 100% {
+        transform: scale(1); /* Tamaño normal */
+    }
+    50% {
+        transform: scale(1.1); /* Aumenta ligeramente */
+    }
+}
+
+/* Animación de zoom de grande a pequeño */
+@keyframes zoomLogo {
+    0% {
+        width: 100vw;
+    }
+    100% {
+        width: 250px;
+    }
+}
+
+/* Aplicamos la animación al título */
+header h1 {
+    color: rgb(13, 82, 122);
+    font-size: 1.8rem;
+    margin-bottom: 0.5rem;
+    animation: heartbeat 1s infinite ease-in-out;
+}
+
+/* Aplicamos la animación a los enlaces */
+header a {
+    text-decoration: none;
+    color: #0815c7;
+    font-weight: bold;
+    animation: heartbeat 1s infinite ease-in-out;
+}
+
+/* Animación de zoom para el logo */
+header img {
+    display: block;
+    margin: 0 auto;
+    width: 100vw; /* Comienza ocupando toda la pantalla */
+    height: auto;
+    position: relative;
+    animation: zoomLogo 1.5s ease-out forwards; /* Efecto de zoom */
+}
+
+/* Efecto de reflexión en el logo */
+header img::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    height: 50%; /* Ajusta la altura de la reflexión */
+    background: rgba(255, 255, 255, 0.5); /* Reflexión blanca semitransparente */
+    transform: scaleY(-1); /* Voltear la imagen para crear la reflexión */
+    filter: blur(5px); /* Desenfoque para efecto de reflexión más realista */
+    opacity: 0.5; /* Opacidad para darle el efecto reflectante */
+}
+
+
+.catalogo {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* 3 columnas */
+    column-gap: 0.2rem; /* Espacio reducido entre columnas */
+    row-gap: 1rem; /* Espacio entre filas */
+    padding: 2rem;
+    justify-items: center;
+}
+@media (max-width: 576px) {
+    .catalogo {
+        row-gap: 2rem;
+        flex-direction: column;
+        display: flex;
+        justify-items: center;
+    }
+}
+
+.tarjeta {
+    background-color: #ffffff; /* Fondo blanco para contraste */
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    text-align: center;
+    width: 240px;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.tarjeta:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); /* Sombra más marcada al pasar el mouse */
+}
+
+.tarjeta img {
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+}
+
+.info {
+    padding: 1rem;
+}
+
+.info h2 {
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+    color: #0078ff; /* Azul para títulos */
+}
+
+.info p {
+    font-size: 0.9rem;
+    color: #555; /* Texto más oscuro */
+}
+
+.info span {
+    display: block;
+    margin-top: 0.5rem;
+    font-weight: bold;
+}
+
+/* Botón WhatsApp */
+.whatsapp-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: #25D366; /* Azul principal */
+    color: white;
+    padding: 10px 15px;
+    border-radius: 50px;
+    text-decoration: none;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.3s;
+}
+
+.whatsapp-btn img {
+    width: 24px;
+    height: 24px;
+}
+
+.whatsapp-btn:hover {
+    background-color: #045f1b; /* Azul más oscuro al pasar el mouse */
+}
+/* Estilos para el contenedor de pestañas */
+/* Estilos para el contenedor de pestañas */
+.tab-container {
+    position: absolute;
+    top: 20px;
+    right: 10px;  /* Ahora está en la parte superior izquierda */
+    display: flex;
+    gap: 15px;
+    font-family: Georgia, serif;
+}
+
+/* Estilos para cada pestaña */
+.tab {
+    text-decoration: none;
+    color: #721c1c;  /* Color más suave */
+    background: #f0f0f0; /* Fondo gris claro */
+    padding: 8px 12px;
+    border-radius: 5px;
+    font-size: 14px; /* Tamaño de fuente más sutil */
+    transition: background 0.3s, color 0.3s;
+}
+
+.tab:hover {
+    background: #dcdcdc;
+    color: #007BFF;
+}

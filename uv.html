@@ -1,0 +1,2015 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=import Swiper from 'swiper';, initial-scale=1.0">
+        <link
+        rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">
+        <title>ALUMAS UV</title>
+        <!-- Favicon-->
+        <link rel="icon" type="image/svg+xml" href="./img/LOGO3.png" />
+        <!-- Font Awesome icons (free version)-->
+        <script src="https://use.fontawesome.com/releases/v6.3.0/js/all.js" crossorigin="anonymous"></script>
+        <!-- Google fonts-->
+        <link href="https://fonts.googleapis.com/css?family=Montserrat:400,700" rel="stylesheet" type="text/css" />
+        <link href="https://fonts.googleapis.com/css?family=Roboto+Slab:400,100,300,700" rel="stylesheet" type="text/css" />
+        <!-- Core theme CSS (includes Bootstrap)-->
+        <link href="./css/uv.css" rel="stylesheet" />
+        <style>
+            /* Estilo para iluminar el contenedor */
+            .highlight {
+                box-shadow: 0 0 20px 10px rgba(255, 255, 255, 0.8); /* Efecto de luz */
+                transition: box-shadow 0.3s ease-in-out; /* Transición suave */
+                position: relative;
+    
+
+                
+            }
+        </style>
+    </head>
+    <div class="logo-container">
+        <img src="./img/LOG1.png" alt="Logo" class="logo" onclick="window.location.href='index.html';">
+    </div>
+    
+    <div class="left-column">
+        <div class="box" onclick="scrollToCard('card1')">1<br><img src="./IMG/UV/AZUL CIELO.PNG" style="height: -webkit-fill-available; width: initial;" alt="Imagen 1"></div>
+        <div class="box" onclick="scrollToCard('card2')">2<br><img src="./img/UV/BARROCO.png" style="height: -webkit-fill-available; width: initial;" alt="Imagen 1"></div>
+        <div class="box" onclick="scrollToCard('card3')">3<br><img src="./img/UV/oro.png" style="height: -webkit-fill-available; width: initial;" alt="Imagen 1"></div>
+        <div class="box" onclick="scrollToCard('card4')">4<br><img src="./img/UV/AVENA.png" style="height: -webkit-fill-available; width: initial;" alt="Imagen 1"></div>
+        <div class="box" onclick="scrollToCard('card5')">5<br><img src="./img/UV/CHAMPAÑA.png" style="height: -webkit-fill-available; width: initial;" alt="Imagen 1"></div>
+        <div class="box" onclick="scrollToCard('card6')">6<br><img src="./img/UV/ZEBRA OSCURO.png" style="height: -webkit-fill-available; width: initial;" alt="Imagen 1"></div>
+        <div class="box" onclick="scrollToCard('card7')">7<br><img src="./img/UV/BLANCO GRIS 1.png" style="height: -webkit-fill-available; width: initial;" alt="Imagen 1"></div>
+        <div class="box" onclick="scrollToCard('card8')">8<br><img src="./img/UV/PIEDRA MATE.png" style="height: -webkit-fill-available; width: initial;" alt="Imagen 1"></div>
+        <div class="box" onclick="scrollToCard('card9')">9<br><img src="./img/UV/GRIS ORO.png" style="height: -webkit-fill-available; width: initial;" alt="Imagen 1"></div>
+        <div class="box" onclick="scrollToCard('card10')">10<br><img src="./img/UV/NEGO ORO 1.png" style="height: -webkit-fill-available; width: initial;" alt="Imagen 1"></div>
+        <div class="box" onclick="scrollToCard('card11')">11<br><img src="./img/UV/GRIS 1.png" style="height: -webkit-fill-available; width: initial;" alt="Imagen 1"></div>
+        <div class="box" onclick="scrollToCard('card12')">12<br><img src="./img/UV/BLANCO GRIS 2.png" style="height: -webkit-fill-available; width: initial;" alt="Imagen 1"></div>
+        <div class="box" onclick="scrollToCard('card13')">13<br><img src="./img/UV/CABALLO UV.png" style="height: -webkit-fill-available; width: initial;" alt="Imagen 1"></div>
+        <div class="box" onclick="scrollToCard('card14')">14<br><img src="./img/UV/NEGRO ORO 2.png" style="height: -webkit-fill-available; width: initial;" alt="Imagen 1"></div>
+        <div class="box" onclick="scrollToCard('card15')">15<br><img src="./img/UV/VERDE ORO.png" style="height: -webkit-fill-available; width: initial;" alt="Imagen 1"></div>
+        <div class="box" onclick="scrollToCard('card16')">16<br><img src="./img/UV/NEGRO RAYAS 1.png" style="height: -webkit-fill-available; width: initial;" alt="Imagen 1"></div>
+        <div class="box" onclick="scrollToCard('card17')">17<br><img src="./img/UV/ROBLE MARMOL.png" style="height: -webkit-fill-available; width: initial;" alt="Imagen 1"></div>
+        <div class="box" onclick="scrollToCard('card18')">18<br><img src="./img/UV/NEGRO RAYAS 2.png" style="height: -webkit-fill-available; width: initial;" alt="Imagen 1"></div>
+        <div class="box" onclick="scrollToCard('card19')">19<br><img src="./img/UV/LAMINA ESPEJO DORADA.png" style="height: -webkit-fill-available; width: initial;" alt="Imagen 1"></div>
+        <div class="box" onclick="scrollToCard('card20')">20<br><img src="./img/UV/LAMINA ESPEJO PLATA.png" style="height: -webkit-fill-available; width: initial;" alt="Imagen 1"></div>
+        
+    </div>
+    
+    <!-- JavaScript -->
+<script>
+    function scrollToCard(cardId) {
+        // Obtener la tarjeta por su ID
+        const card = document.getElementById(cardId);
+
+        // Verificar si la tarjeta existe
+        if (card) {
+            // Hacer scroll hacia la tarjeta
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            // Eliminar cualquier resaltado previo en las imágenes dentro de 'portfolio-link'
+            document.querySelectorAll('.portfolio-link img').forEach(img => {
+                img.classList.remove('highlight');
+            });
+
+            // Agregar la clase 'highlight' solo a la imagen dentro del contenedor encontrado
+            const image = card.querySelector('.portfolio-link img');
+            if (image) {
+                image.classList.add('highlight');
+            }
+
+            // Quitar el efecto de resaltado después de 2 segundos (opcional)
+            setTimeout(() => {
+                if (image) {
+                    image.classList.remove('highlight');
+                }
+            }, 1000);
+        }
+    }
+</script>
+
+    
+
+    <body id="page-top">
+        <div id="particles-js"></div>
+        <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    <script>
+        particlesJS("particles-js", {
+            "particles": {
+                "number": { "value": 100 },
+                "size": { "value": 3 },
+                "move": { "speed": 2 },
+                "line_linked": { "enable": true },
+                "color": { "value": "#ffffff" }
+            }
+        });
+    </script>
+        
+        <!-- Navigation-->
+       
+        </header>
+     
+        
+
+        <!-- Portfolio Grid-->
+
+    <section class="bg-light" id="portfolio" 
+            ></script>
+            <div class="container">
+                <div class="">
+                </div>
+                <div class="row flex-nowrap">
+                    <div class="col-lg-4 col-sm-6 mb-4">
+                        <div class="dr">
+                        
+                        </div>
+                        
+                        <!-- Portfolio item 1-->
+                        <div class="portfolio-item" id="card1">
+                     
+                            <div class="img-icon-container">
+                               <!-- 0-->
+                            </div>
+                            <br>
+                            <br>
+                            <a class="portfolio-link" data-bs-toggle="modal" href="#portfolioModal1">
+                                <div class="portfolio-hover">
+                                    <div class="portfolio-hover-content"><i class="fas fa-shopping-cart fa-3x"></i></div>
+                                </div>
+                                <img class="img-fluid" src="./IMG/UV/AZUL CIELO.PNG" alt="..." />
+                            </a>
+                            <div class="portfolio-caption">
+                    
+                                <div class="portfolio-caption-heading">$120.000</div>
+                                <div class="portfolio-caption-subheading text-muted">
+                                    <a class="" data-bs-toggle="modal" href="#portfolioModal1">ver detalle</a>
+                                </div>
+                    
+                            </div>
+                        </div> 
+                   
+                    </div>
+                    <div class="col-lg-4 col-sm-6 mb-4">
+                        <!-- Portfolio item 2-->
+                        <div class="portfolio-item" id="card2">
+                            <div class="img-icon-container">
+                               <!-- 0-->
+                            </div>
+                            <br><br>
+                            <a class="portfolio-link" data-bs-toggle="modal" href="#portfolioModal2">
+                                <div class="portfolio-hover">
+                                    <div class="portfolio-hover-content"><i class="fas fa-shopping-cart fa-3x"></i></div>
+                                </div>
+                                <img class="img-fluid" src="./img/UV/BARROCO.png" alt="..." />
+                            </a>
+                            <div class="portfolio-caption">
+                    
+                                <div class="portfolio-caption-heading">$120.000</div>
+                                <div class="portfolio-caption-subheading text-muted">
+                                    <a class="" data-bs-toggle="modal" href="#portfolioModal2">ver detalle</a>
+                                </div>
+                    
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 col-sm-6 mb-4">
+                        <!-- Portfolio item 3-->
+                        <div class="portfolio-item" id="card3">
+                            <div class="img-icon-container">
+                            </div>
+                            <br><br>
+                            <a class="portfolio-link" data-bs-toggle="modal" href="#portfolioModal3">
+                                <div class="portfolio-hover">
+                                    <div class="portfolio-hover-content"><i class="fas fa-shopping-cart fa-3x"></i></div>
+                                </div>
+                                <img class="img-fluid" src="./img/UV/oro.png" alt="..." />
+                            </a>
+                            <div class="portfolio-caption">
+                    
+                                <div class="portfolio-caption-heading">$130.000</div>
+                                <div class="portfolio-caption-subheading text-muted">
+                                    <a class="" data-bs-toggle="modal" href="#portfolioModal3">ver detalle</a>
+                                </div>
+                    
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 col-sm-6 mb-4">
+                        <!-- Portfolio item 4-->
+                        <div class="portfolio-item" id="card4">
+                            <div class="img-icon-container">
+                                <!-- 0-->
+                            </div>
+                            <br><br>
+                            <a class="portfolio-link" data-bs-toggle="modal" href="#portfolioModal4">
+                                <div class="portfolio-hover">
+                                    <div class="portfolio-hover-content"><i class="fas fa-shopping-cart fa-3x"></i></div>
+                                </div>
+                                <img class="img-fluid" src="./img/UV/AVENA.png" alt="..." />
+                            </a>
+                            <div class="portfolio-caption">
+                                <div class="portfolio-caption-heading">$120.000</div>
+                                <div class="portfolio-caption-subheading text-muted">
+                                    <a class="portfolio-link" data-bs-toggle="modal" href="#portfolioModal4">ver detalle</a>
+                                  </div>
+                                  
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 col-sm-6 mb-4">
+                        <!-- Portfolio item 5-->
+                        <div class="portfolio-item" id="card5">
+                            <div class="img-icon-container">
+                                <!-- 0-->
+                            </div>
+                            <br><br>
+                            <a class="portfolio-link" data-bs-toggle="modal" href="#portfolioModal5">
+                                <div class="portfolio-hover">
+                                    <div class="portfolio-hover-content"><i class="fas fa-shopping-cart fa-3x"></i></div>
+                                </div>
+                                <img class="img-fluid" src="./img/UV/CHAMPAÑA.png" alt="..." />
+                            </a>
+                            <div class="portfolio-caption">
+                                <div class="portfolio-caption-heading">$120.000</div>
+                                <div class="portfolio-caption-subheading text-muted">
+                                    <a class="portfolio-link" data-bs-toggle="modal" href="#portfolioModal5">ver detalle</a>
+                                  </div>
+                                  
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 col-sm-6 mb-4">
+                        <!-- Portfolio item 6-->
+                        <div class="portfolio-item" id="card6">
+                            <div class="img-icon-container">
+                                <!-- 0-->
+                            </div>
+                            <br><br>
+                            <a class="portfolio-link" data-bs-toggle="modal" href="#portfolioModal6">
+                                <div class="portfolio-hover">
+                                    <div class="portfolio-hover-content"><i class="fas fa-shopping-cart fa-3x"></i></div>
+                                </div>
+                                <img class="img-fluid" src="./img/UV/ZEBRA OSCURO.png" alt="..." />
+                            </a>
+                            <div class="portfolio-caption">
+                                <div class="portfolio-caption-heading">$120.000</div>
+                                <div class="portfolio-caption-subheading text-muted">
+                                    <a class="portfolio-link" data-bs-toggle="modal" href="#portfolioModal6">ver detalle</a>
+                                  </div>
+                                  
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 col-sm-6 mb-4">
+                             <!-- Portfolio item 7-->
+                             <div class="portfolio-item" id="card7">
+                                <div class="img-icon-container">
+                                    <!-- 0-->
+                                </div>
+                                <br><br>
+                                <a class="portfolio-link" data-bs-toggle="modal" href="#portfolioModal7">
+                                    <div class="portfolio-hover">
+                                        <div class="portfolio-hover-content"><i class="fas fa-shopping-cart fa-3x"></i></div>
+                                    </div>
+                                    <img class="img-fluid" src="./img/UV/BLANCO GRIS 1.png" alt="..." />
+                                </a>
+                                <div class="portfolio-caption">
+                                    <div class="portfolio-caption-heading">$130.000</div>
+                                    <div class="portfolio-caption-subheading text-muted">
+                                        <a class="portfolio-link" data-bs-toggle="modal" href="#portfolioModal7">ver detalle</a>
+                                      </div>
+                                      
+                                </div>
+                            </div>
+                    </div>
+                    <div class="col-lg-4 col-sm-6 mb-4">
+                                 <!-- Portfolio item 8-->
+                        <div class="portfolio-item" id="card8">
+                            <div class="img-icon-container">
+                                <!-- 0-->
+                            </div>
+                            <br><br>
+                            <a class="portfolio-link" data-bs-toggle="modal" href="#portfolioModal8">
+                                <div class="portfolio-hover">
+                                    <div class="portfolio-hover-content"><i class="fas fa-shopping-cart fa-3x"></i></div>
+                                </div>
+                                <img class="img-fluid" src="./img/UV/PIEDRA MATE.png" alt="..." />
+                            </a>
+                            <div class="portfolio-caption">
+                                <div class="portfolio-caption-heading">$120.000</div>
+                                <div class="portfolio-caption-subheading text-muted">
+                                    <a class="portfolio-link" data-bs-toggle="modal" href="#portfolioModal8">ver detalle</a>
+                                  </div>
+                                  
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 col-sm-6 mb-4">
+                             <!-- Portfolio item 9-->
+                             <div class="portfolio-item" id="card9">
+                                <div class="img-icon-container">
+                                    <!-- 0-->
+                                </div>
+                                <br><br>
+                                <a class="portfolio-link" data-bs-toggle="modal" href="#portfolioModal9">
+                                    <div class="portfolio-hover">
+                                        <div class="portfolio-hover-content"><i class="fas fa-shopping-cart fa-3x"></i></div>
+                                    </div>
+                                    <img class="img-fluid" src="./img/UV/GRIS ORO.png" alt="..." />
+                                </a>
+                                <div class="portfolio-caption">
+                                    <div class="portfolio-caption-heading">$130.000</div>
+                                    <div class="portfolio-caption-subheading text-muted">
+                                        <a class="portfolio-link" data-bs-toggle="modal" href="#portfolioModal9">ver detalle</a>
+                                      </div>
+                                      
+                                </div>
+                            </div>
+                    </div>
+                    <div class="col-lg-4 col-sm-6 mb-4">
+                                 <!-- Portfolio item 10-->
+                        <div class="portfolio-item" id="card10">
+                            <div class="img-icon-container">
+                                <!-- 0-->
+                            </div>
+                            <br><br>
+                            <a class="portfolio-link" data-bs-toggle="modal" href="#portfolioModal10">
+                                <div class="portfolio-hover">
+                                    <div class="portfolio-hover-content"><i class="fas fa-shopping-cart fa-3x"></i></div>
+                                </div>
+                                <img class="img-fluid" src="./img/UV/NEGO ORO 1.png" alt="..." />
+                            </a>
+                            <div class="portfolio-caption">
+                                <div class="portfolio-caption-heading">$120.000</div>
+                                <div class="portfolio-caption-subheading text-muted">
+                                    <a class="portfolio-link" data-bs-toggle="modal" href="#portfolioModal10">ver detalle</a>
+                                  </div>
+                                  
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 col-sm-6 mb-4">
+                        <!-- Portfolio item 11-->
+               <div class="portfolio-item" id="card11">
+                <div class="img-icon-container">
+                    <!-- 0-->
+                </div>
+                <br><br>
+                   <a class="portfolio-link" data-bs-toggle="modal" href="#portfolioModal11">
+                       <div class="portfolio-hover">
+                           <div class="portfolio-hover-content"><i class="fas fa-shopping-cart fa-3x"></i></div>
+                       </div>
+                       <img class="img-fluid" src="./img/UV/GRIS 1.png" alt="..." />
+                   </a>
+                   <div class="portfolio-caption">
+                       <div class="portfolio-caption-heading">$120.000</div>
+                       <div class="portfolio-caption-subheading text-muted">
+                           <a class="portfolio-link" data-bs-toggle="modal" href="#portfolioModal11">ver detalle</a>
+                         </div>
+                         
+                   </div>
+               </div>
+                   </div>
+                   <div class="col-lg-4 col-sm-6 mb-4">
+                    <!-- Portfolio item 12-->
+           <div class="portfolio-item" id="card12">
+            <div class="img-icon-container">
+                <!-- 0-->
+            </div>
+            <br><br>
+               <a class="portfolio-link" data-bs-toggle="modal" href="#portfolioModal12">
+                   <div class="portfolio-hover">
+                       <div class="portfolio-hover-content"><i class="fas fa-shopping-cart fa-3x"></i></div>
+                   </div>
+                   <img class="img-fluid" src="./img/UV/BLANCO GRIS 2.png" alt="..." />
+               </a>
+               <div class="portfolio-caption">
+                   <div class="portfolio-caption-heading">$120.000</div>
+                   <div class="portfolio-caption-subheading text-muted">
+                       <a class="portfolio-link" data-bs-toggle="modal" href="#portfolioModal12">ver detalle</a>
+                     </div>
+                     
+               </div>
+           </div>
+                   </div>
+                   <div class="col-lg-4 col-sm-6 mb-4">
+                 <!-- Portfolio item 13-->
+           <div class="portfolio-item" id="card13">
+            <div class="img-icon-container">
+                <!-- 0-->
+            </div>
+            <br><br>
+               <a class="portfolio-link" data-bs-toggle="modal" href="#portfolioModal13">
+                   <div class="portfolio-hover">
+                       <div class="portfolio-hover-content"><i class="fas fa-shopping-cart fa-3x"></i></div>
+                   </div>
+                   <img class="img-fluid" src="./img/UV/CABALLO UV.png" alt="..." />
+               </a>
+               <div class="portfolio-caption">
+                   <div class="portfolio-caption-heading">$200.000</div>
+                   <div class="portfolio-caption-subheading text-muted">
+                       <a class="portfolio-link" data-bs-toggle="modal" href="#portfolioModal13">ver detalle</a>
+                     </div>
+                     
+               </div>
+           </div>
+                   </div>
+                   <div class="col-lg-4 col-sm-6 mb-4">
+                    <!-- Portfolio item 14-->
+              <div class="portfolio-item" id="card14">
+               <div class="img-icon-container">
+                   <!-- 0-->
+               </div>
+               <br><br>
+                  <a class="portfolio-link" data-bs-toggle="modal" href="#portfolioModal14">
+                      <div class="portfolio-hover">
+                          <div class="portfolio-hover-content"><i class="fas fa-shopping-cart fa-3x"></i></div>
+                      </div>
+                      <img class="img-fluid" src="./img/UV/NEGRO ORO 2.png" alt="..." />
+                  </a>
+                  <div class="portfolio-caption">
+                      <div class="portfolio-caption-heading">$130.000</div>
+                      <div class="portfolio-caption-subheading text-muted">
+                          <a class="portfolio-link" data-bs-toggle="modal" href="#portfolioModal14">ver detalle</a>
+                        </div>
+                        
+                  </div>
+              </div>
+                   </div>
+                   <div class="col-lg-4 col-sm-6 mb-4">
+                    <!-- Portfolio item 15-->
+              <div class="portfolio-item" id="card15">
+               <div class="img-icon-container">
+                   <!-- 0-->
+               </div>
+               <br><br>
+                  <a class="portfolio-link" data-bs-toggle="modal" href="#portfolioModal15">
+                      <div class="portfolio-hover">
+                          <div class="portfolio-hover-content"><i class="fas fa-shopping-cart fa-3x"></i></div>
+                      </div>
+                      <img class="img-fluid" src="./img/UV/VERDE ORO.png" alt="..." />
+                  </a>
+                  <div class="portfolio-caption">
+                      <div class="portfolio-caption-heading">$130.000</div>
+                      <div class="portfolio-caption-subheading text-muted">
+                          <a class="portfolio-link" data-bs-toggle="modal" href="#portfolioModal15">ver detalle</a>
+                        </div>
+                        
+                  </div>
+              </div>
+                   </div>
+                   <div class="col-lg-4 col-sm-6 mb-4">
+                    <!-- Portfolio item 16-->
+              <div class="portfolio-item" id="card16">
+               <div class="img-icon-container">
+                   <!-- 0-->
+               </div>
+               <br><br>
+                  <a class="portfolio-link" data-bs-toggle="modal" href="#portfolioModal16">
+                      <div class="portfolio-hover">
+                          <div class="portfolio-hover-content"><i class="fas fa-shopping-cart fa-3x"></i></div>
+                      </div>
+                      <img class="img-fluid" src="./img/UV/NEGRO RAYAS 1.png" alt="..." />
+                  </a>
+                  <div class="portfolio-caption">
+                      <div class="portfolio-caption-heading">$120.000</div>
+                      <div class="portfolio-caption-subheading text-muted">
+                          <a class="portfolio-link" data-bs-toggle="modal" href="#portfolioModal16">ver detalle</a>
+                        </div>
+                        
+                  </div>
+              </div>
+                   </div>
+                   <div class="col-lg-4 col-sm-6 mb-4">
+                    <!-- Portfolio item 17-->
+              <div class="portfolio-item" id="card17">
+               <div class="img-icon-container">
+                   <!-- 0-->
+               </div>
+               <br><br>
+                  <a class="portfolio-link" data-bs-toggle="modal" href="#portfolioModal17">
+                      <div class="portfolio-hover">
+                          <div class="portfolio-hover-content"><i class="fas fa-shopping-cart fa-3x"></i></div>
+                      </div>
+                      <img class="img-fluid" src="./img/UV/ROBLE MARMOL.png" alt="..." />
+                  </a>
+                  <div class="portfolio-caption">
+                      <div class="portfolio-caption-heading">$120.000</div>
+                      <div class="portfolio-caption-subheading text-muted">
+                          <a class="portfolio-link" data-bs-toggle="modal" href="#portfolioModal17">ver detalle</a>
+                        </div>
+                        
+                  </div>
+              </div>
+                   </div>
+                   <div class="col-lg-4 col-sm-6 mb-4">
+                    <!-- Portfolio item 18-->
+              <div class="portfolio-item" id="card18">
+               <div class="img-icon-container">
+                   <!-- 0-->
+               </div>
+               <br><br>
+                  <a class="portfolio-link" data-bs-toggle="modal" href="#portfolioModal18">
+                      <div class="portfolio-hover">
+                          <div class="portfolio-hover-content"><i class="fas fa-shopping-cart fa-3x"></i></div>
+                      </div>
+                      <img class="img-fluid" src="./img/UV/NEGRO RAYAS 2.png" alt="..." />
+                  </a>
+                  <div class="portfolio-caption">
+                      <div class="portfolio-caption-heading">$120.000</div>
+                      <div class="portfolio-caption-subheading text-muted">
+                          <a class="portfolio-link" data-bs-toggle="modal" href="#portfolioModal18">ver detalle</a>
+                        </div>
+                        
+                  </div>
+              </div>
+                   </div>
+                   <div class="col-lg-4 col-sm-6 mb-4">
+                    <!-- Portfolio item 19-->
+              <div class="portfolio-item" id="card19">
+               <div class="img-icon-container">
+                   <!-- 0-->
+               </div>
+               <br><br>
+                  <a class="portfolio-link" data-bs-toggle="modal" href="#portfolioModal19">
+                      <div class="portfolio-hover">
+                          <div class="portfolio-hover-content"><i class="fas fa-shopping-cart fa-3x"></i></div>
+                      </div>
+                      <img class="img-fluid" src="./img/UV/LAMINA ESPEJO DORADA.png" alt="..." />
+                  </a>
+                  <div class="portfolio-caption">
+                      <div class="portfolio-caption-heading">$180.000</div>
+                      <div class="portfolio-caption-subheading text-muted">
+                          <a class="portfolio-link" data-bs-toggle="modal" href="#portfolioModal19">ver detalle</a>
+                        </div>
+                        
+                  </div>
+              </div>
+                   </div>
+                   <div class="col-lg-4 col-sm-6 mb-4">
+                    <!-- Portfolio item 20-->
+              <div class="portfolio-item" id="card20">
+               <div class="img-icon-container">
+                   <!-- 0-->
+               </div>
+               <br><br>
+                  <a class="portfolio-link" data-bs-toggle="modal" href="#portfolioModal20">
+                      <div class="portfolio-hover">
+                          <div class="portfolio-hover-content"><i class="fas fa-shopping-cart fa-3x"></i></div>
+                      </div>
+                      <img class="img-fluid" src="./img/UV/LAMINA ESPEJO PLATA.png" alt="..." />
+                  </a>
+                  <div class="portfolio-caption">
+                      <div class="portfolio-caption-heading">$180.000</div>
+                      <div class="portfolio-caption-subheading text-muted">
+                          <a class="portfolio-link" data-bs-toggle="modal" href="#portfolioModal20">ver detalle</a>
+                        </div>
+                        
+                  </div>
+              </div>
+                   </div>
+                 </section>
+        <!-- About-->
+
+        
+        <!-- Footer-->
+    
+        <!-- Portfolio Modals-->
+        <!-- Portfolio item 1 modal popup-->
+        <div class="portfolio-modal modal fade" id="portfolioModal1" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="close-modal" data-bs-dismiss="modal"><img src="./img/close.png" width="70%" height="70%" alt="Close modal" /></div>
+                    <div class="container">
+                        <div class="row justify-content-center">
+                            <div class="col-lg-8">
+                                <div class="modal-body">
+                                    <!-- Project details-->
+                                    <h3 class="border p-3 rounded bg-light text-wrap">LAMINA MARMOLIZADA</h3>
+                                    <p class="item-intro text-muted">AZUL CIELO</p>
+                                    <img class="img-fluid d-block mx-auto" src="./IMG/UV/AZUL CIELO.PNG" alt="..." />
+                                    <p class="border p-3 rounded bg-light text-wrap" style="max-width: 100%;">
+                                        Transforma tus espacios con nuestra exclusiva lámina UV marmolizada en un hermoso tono azul cielo. Su acabado brillante y duradero resalta la serenidad y frescura del color, aportando un toque de elegancia única a cualquier ambiente. Ideal para revestir muebles, paredes o detalles decorativos, esta lámina ofrece un estilo sofisticado y moderno. Gracias a la tecnología UV, los colores se mantienen vibrantes por mucho más tiempo, resistiendo el desgaste del uso diario. Dale a tu hogar o negocio el toque perfecto con esta opción versátil y de alta calidad.
+                                    </p>
+                                    <ul class="list-inline">
+                                        <li>
+                                            <strong>MEDIDAS:</strong>
+                                            1.22 * 2.44
+                                        </li>
+                                        <li>
+                                            <strong>PRECIO:</strong>
+                                            $120.000COP
+                                            
+                                        </ul>
+                                        <!-- Botón Añadir al carrito -->
+
+                                        <!-- Botón cerrar -->
+                                        <button class="btn btn-primary btn-xl text-uppercase" data-bs-dismiss="modal" type="button" onclick="enviarMensajeWhatsApp1()">
+                                            <i class="fab fa-whatsapp me-1"></i> COMPRAR
+                                        </button>
+                                        <script>
+                                            function enviarMensajeWhatsApp1() {
+                                                // Especificar manualmente el nombre del producto
+                                                var productName = "AZUL CIELO"; // Reemplaza con el nombre que desees
+                                                
+                                                // Crear el mensaje con el nombre del producto
+                                                var message = `¡Hola! 😊 Estoy interesado en el producto Lámina UV ${productName} 🛒✨. ¿Me podrías enviar más detalles y el precio? 💸 ¡Gracias! 🙌 Quedo atento a tu respuesta. 📩`;
+                                                
+                                                // Codificar el mensaje para la URL
+                                                var encodedMessage = encodeURIComponent(message);
+                                                
+                                                // Número de teléfono de WhatsApp (reemplaza esto por el número real con el código de país)
+                                                var phoneNumber = '+573197245235';  // Asegúrate de reemplazar con el número correcto
+                                                
+                                                // Redirigir al enlace de WhatsApp con el mensaje
+                                                var url = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+                                                window.open(url, '_blank');
+                                            }
+                                        </script>
+                            
+                                        <style>
+                                            .container {
+  overflow-x: auto; /* Habilitar desplazamiento horizontal */
+  white-space: nowrap; /* Mantener las columnas en una sola fila */
+
+}
+
+
+                                        </style>
+                                        
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Portfolio item 2 modal popup-->
+        <div class="portfolio-modal modal fade" id="portfolioModal2" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="close-modal" data-bs-dismiss="modal"><img src="./img/close.png" width="70%" height="70%" alt="Close modal" /></div>
+                    <div class="container">
+                        <div class="row justify-content-center">
+                            <div class="col-lg-8">
+                                <div class="modal-body">
+                                    <!-- Project details-->
+                                    <h3 class="border p-3 rounded bg-light text-wrap">LAMINA MARMOLIZADA</h3>
+                                    <p class="item-intro text-muted">BARROCO</p>
+                                    <img class="img-fluid d-block mx-auto" src="./img/UV/BARROCO.png" alt="..." />
+                                    <p class="border p-3 rounded bg-light text-wrap" style="max-width: 100%;">
+                                        Descubre la elegancia atemporal con nuestra lámina UV en diseño barroco. Este sofisticado estilo combina patrones ornamentales y detalles intrincados que evocan el lujo clásico, ideal para quienes buscan destacar con un toque refinado. Perfecta para revestir muebles, paredes o elementos decorativos, esta lámina no solo transforma tus espacios, sino que también garantiza durabilidad gracias a su acabado brillante y protección UV. Los detalles en relieve y su diseño único aportan una sensación de exclusividad, convirtiendo cualquier rincón en una obra de arte. ¡Haz de tus ambientes un reflejo de majestuosidad y estilo!
+                                    </p>
+                                    <ul class="list-inline">
+                                        <li>
+                                            <strong>MEDIDAS:</strong>
+                                            1.22 * 2.44
+                                        </li>
+                                        <li>
+                                            <strong>PRECIO:</strong>
+                                            $120.000COP
+                                            
+                                        </ul>
+                                        <!-- Botón Añadir al carrito -->
+
+                                        <!-- Botón cerrar -->
+                                        <button class="btn btn-primary btn-xl text-uppercase" data-bs-dismiss="modal" type="button" onclick="enviarMensajeWhatsApp2()">
+                                            <i class="fab fa-whatsapp me-1"></i> COMPRAR
+                                        </button>
+                                        <script>
+                                            function enviarMensajeWhatsApp2() {
+                                                // Especificar manualmente el nombre del producto
+                                                var productName = "BARROCO"; // Reemplaza con el nombre que desees
+                                                
+                                                // Crear el mensaje con el nombre del producto
+                                                var message = `¡Hola! 😊 Estoy interesado en el producto Lámina UV ${productName} 🛒✨. ¿Me podrías enviar más detalles y el precio? 💸 ¡Gracias! 🙌 Quedo atento a tu respuesta. 📩`;
+                                                
+                                                // Codificar el mensaje para la URL
+                                                var encodedMessage = encodeURIComponent(message);
+                                                
+                                                // Número de teléfono de WhatsApp (reemplaza esto por el número real con el código de país)
+                                                var phoneNumber = '+573197245235';  // Asegúrate de reemplazar con el número correcto
+                                                
+                                                // Redirigir al enlace de WhatsApp con el mensaje
+                                                var url = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+                                                window.open(url, '_blank');
+                                            }
+                                        </script>
+                                        
+                                        
+                                        <style>
+                                            .container {
+  overflow-x: auto; /* Habilitar desplazamiento horizontal */
+  white-space: nowrap; /* Mantener las columnas en una sola fila */
+
+}
+
+
+                                        </style>
+                                        
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Portfolio item 3 modal popup-->
+        <div class="portfolio-modal modal fade" id="portfolioModal3" tabindex="-1" role="dialog" aria-hidden="true">    <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="close-modal" data-bs-dismiss="modal"><img src="./img/close.png" width="70%" height="70%" alt="Close modal" /></div>
+                    <div class="container">
+                        <div class="row justify-content-center">
+                            <div class="col-lg-8">
+                                <div class="modal-body">
+                                    <!-- Project details-->
+                                    <h3 class="border p-3 rounded bg-light text-wrap">LAMINA MARMOLIZADA</h3>
+                                    <p class="item-intro text-muted">DORADO 1</p>
+                                    <img class="img-fluid d-block mx-auto" src="./img/UV/oro.png" alt="..." />
+                                    <p class="border p-3 rounded bg-light text-wrap" style="max-width: 100%;">
+                                        Añade un toque de lujo y distinción con nuestra lámina UV en tono dorado. Su acabado brillante y elegante refleja la luz de manera espectacular, creando un ambiente cálido y sofisticado. Ideal para resaltar muebles, paredes o detalles decorativos, esta lámina transforma cualquier espacio en sinónimo de exclusividad y buen gusto. Gracias a la tecnología UV, el color dorado se mantiene vibrante y resistente al desgaste, asegurando una belleza duradera. Perfecta para interiores que buscan brillar con estilo y clase, esta opción es la esencia del lujo moderno. ¡Haz que tus espacios deslumbren!
+                                    </p>
+                                    <ul class="list-inline">
+                                        <li>
+                                            <strong>MEDIDAS:</strong>
+                                            1.22 * 2.44
+                                        </li>
+                                        <li>
+                                            <strong>PRECIO:</strong>
+                                            $130.000COP
+                                            
+                                        </ul>
+                                        <!-- Botón Añadir al carrito -->
+
+                                        <!-- Botón cerrar -->
+                                        <button class="btn btn-primary btn-xl text-uppercase" data-bs-dismiss="modal" type="button" onclick="enviarMensajeWhatsApp3()">
+                                            <i class="fab fa-whatsapp me-1"></i> COMPRAR
+                                        </button>
+                                        <script>
+                                            function enviarMensajeWhatsApp3() {
+                                                // Especificar manualmente el nombre del producto
+                                                var productName = "DORADO 1"; // Reemplaza con el nombre que desees
+                                                
+                                                // Crear el mensaje con el nombre del producto
+                                                var message = `¡Hola! 😊 Estoy interesado en el producto Lámina UV ${productName} 🛒✨. ¿Me podrías enviar más detalles y el precio? 💸 ¡Gracias! 🙌 Quedo atento a tu respuesta. 📩`;
+                                                
+                                                // Codificar el mensaje para la URL
+                                                var encodedMessage = encodeURIComponent(message);
+                                                
+                                                // Número de teléfono de WhatsApp (reemplaza esto por el número real con el código de país)
+                                                var phoneNumber = '+573197245235';  // Asegúrate de reemplazar con el número correcto
+                                                
+                                                // Redirigir al enlace de WhatsApp con el mensaje
+                                                var url = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+                                                window.open(url, '_blank');
+                                            }
+                                        </script>
+                                        
+                                        <style>
+                                            .container {
+  overflow-x: auto; /* Habilitar desplazamiento horizontal */
+  white-space: nowrap; /* Mantener las columnas en una sola fila */
+
+}
+
+
+                                        </style>
+                                        
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+       </div>
+        </div>
+       <!-- Portfolio item 4 modal popup-->
+        <div class="portfolio-modal modal fade" id="portfolioModal4" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="close-modal" data-bs-dismiss="modal"><img src="./img/close.png" width="70%" height="70%" alt="Close modal" /></div>
+                    <div class="container">
+                        <div class="row justify-content-center">
+                            <div class="col-lg-8">
+                                <div class="modal-body">
+                                    <!-- Project details-->
+                                    <h3 class="border p-3 rounded bg-light text-wrap">LAMINA MARMOLIZADA</h3>
+                                    <p class="item-intro text-muted">AVENA</p>
+                                    <img class="img-fluid d-block mx-auto" src="./img/UV/AVENA.png" alt="..." />
+                                    <p class="border p-3 rounded bg-light text-wrap" style="max-width: 100%;">
+                                        Dale a tus espacios un aire cálido y sofisticado con nuestra lámina UV marmolizada en color avena. Su tono neutro y elegante es perfecto para combinar con cualquier estilo de decoración, aportando luminosidad y armonía. Gracias a su acabado resistente y su tecnología UV, esta lámina asegura colores duraderos que mantienen su belleza con el paso del tiempo. Ideal para revestir muebles, paredes o detalles decorativos, es una solución moderna y práctica para renovar cualquier ambiente. ¡Convierte tus espacios en un lugar lleno de estilo con este diseño atemporal!
+                                    </p>
+                                    <ul class="list-inline">
+                                        <li>
+                                            <strong>MEDIDAS:</strong>
+                                            1.22 * 2.44
+                                        </li>
+                                        <li>
+                                            <strong>PRECIO:</strong>
+                                            $120.000COP
+                                            
+                                        </ul>
+                                        <!-- Botón Añadir al carrito -->
+
+                                        <!-- Botón cerrar -->
+                                        <button class="btn btn-primary btn-xl text-uppercase" data-bs-dismiss="modal" type="button" onclick="enviarMensajeWhatsApp4()">
+                                            <i class="fab fa-whatsapp me-1"></i> COMPRAR
+                                        </button>
+                                        <script>
+                                            function enviarMensajeWhatsApp4() {
+                                                // Especificar manualmente el nombre del producto
+                                                var productName = "AVENA"; // Reemplaza con el nombre que desees
+                                                
+                                                // Crear el mensaje con el nombre del producto
+                                                var message = `¡Hola! 😊 Estoy interesado en el producto Lámina UV ${productName} 🛒✨. ¿Me podrías enviar más detalles y el precio? 💸 ¡Gracias! 🙌 Quedo atento a tu respuesta. 📩`;
+                                                
+                                                // Codificar el mensaje para la URL
+                                                var encodedMessage = encodeURIComponent(message);
+                                                
+                                                // Número de teléfono de WhatsApp (reemplaza esto por el número real con el código de país)
+                                                var phoneNumber = '+573197245235';  // Asegúrate de reemplazar con el número correcto
+                                                
+                                                // Redirigir al enlace de WhatsApp con el mensaje
+                                                var url = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+                                                window.open(url, '_blank');
+                                            }
+                                        </script>
+
+
+                                        
+                                        <style>
+                                            .container {
+  overflow-x: auto; /* Habilitar desplazamiento horizontal */
+  white-space: nowrap; /* Mantener las columnas en una sola fila */
+
+}
+
+
+                                        </style>
+                                        
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Portfolio item 5 modal popup-->
+        <div class="portfolio-modal modal fade" id="portfolioModal5" tabindex="-1" role="dialog" aria-hidden="true">
+         <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="close-modal" data-bs-dismiss="modal"><img src="./img/close.png" width="70%" height="70%" alt="Close modal" /></div>
+                    <div class="container">
+                        <div class="row justify-content-center">
+                            <div class="col-lg-8">
+                                <div class="modal-body">
+                                    <!-- Project details-->
+                                    <h3 class="border p-3 rounded bg-light text-wrap">LAMINA MARMOLIZADA</h3>
+                                    <p class="item-intro text-muted">CHAMPAÑA</p>
+                                    <img class="img-fluid d-block mx-auto" src="./img/UV/CHAMPAÑA.png" alt="..." />
+                                    <p class="border p-3 rounded bg-light text-wrap" style="max-width: 100%;">
+                                        Añade un toque de lujo y sofisticación a tus espacios con nuestra lámina UV marmolizada en elegante color champaña. Este tono cálido y refinado aporta una sensación de exclusividad y modernidad, ideal para transformar muebles, paredes o detalles decorativos en piezas únicas. Su acabado brillante y la tecnología UV garantizan resistencia y durabilidad, manteniendo su esplendor a lo largo del tiempo. Perfecta para estilos clásicos o contemporáneos, esta lámina combina practicidad y belleza en un solo producto. ¡Haz que tus ambientes brillen con el glamour del color champaña!
+                                    </p>
+                                    <ul class="list-inline">
+                                        <li>
+                                            <strong>MEDIDAS:</strong>
+                                            1.22 * 2.44
+                                        </li>
+                                        <li>
+                                            <strong>PRECIO:</strong>
+                                            $120.000COP
+                                            
+                                        </ul>
+                                        <!-- Botón Añadir al carrito -->
+
+                                        <!-- Botón cerrar -->
+                                        <button class="btn btn-primary btn-xl text-uppercase" data-bs-dismiss="modal" type="button" onclick="enviarMensajeWhatsApp5()">
+                                            <i class="fab fa-whatsapp me-1"></i> COMPRAR
+                                        </button>
+                                        <script>
+                                            function enviarMensajeWhatsApp5() {
+                                                // Especificar manualmente el nombre del producto
+                                                var productName = "CHAMPAÑA"; // Reemplaza con el nombre que desees
+                                                
+                                                // Crear el mensaje con el nombre del producto
+                                                var message = `¡Hola! 😊 Estoy interesado en el producto Lámina UV ${productName} 🛒✨. ¿Me podrías enviar más detalles y el precio? 💸 ¡Gracias! 🙌 Quedo atento a tu respuesta. 📩`;
+                                                
+                                                // Codificar el mensaje para la URL
+                                                var encodedMessage = encodeURIComponent(message);
+                                                
+                                                // Número de teléfono de WhatsApp (reemplaza esto por el número real con el código de país)
+                                                var phoneNumber = '+573197245235';  // Asegúrate de reemplazar con el número correcto
+                                                
+                                                // Redirigir al enlace de WhatsApp con el mensaje
+                                                var url = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+                                                window.open(url, '_blank');
+                                            }
+                                        </script>
+
+
+
+                                        <style>
+                                            .container {
+  overflow-x: auto; /* Habilitar desplazamiento horizontal */
+  white-space: nowrap; /* Mantener las columnas en una sola fila */
+
+}
+
+
+                                        </style>
+                                        
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+         </div>
+        </div>
+        <!-- Portfolio item 6 modal popup-->
+        <div class="portfolio-modal modal fade" id="portfolioModal6" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="close-modal" data-bs-dismiss="modal"><img src="./img/close.png" width="70%" height="70%" alt="Close modal" /></div>
+                    <div class="container">
+                        <div class="row justify-content-center">
+                            <div class="col-lg-8">
+                                <div class="modal-body">
+                                    <!-- Project details-->
+                                    <h3 class="border p-3 rounded bg-light text-wrap">LAMINA MARMOLIZADA</h3>
+                                    <p class="item-intro text-muted">ZEBRA OSCURO</p>
+                                    <img class="img-fluid d-block mx-auto" src="./img/UV/ZEBRA OSCURO.png" alt="..." />
+                                    <p class="border p-3 rounded bg-light text-wrap" style="max-width: 100%;">
+                                        Descubre la imponente elegancia de nuestra lámina UV marmolizada en diseño Zebra Oscuro. Con su combinación de tonos profundos y un patrón dinámico, esta lámina aporta carácter y modernidad a cualquier espacio. Ideal para revestir muebles, paredes o detalles decorativos, transforma tus ambientes con un estilo audaz y sofisticado. Gracias a la tecnología UV, su acabado es resistente, duradero y fácil de limpiar, manteniendo su belleza intacta con el paso del tiempo. ¡Atrévete a destacar con el encanto único de Zebra Oscuro!.
+                                    </p>
+                                    <ul class="list-inline">
+                                        <li>
+                                            <strong>MEDIDAS:</strong>
+                                            1.22 * 2.44
+                                        </li>
+                                        <li>
+                                            <strong>PRECIO:</strong>
+                                            $120.000COP
+                                            
+                                        </ul>
+                                        <!-- Botón Añadir al carrito -->
+
+                                        <!-- Botón cerrar -->
+                                        <button class="btn btn-primary btn-xl text-uppercase" data-bs-dismiss="modal" type="button" onclick="enviarMensajeWhatsApp6()">
+                                            <i class="fab fa-whatsapp me-1"></i> COMPRAR
+                                        </button>
+                                        
+                                        <script>
+                                            function enviarMensajeWhatsApp6() {
+                                                // Especificar manualmente el nombre del producto
+                                                var productName = "ZEBRA OSCURO"; // Reemplaza con el nombre que desees
+                                                
+                                                // Crear el mensaje con el nombre del producto
+                                                var message = `¡Hola! 😊 Estoy interesado en el producto Lámina UV ${productName} 🛒✨. ¿Me podrías enviar más detalles y el precio? 💸 ¡Gracias! 🙌 Quedo atento a tu respuesta. 📩`;
+                                                
+                                                // Codificar el mensaje para la URL
+                                                var encodedMessage = encodeURIComponent(message);
+                                                
+                                                // Número de teléfono de WhatsApp (reemplaza esto por el número real con el código de país)
+                                                var phoneNumber = '+573197245235';  // Asegúrate de reemplazar con el número correcto
+                                                
+                                                // Redirigir al enlace de WhatsApp con el mensaje
+                                                var url = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+                                                window.open(url, '_blank');
+                                            }
+                                        </script>
+                                        
+                                        
+                                        <style>
+                                            .container {
+  overflow-x: auto; /* Habilitar desplazamiento horizontal */
+  white-space: nowrap; /* Mantener las columnas en una sola fila */
+
+}
+
+
+                                        </style>
+                                        
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Portfolio item 7 modal popup-->
+        <div class="portfolio-modal modal fade" id="portfolioModal7" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="close-modal" data-bs-dismiss="modal"><img src="./img/close.png" width="70%" height="70%" alt="Close modal" /></div>
+                    <div class="container">
+                        <div class="row justify-content-center">
+                            <div class="col-lg-8">
+                                <div class="modal-body">
+                                    <!-- Project details-->
+                                    <h3 class="border p-3 rounded bg-light text-wrap">LAMINA MARMOLIZADA</h3>
+                                    <p class="item-intro text-muted">BLANCO GRIS 1</p>
+                                    <img class="img-fluid d-block mx-auto" src="./img/UV/BLANCO GRIS 1.png" alt="..." />
+                                    <p class="border p-3 rounded bg-light text-wrap" style="max-width: 100%;">
+                                        Renueva tus espacios con la sofisticación de nuestra lámina UV marmolizada en blanco gris. Este diseño sutil y elegante combina la pureza del blanco con toques suaves de gris, creando una atmósfera tranquila y moderna. Ideal para interiores que buscan luminosidad y estilo, su acabado brillante y duradero asegura una apariencia impecable a largo plazo. Perfecta para revestir muebles, paneles o detalles decorativos, esta lámina aporta un toque contemporáneo y refinado a cualquier ambiente. ¡Añade una sensación de calma y modernidad con el color blanco gris!
+                                    </p>
+                                    <ul class="list-inline">
+                                        <li>
+                                            <strong>MEDIDAS:</strong>
+                                            1.22 * 2.44
+                                        </li>
+                                        <li>
+                                            <strong>PRECIO:</strong>
+                                            $130.000COP
+                                            
+                                        </ul>
+                                        <!-- Botón Añadir al carrito -->
+
+                                        <!-- Botón cerrar -->
+                                        <button class="btn btn-primary btn-xl text-uppercase" data-bs-dismiss="modal" type="button" onclick="enviarMensajeWhatsApp7()">
+                                            <i class="fab fa-whatsapp me-1"></i> COMPRAR
+                                        </button>
+                                        
+                                        <script>
+                                            function enviarMensajeWhatsApp7() {
+                                                // Especificar manualmente el nombre del producto
+                                                var productName = "AZUL CIELO"; // Reemplaza con el nombre que desees
+                                                
+                                                // Crear el mensaje con el nombre del producto
+                                                var message = `¡Hola! 😊 Estoy interesado en el producto Lámina UV ${productName} 🛒✨. ¿Me podrías enviar más detalles y el precio? 💸 ¡Gracias! 🙌 Quedo atento a tu respuesta. 📩`;
+                                                
+                                                // Codificar el mensaje para la URL
+                                                var encodedMessage = encodeURIComponent(message);
+                                                
+                                                // Número de teléfono de WhatsApp (reemplaza esto por el número real con el código de país)
+                                                var phoneNumber = '+573197245235';  // Asegúrate de reemplazar con el número correcto
+                                                
+                                                // Redirigir al enlace de WhatsApp con el mensaje
+                                                var url = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+                                                window.open(url, '_blank');
+                                            }
+                                        </script>
+
+
+                                        <style>
+                                            .container {
+  overflow-x: auto; /* Habilitar desplazamiento horizontal */
+  white-space: nowrap; /* Mantener las columnas en una sola fila */
+
+}
+
+
+                                        </style>
+                                        
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Portfolio item 8 modal popup-->
+        <div class="portfolio-modal modal fade" id="portfolioModal8" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="close-modal" data-bs-dismiss="modal"><img src="./img/close.png" width="70%" height="70%" alt="Close modal" /></div>
+                    <div class="container">
+                        <div class="row justify-content-center">
+                            <div class="col-lg-8">
+                                <div class="modal-body">
+                                    <!-- Project details-->
+                                    <h3 class="border p-3 rounded bg-light text-wrap">LAMINA MARMOLIZADA</h3>
+                                    <p class="item-intro text-muted">PIEDRA MATE</p>
+                                    <img class="img-fluid d-block mx-auto" src="./img/UV/PIEDRA MATE.png" alt="..." />
+                                    <p class="border p-3 rounded bg-light text-wrap" style="max-width: 100%;">
+                                        Añade un toque rústico y elegante a tus espacios con nuestra lámina UV marmolizada en acabado Piedra Mate. Este diseño, con su textura natural y tonos neutros, aporta una sensación de solidez y sofisticación a cualquier ambiente. Su acabado mate, junto con la tecnología UV, ofrece un aspecto moderno y resistente, ideal para revestir muebles, paredes o detalles decorativos. La lámina de Piedra Mate es perfecta para quienes buscan un estilo más sobrio y contemporáneo sin perder la calidez. ¡Transforma tu espacio con la autenticidad y elegancia de la piedra!.
+                                    </p>
+                                    <ul class="list-inline">
+                                        <li>
+                                            <strong>MEDIDAS:</strong>
+                                            1.22 * 2.44
+                                        </li>
+                                        <li>
+                                            <strong>PRECIO:</strong>
+                                            $120.000COP
+                                            
+                                        </ul>
+                                        <!-- Botón Añadir al carrito -->
+
+                                        <!-- Botón cerrar -->
+                                        <button class="btn btn-primary btn-xl text-uppercase" data-bs-dismiss="modal" type="button" onclick="enviarMensajeWhatsApp8()">
+                                            <i class="fab fa-whatsapp me-1"></i> COMPRAR
+                                        </button>
+                                        
+                                        <script>
+                                            function enviarMensajeWhatsApp8() {
+                                                // Especificar manualmente el nombre del producto
+                                                var productName = "PIEDRA MATE"; // Reemplaza con el nombre que desees
+                                                
+                                                // Crear el mensaje con el nombre del producto
+                                                var message = `¡Hola! 😊 Estoy interesado en el producto Lámina UV ${productName} 🛒✨. ¿Me podrías enviar más detalles y el precio? 💸 ¡Gracias! 🙌 Quedo atento a tu respuesta. 📩`;
+                                                
+                                                // Codificar el mensaje para la URL
+                                                var encodedMessage = encodeURIComponent(message);
+                                                
+                                                // Número de teléfono de WhatsApp (reemplaza esto por el número real con el código de país)
+                                                var phoneNumber = '+573197245235';  // Asegúrate de reemplazar con el número correcto
+                                                
+                                                // Redirigir al enlace de WhatsApp con el mensaje
+                                                var url = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+                                                window.open(url, '_blank');
+                                            }
+                                        </script>
+
+
+                                        <style>
+                                            .container {
+  overflow-x: auto; /* Habilitar desplazamiento horizontal */
+  white-space: nowrap; /* Mantener las columnas en una sola fila */
+
+}
+
+
+                                        </style>
+                                        
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Portfolio item 9 modal popup-->
+        <div class="portfolio-modal modal fade" id="portfolioModal9" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="close-modal" data-bs-dismiss="modal"><img src="./img/close.png" width="70%" height="70%" alt="Close modal" /></div>
+                    <div class="container">
+                        <div class="row justify-content-center">
+                            <div class="col-lg-8">
+                                <div class="modal-body">
+                                    <!-- Project details-->
+                                    <h3 class="border p-3 rounded bg-light text-wrap">LAMINA MARMOLIZADA</h3>
+                                    <p class="item-intro text-muted">GRIS ORO</p>
+                                    <img class="img-fluid d-block mx-auto" src="./img/UV/GRIS ORO.png" alt="..." />
+                                    <p class="border p-3 rounded bg-light text-wrap" style="max-width: 100%;">
+                                        Haz que tus espacios brillen con nuestra lámina UV marmolizada en Gris Oro. Este diseño exclusivo combina la sobriedad del gris con toques metálicos dorados, creando un ambiente sofisticado y lujoso. Su acabado brillante y resistente, gracias a la tecnología UV, asegura durabilidad y un color vibrante a lo largo del tiempo. Ideal para muebles, paredes y detalles decorativos, esta lámina aporta un toque de glamour contemporáneo que no pasa desapercibido. ¡Convierte cualquier rincón en un espacio lleno de estilo y elegancia con Gris Oro!
+                                    </p>
+                                    <ul class="list-inline">
+                                        <li>
+                                            <strong>MEDIDAS:</strong>
+                                            1.22 * 2.44
+                                        </li>
+                                        <li>
+                                            <strong>PRECIO:</strong>
+                                            $130.000COP
+                                            
+                                        </ul>
+                                        <!-- Botón Añadir al carrito -->
+
+                                        <!-- Botón cerrar -->
+                                        <button class="btn btn-primary btn-xl text-uppercase" data-bs-dismiss="modal" type="button" onclick="enviarMensajeWhatsApp9()">
+                                            <i class="fab fa-whatsapp me-1"></i> COMPRAR
+                                        </button>
+                                        
+                                        <script>
+                                            function enviarMensajeWhatsApp9() {
+                                                // Especificar manualmente el nombre del producto
+                                                var productName = "GRIS ORO"; // Reemplaza con el nombre que desees
+                                                
+                                                // Crear el mensaje con el nombre del producto
+                                                var message = `¡Hola! 😊 Estoy interesado en el producto Lámina UV ${productName} 🛒✨. ¿Me podrías enviar más detalles y el precio? 💸 ¡Gracias! 🙌 Quedo atento a tu respuesta. 📩`;
+                                                
+                                                // Codificar el mensaje para la URL
+                                                var encodedMessage = encodeURIComponent(message);
+                                                
+                                                // Número de teléfono de WhatsApp (reemplaza esto por el número real con el código de país)
+                                                var phoneNumber = '+573197245235';  // Asegúrate de reemplazar con el número correcto
+                                                
+                                                // Redirigir al enlace de WhatsApp con el mensaje
+                                                var url = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+                                                window.open(url, '_blank');
+                                            }
+                                        </script>
+
+
+                                        <style>
+                                            .container {
+  overflow-x: auto; /* Habilitar desplazamiento horizontal */
+  white-space: nowrap; /* Mantener las columnas en una sola fila */
+
+}
+
+
+                                        </style>
+                                        
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Portfolio item 10 modal popup-->
+        <div class="portfolio-modal modal fade" id="portfolioModal10" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="close-modal" data-bs-dismiss="modal"><img src="./img/close.png" width="70%" height="70%" alt="Close modal" /></div>
+                    <div class="container">
+                        <div class="row justify-content-center">
+                            <div class="col-lg-8">
+                                <div class="modal-body">
+                                    <!-- Project details-->
+                                    <h3 class="border p-3 rounded bg-light text-wrap">LAMINA MARMOLIZADA</h3>
+                                    <p class="item-intro text-muted">NEGRO ORO 1</p>
+                                    <img class="img-fluid d-block mx-auto" src="./img/UV/NEGO ORO 1.png" alt="..." />
+                                    <p class="border p-3 rounded bg-light text-wrap" style="max-width: 100%;">
+                                        Añade un toque de distinción y lujo a tus espacios con nuestra lámina UV marmolizada en Negro Oro. Su combinación de negro profundo con destellos dorados crea una atmósfera sofisticada y elegante, perfecta para aquellos que buscan un estilo moderno y exclusivo. El acabado brillante y resistente, logrado con tecnología UV, asegura una apariencia impecable y duradera. Ideal para revestir muebles, paredes o detalles decorativos, esta lámina transforma cualquier ambiente en un espacio de alta gama. ¡Haz que tu hogar o negocio brille con el glamour del Negro Oro!
+                                    </p>
+                                    <ul class="list-inline">
+                                        <li>
+                                            <strong>MEDIDAS:</strong>
+                                            1.22 * 2.44
+                                        </li>
+                                        <li>
+                                            <strong>PRECIO:</strong>
+                                            $120.000COP
+                                            
+                                        </ul>
+                                        <!-- Botón Añadir al carrito -->
+
+                                        <!-- Botón cerrar -->
+                                        <button class="btn btn-primary btn-xl text-uppercase" data-bs-dismiss="modal" type="button" onclick="enviarMensajeWhatsApp10()">
+                                            <i class="fab fa-whatsapp me-1"></i> COMPRAR
+                                        </button>
+                                        
+                                        <script>
+                                            function enviarMensajeWhatsApp10() {
+                                                // Especificar manualmente el nombre del producto
+                                                var productName = "NEGRO ORO"; // Reemplaza con el nombre que desees
+                                                
+                                                // Crear el mensaje con el nombre del producto
+                                                var message = `¡Hola! 😊 Estoy interesado en el producto Lámina UV ${productName} 🛒✨. ¿Me podrías enviar más detalles y el precio? 💸 ¡Gracias! 🙌 Quedo atento a tu respuesta. 📩`;
+                                                
+                                                // Codificar el mensaje para la URL
+                                                var encodedMessage = encodeURIComponent(message);
+                                                
+                                                // Número de teléfono de WhatsApp (reemplaza esto por el número real con el código de país)
+                                                var phoneNumber = '+573197245235';  // Asegúrate de reemplazar con el número correcto
+                                                
+                                                // Redirigir al enlace de WhatsApp con el mensaje
+                                                var url = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+                                                window.open(url, '_blank');
+                                            }
+                                        </script>
+
+
+                                        <style>
+                                            .container {
+  overflow-x: auto; /* Habilitar desplazamiento horizontal */
+  white-space: nowrap; /* Mantener las columnas en una sola fila */
+
+}
+
+
+                                        </style>
+                                        
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Portfolio item 11 modal popup-->
+        <div class="portfolio-modal modal fade" id="portfolioModal11" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="close-modal" data-bs-dismiss="modal"><img src="./img/close.png" width="70%" height="70%" alt="Close modal" /></div>
+                    <div class="container">
+                        <div class="row justify-content-center">
+                            <div class="col-lg-8">
+                                <div class="modal-body">
+                                    <!-- Project details-->
+                                    <h3 class="border p-3 rounded bg-light text-wrap">LAMINA MARMOLIZADA</h3>
+                                    <p class="item-intro text-muted">GRIS 1</p>
+                                    <img class="img-fluid d-block mx-auto" src="./img/UV/GRIS 1.png" alt="..." />
+                                    <p class="border p-3 rounded bg-light text-wrap" style="max-width: 100%;">
+                                        Dale un toque de modernidad y elegancia a tus espacios con nuestra lámina UV marmolizada en color gris. Este tono neutro y versátil se adapta perfectamente a cualquier estilo de decoración, creando un ambiente sofisticado y relajante. Su acabado brillante y duradero, gracias a la tecnología UV, garantiza que mantenga su aspecto impecable a lo largo del tiempo. Ideal para muebles, paredes o detalles decorativos, la lámina gris añade una sensación de amplitud y frescura a cualquier habitación. ¡Renueva tu espacio con la sencillez y elegancia del gris!
+                                    </p>
+                                    <ul class="list-inline">
+                                        <li>
+                                            <strong>MEDIDAS:</strong>
+                                            1.22 * 2.44
+                                        </li>
+                                        <li>
+                                            <strong>PRECIO:</strong>
+                                            $120.000COP
+                                            
+                                        </ul>
+                                        <!-- Botón Añadir al carrito -->
+
+                                        <!-- Botón cerrar -->
+                                        <button class="btn btn-primary btn-xl text-uppercase" data-bs-dismiss="modal" type="button" onclick="enviarMensajeWhatsApp11()">
+                                            <i class="fab fa-whatsapp me-1"></i> COMPRAR
+                                        </button>
+                                        
+                                        <script>
+                                            function enviarMensajeWhatsApp11() {
+                                                // Especificar manualmente el nombre del producto
+                                                var productName = "GRIS 1"; // Reemplaza con el nombre que desees
+                                                
+                                                // Crear el mensaje con el nombre del producto
+                                                var message = `¡Hola! 😊 Estoy interesado en el producto Lámina UV ${productName} 🛒✨. ¿Me podrías enviar más detalles y el precio? 💸 ¡Gracias! 🙌 Quedo atento a tu respuesta. 📩`;
+                                                
+                                                // Codificar el mensaje para la URL
+                                                var encodedMessage = encodeURIComponent(message);
+                                                
+                                                // Número de teléfono de WhatsApp (reemplaza esto por el número real con el código de país)
+                                                var phoneNumber = '+573197245235';  // Asegúrate de reemplazar con el número correcto
+                                                
+                                                // Redirigir al enlace de WhatsApp con el mensaje
+                                                var url = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+                                                window.open(url, '_blank');
+                                            }
+                                        </script>
+
+
+                                        <style>
+                                            .container {
+  overflow-x: auto; /* Habilitar desplazamiento horizontal */
+  white-space: nowrap; /* Mantener las columnas en una sola fila */
+
+}
+
+
+                                        </style>
+                                        
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Portfolio item 12 modal popup-->
+        <div class="portfolio-modal modal fade" id="portfolioModal12" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="close-modal" data-bs-dismiss="modal"><img src="./img/close.png" width="70%" height="70%" alt="Close modal" /></div>
+                    <div class="container">
+                        <div class="row justify-content-center">
+                            <div class="col-lg-8">
+                                <div class="modal-body">
+                                    <!-- Project details-->
+                                    <h3 class="border p-3 rounded bg-light text-wrap">LAMINA MARMOLIZADA</h3>
+                                    <p class="item-intro text-muted">BLANCO GRIS 2</p>
+                                    <img class="img-fluid d-block mx-auto" src="./img/UV/BLANCO GRIS 2.png" alt="..." />
+                                    <p class="border p-3 rounded bg-light text-wrap" style="max-width: 100%;">
+                                        Transforma tus espacios con la serenidad y elegancia de nuestra lámina UV marmolizada en Blanco Gris. Este diseño suave combina la luminosidad del blanco con la profundidad del gris, creando una atmósfera tranquila y moderna. Perfecta para aquellos que buscan un estilo sofisticado pero accesible, su acabado brillante y duradero asegura una apariencia impecable por mucho tiempo. Ideal para revestir muebles, paredes o detalles decorativos, esta lámina aporta frescura y elegancia a cualquier ambiente. ¡Renueva tus espacios con la pureza y calma del Blanco Gris!
+                                    </p>
+                                    <ul class="list-inline">
+                                        <li>
+                                            <strong>MEDIDAS:</strong>
+                                            1.22 * 2.44
+                                        </li>
+                                        <li>
+                                            <strong>PRECIO:</strong>
+                                            $120.000COP
+                                            
+                                        </ul>
+                                        <!-- Botón Añadir al carrito -->
+
+                                        <!-- Botón cerrar -->
+                                        <button class="btn btn-primary btn-xl text-uppercase" data-bs-dismiss="modal" type="button" onclick="enviarMensajeWhatsApp12()">
+                                            <i class="fab fa-whatsapp me-1"></i> COMPRAR
+                                        </button>
+                                        
+                                        <script>
+                                            function enviarMensajeWhatsApp12() {
+                                                // Especificar manualmente el nombre del producto
+                                                var productName = "BLANCO GRIS"; // Reemplaza con el nombre que desees
+                                                
+                                                // Crear el mensaje con el nombre del producto
+                                                var message = `¡Hola! 😊 Estoy interesado en el producto Lámina UV ${productName} 🛒✨. ¿Me podrías enviar más detalles y el precio? 💸 ¡Gracias! 🙌 Quedo atento a tu respuesta. 📩`;
+                                                
+                                                // Codificar el mensaje para la URL
+                                                var encodedMessage = encodeURIComponent(message);
+                                                
+                                                // Número de teléfono de WhatsApp (reemplaza esto por el número real con el código de país)
+                                                var phoneNumber = '+573197245235';  // Asegúrate de reemplazar con el número correcto
+                                                
+                                                // Redirigir al enlace de WhatsApp con el mensaje
+                                                var url = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+                                                window.open(url, '_blank');
+                                            }
+                                        </script>
+
+
+                                        <style>
+                                            .container {
+  overflow-x: auto; /* Habilitar desplazamiento horizontal */
+  white-space: nowrap; /* Mantener las columnas en una sola fila */
+  overflow-y: hidden; /* Desactiva el desplazamiento vertical */
+
+}
+
+
+                                        </style>
+                                        
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Portfolio item 13 modal popup-->
+        <div class="portfolio-modal modal fade" id="portfolioModal13" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="close-modal" data-bs-dismiss="modal"><img src="./img/close.png" width="70%" height="70%" alt="Close modal" /></div>
+                    <div class="container">
+                        <div class="row justify-content-center">
+                            <div class="col-lg-8">
+                                <div class="modal-body">
+                                    <!-- Project details-->
+                                    <h3 class="border p-3 rounded bg-light text-wrap">LAMINA MARMOLIZADA</h3>
+                                    <p class="item-intro text-muted">UV 3D</p>
+                                    <img class="img-fluid d-block mx-auto" src="./img/UV/CABALLO UV.png" alt="..." />
+                                    <p class="border p-3 rounded bg-light text-wrap" style="max-width: 100%;">
+                                        Dale vida a tus espacios con la profundidad y realismo de nuestra lámina UV 3D. Diseñada para impactar, su efecto tridimensional crea una sensación envolvente que transforma cualquier ambiente. Con una amplia variedad de referencias inspiradas en la majestuosidad de los animales, esta lámina aporta dinamismo, elegancia y un toque moderno a tus decoraciones. Su acabado brillante y duradero asegura una apariencia impecable por mucho tiempo, siendo ideal para revestir paredes, muebles o detalles decorativos. ¡Haz que tu espacio cobre vida con el realismo sorprendente de la lámina UV 3D!                                    </p>
+                                    <ul class="list-inline">
+                                        <li>
+                                            <strong>MEDIDAS:</strong>
+                                            1.22 * 2.44
+                                        </li>
+                                        <li>
+                                            <strong>PRECIO:</strong>
+                                            $200.000COP
+                                            
+                                        </ul>
+                                        <!-- Botón Añadir al carrito -->
+
+                                        <!-- Botón cerrar -->
+                                        <button class="btn btn-primary btn-xl text-uppercase" data-bs-dismiss="modal" type="button" onclick="enviarMensajeWhatsApp13()">
+                                            <i class="fab fa-whatsapp me-1"></i> COMPRAR
+                                        </button>
+                                        
+                                        <script>
+                                            function enviarMensajeWhatsApp13() {
+                                                // Especificar manualmente el nombre del producto
+                                                var productName = "UV 3D"; // Reemplaza con el nombre que desees
+                                                
+                                                // Crear el mensaje con el nombre del producto
+                                                var message = `¡Hola! 😊 Estoy interesado en el producto Lámina UV ${productName} 🛒✨. ¿Me podrías enviar más detalles y el precio? 💸 ¡Gracias! 🙌 Quedo atento a tu respuesta. 📩`;
+                                                
+                                                // Codificar el mensaje para la URL
+                                                var encodedMessage = encodeURIComponent(message);
+                                                
+                                                // Número de teléfono de WhatsApp (reemplaza esto por el número real con el código de país)
+                                                var phoneNumber = '+573197245235';  // Asegúrate de reemplazar con el número correcto
+                                                
+                                                // Redirigir al enlace de WhatsApp con el mensaje
+                                                var url = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+                                                window.open(url, '_blank');
+                                            }
+                                        </script>
+
+
+                                        <style>
+                                            .container {
+  overflow-x: auto; /* Habilitar desplazamiento horizontal */
+  white-space: nowrap; /* Mantener las columnas en una sola fila */
+  overflow-y: hidden; /* Desactiva el desplazamiento vertical */
+
+}
+
+
+                                        </style>
+                                        
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Portfolio item 14 modal popup-->
+        <div class="portfolio-modal modal fade" id="portfolioModal14" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="close-modal" data-bs-dismiss="modal"><img src="./img/close.png" width="70%" height="70%" alt="Close modal" /></div>
+                    <div class="container">
+                        <div class="row justify-content-center">
+                            <div class="col-lg-8">
+                                <div class="modal-body">
+                                    <!-- Project details-->
+                                    <h3 class="border p-3 rounded bg-light text-wrap">LAMINA MARMOLIZADA</h3>
+                                    <p class="item-intro text-muted">NEGRO ORO 2</p>
+                                    <img class="img-fluid d-block mx-auto" src="./img/UV/NEGRO ORO 2.png" alt="..." />
+                                    <p class="border p-3 rounded bg-light text-wrap" style="max-width: 100%;">
+                                        Añade un toque de lujo y sofisticación a tus espacios con nuestra lámina UV Negro Oro. Este diseño exclusivo fusiona la elegancia del negro con el brillo dorado, creando una atmósfera refinada y moderna. Perfecta para quienes buscan un estilo audaz y distinguido, su acabado brillante y duradero asegura que se mantenga impecable con el tiempo. Ideal para revestir muebles, paredes o detalles decorativos, esta lámina aporta un aire de exclusividad y glamour a cualquier ambiente. ¡Renueva tus espacios con la opulencia del Negro Oro y dale un toque de distinción a tu hogar o negocio!                                   </p>
+                                    <ul class="list-inline">
+                                        <li>
+                                            <strong>MEDIDAS:</strong>
+                                            1.22 * 2.44
+                                        </li>
+                                        <li>
+                                            <strong>PRECIO:</strong>
+                                            $130.000COP
+                                            
+                                        </ul>
+                                        <!-- Botón Añadir al carrito -->
+
+                                        <!-- Botón cerrar -->
+                                        <button class="btn btn-primary btn-xl text-uppercase" data-bs-dismiss="modal" type="button" onclick="enviarMensajeWhatsApp14()">
+                                            <i class="fab fa-whatsapp me-1"></i> COMPRAR
+                                        </button>
+                                        
+                                        <script>
+                                            function enviarMensajeWhatsApp14() {
+                                                // Especificar manualmente el nombre del producto
+                                                var productName = "NEGRO ORO 2"; // Reemplaza con el nombre que desees
+                                                
+                                                // Crear el mensaje con el nombre del producto
+                                                var message = `¡Hola! 😊 Estoy interesado en el producto Lámina UV ${productName} 🛒✨. ¿Me podrías enviar más detalles y el precio? 💸 ¡Gracias! 🙌 Quedo atento a tu respuesta. 📩`;
+                                                
+                                                // Codificar el mensaje para la URL
+                                                var encodedMessage = encodeURIComponent(message);
+                                                
+                                                // Número de teléfono de WhatsApp (reemplaza esto por el número real con el código de país)
+                                                var phoneNumber = '+573197245235';  // Asegúrate de reemplazar con el número correcto
+                                                
+                                                // Redirigir al enlace de WhatsApp con el mensaje
+                                                var url = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+                                                window.open(url, '_blank');
+                                            }
+                                        </script>
+
+
+                                        <style>
+                                            .container {
+  overflow-x: auto; /* Habilitar desplazamiento horizontal */
+  white-space: nowrap; /* Mantener las columnas en una sola fila */
+  overflow-y: hidden; /* Desactiva el desplazamiento vertical */
+
+}
+
+
+                                        </style>
+                                        
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Portfolio item 15 modal popup-->
+        <div class="portfolio-modal modal fade" id="portfolioModal15" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="close-modal" data-bs-dismiss="modal"><img src="./img/close.png" width="70%" height="70%" alt="Close modal" /></div>
+                    <div class="container">
+                        <div class="row justify-content-center">
+                            <div class="col-lg-8">
+                                <div class="modal-body">
+                                    <!-- Project details-->
+                                    <h3 class="border p-3 rounded bg-light text-wrap">LAMINA MARMOLIZADA</h3>
+                                    <p class="item-intro text-muted">VERDE ORO</p>
+                                    <img class="img-fluid d-block mx-auto" src="./img/UV/VERDE ORO.png" alt="..." />
+                                    <p class="border p-3 rounded bg-light text-wrap" style="max-width: 100%;">
+                                        Transforma tus espacios con la frescura y elegancia de nuestra lámina UV Verde Oro. Esta combinación única de un suave verde menta con detalles dorados aporta una atmósfera relajante, sofisticada y llena de estilo. Ideal para quienes buscan un diseño que equilibre modernidad y frescura, su acabado brillante y duradero garantiza una apariencia impecable por mucho tiempo. Perfecta para revestir muebles, paredes o detalles decorativos, esta lámina agrega un toque de frescura y lujo a cualquier ambiente. ¡Renueva tus espacios con la armonía y el glamour del Verde Menta Oro!                                  </p>
+                                    <ul class="list-inline">
+                                        <li>
+                                            <strong>MEDIDAS:</strong>
+                                            1.22 * 2.44
+                                        </li>
+                                        <li>
+                                            <strong>PRECIO:</strong>
+                                            $130.000COP
+                                            
+                                        </ul>
+                                        <!-- Botón Añadir al carrito -->
+
+                                        <!-- Botón cerrar -->
+                                        <button class="btn btn-primary btn-xl text-uppercase" data-bs-dismiss="modal" type="button" onclick="enviarMensajeWhatsApp15()">
+                                            <i class="fab fa-whatsapp me-1"></i> COMPRAR
+                                        </button>
+                                        
+                                        <script>
+                                            function enviarMensajeWhatsApp15() {
+                                                // Especificar manualmente el nombre del producto
+                                                var productName = "VERDE ORO"; // Reemplaza con el nombre que desees
+                                                
+                                                // Crear el mensaje con el nombre del producto
+                                                var message = `¡Hola! 😊 Estoy interesado en el producto Lámina UV ${productName} 🛒✨. ¿Me podrías enviar más detalles y el precio? 💸 ¡Gracias! 🙌 Quedo atento a tu respuesta. 📩`;
+                                                
+                                                // Codificar el mensaje para la URL
+                                                var encodedMessage = encodeURIComponent(message);
+                                                
+                                                // Número de teléfono de WhatsApp (reemplaza esto por el número real con el código de país)
+                                                var phoneNumber = '+573197245235';  // Asegúrate de reemplazar con el número correcto
+                                                
+                                                // Redirigir al enlace de WhatsApp con el mensaje
+                                                var url = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+                                                window.open(url, '_blank');
+                                            }
+                                        </script>
+
+
+                                        <style>
+                                            .container {
+  overflow-x: auto; /* Habilitar desplazamiento horizontal */
+  white-space: nowrap; /* Mantener las columnas en una sola fila */
+  overflow-y: hidden; /* Desactiva el desplazamiento vertical */
+
+}
+
+
+                                        </style>
+                                        
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Portfolio item 16 modal popup-->
+        <div class="portfolio-modal modal fade" id="portfolioModal16" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="close-modal" data-bs-dismiss="modal"><img src="./img/close.png" width="70%" height="70%" alt="Close modal" /></div>
+                    <div class="container">
+                        <div class="row justify-content-center">
+                            <div class="col-lg-8">
+                                <div class="modal-body">
+                                    <!-- Project details-->
+                                    <h3 class="border p-3 rounded bg-light text-wrap">LAMINA MARMOLIZADA</h3>
+                                    <p class="item-intro text-muted">NEGRO RAYAS</p>
+                                    <img class="img-fluid d-block mx-auto" src="./img/UV/NEGRO RAYAS 1.png" alt="..." />
+                                    <p class="border p-3 rounded bg-light text-wrap" style="max-width: 100%;">
+                                        Dale un toque de sofisticación y estilo a tus espacios con nuestra lámina UV Negro Rayas. El contraste entre el negro profundo y las elegantes rayas crea un diseño moderno y audaz que aporta personalidad a cualquier ambiente. Perfecta para quienes buscan un estilo minimalista pero impactante, su acabado brillante y duradero asegura que se mantenga impecable a lo largo del tiempo. Ideal para revestir muebles, paredes o detalles decorativos, esta lámina ofrece un aire de distinción y elegancia. ¡Renueva tus espacios con la fuerza del diseño Negro Rayas y marca la diferencia!</p>
+                                    <ul class="list-inline">
+                                        <li>
+                                            <strong>MEDIDAS:</strong>
+                                            1.22 * 2.44
+                                        </li>
+                                        <li>
+                                            <strong>PRECIO:</strong>
+                                            $120.000COP
+                                            
+                                        </ul>
+                                        <!-- Botón Añadir al carrito -->
+
+                                        <!-- Botón cerrar -->
+                                        <button class="btn btn-primary btn-xl text-uppercase" data-bs-dismiss="modal" type="button" onclick="enviarMensajeWhatsApp16()">
+                                            <i class="fab fa-whatsapp me-1"></i> COMPRAR
+                                        </button>
+                                        
+                                        <script>
+                                            function enviarMensajeWhatsApp16() {
+                                                // Especificar manualmente el nombre del producto
+                                                var productName = "NEGRO RAYAS"; // Reemplaza con el nombre que desees
+                                                
+                                                // Crear el mensaje con el nombre del producto
+                                                var message = `¡Hola! 😊 Estoy interesado en el producto Lámina UV ${productName} 🛒✨. ¿Me podrías enviar más detalles y el precio? 💸 ¡Gracias! 🙌 Quedo atento a tu respuesta. 📩`;
+                                                
+                                                // Codificar el mensaje para la URL
+                                                var encodedMessage = encodeURIComponent(message);
+                                                
+                                                // Número de teléfono de WhatsApp (reemplaza esto por el número real con el código de país)
+                                                var phoneNumber = '+573197245235';  // Asegúrate de reemplazar con el número correcto
+                                                
+                                                // Redirigir al enlace de WhatsApp con el mensaje
+                                                var url = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+                                                window.open(url, '_blank');
+                                            }
+                                        </script>
+
+
+                                        <style>
+                                            .container {
+  overflow-x: auto; /* Habilitar desplazamiento horizontal */
+  white-space: nowrap; /* Mantener las columnas en una sola fila */
+  overflow-y: hidden; /* Desactiva el desplazamiento vertical */
+
+}
+
+
+                                        </style>
+                                        
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Portfolio item 17 modal popup-->
+        <div class="portfolio-modal modal fade" id="portfolioModal17" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="close-modal" data-bs-dismiss="modal"><img src="./img/close.png" width="70%" height="70%" alt="Close modal" /></div>
+                    <div class="container">
+                        <div class="row justify-content-center">
+                            <div class="col-lg-8">
+                                <div class="modal-body">
+                                    <!-- Project details-->
+                                    <h3 class="border p-3 rounded bg-light text-wrap">LAMINA MARMOLIZADA</h3>
+                                    <p class="item-intro text-muted">ROBLE MARMOL</p>
+                                    <img class="img-fluid d-block mx-auto" src="./img/UV/ROBLE MARMOL.png" alt="..." />
+                                    <p class="border p-3 rounded bg-light text-wrap" style="max-width: 100%;">
+                                        Aporta calidez y elegancia a tus espacios con nuestra lámina UV Roble Mármol. La fusión perfecta entre la textura natural de la madera de roble y la sofisticación del mármol crea un diseño único que equilibra lo rústico con lo moderno. Su acabado brillante y duradero garantiza una apariencia impecable por mucho tiempo, ideal para quienes buscan estilo y resistencia. Perfecta para revestir muebles, paredes o detalles decorativos, esta lámina transforma cualquier ambiente con un toque de lujo y naturalidad. ¡Renueva tus espacios con la armonía del Roble Mármol!</p>
+                                    <ul class="list-inline">
+                                        <li>
+                                            <strong>MEDIDAS:</strong>
+                                            1.22 * 2.44
+                                        </li>
+                                        <li>
+                                            <strong>PRECIO:</strong>
+                                            $120.000COP
+                                            
+                                        </ul>
+                                        <!-- Botón Añadir al carrito -->
+
+                                        <!-- Botón cerrar -->
+                                        <button class="btn btn-primary btn-xl text-uppercase" data-bs-dismiss="modal" type="button" onclick="enviarMensajeWhatsApp17()">
+                                            <i class="fab fa-whatsapp me-1"></i> COMPRAR
+                                        </button>
+                                        
+                                        <script>
+                                            function enviarMensajeWhatsApp17() {
+                                                // Especificar manualmente el nombre del producto
+                                                var productName = "ROBLE MARMOL"; // Reemplaza con el nombre que desees
+                                                
+                                                // Crear el mensaje con el nombre del producto
+                                                var message = `¡Hola! 😊 Estoy interesado en el producto Lámina UV ${productName} 🛒✨. ¿Me podrías enviar más detalles y el precio? 💸 ¡Gracias! 🙌 Quedo atento a tu respuesta. 📩`;
+                                                
+                                                // Codificar el mensaje para la URL
+                                                var encodedMessage = encodeURIComponent(message);
+                                                
+                                                // Número de teléfono de WhatsApp (reemplaza esto por el número real con el código de país)
+                                                var phoneNumber = '+573197245235';  // Asegúrate de reemplazar con el número correcto
+                                                
+                                                // Redirigir al enlace de WhatsApp con el mensaje
+                                                var url = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+                                                window.open(url, '_blank');
+                                            }
+                                        </script>
+
+
+                                        <style>
+                                            .container {
+  overflow-x: auto; /* Habilitar desplazamiento horizontal */
+  white-space: nowrap; /* Mantener las columnas en una sola fila */
+  overflow-y: hidden; /* Desactiva el desplazamiento vertical */
+
+}
+
+
+                                        </style>
+                                        
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Portfolio item 18 modal popup-->
+        <div class="portfolio-modal modal fade" id="portfolioModal18" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="close-modal" data-bs-dismiss="modal"><img src="./img/close.png" width="70%" height="70%" alt="Close modal" /></div>
+                    <div class="container">
+                        <div class="row justify-content-center">
+                            <div class="col-lg-8">
+                                <div class="modal-body">
+                                    <!-- Project details-->
+                                    <h3 class="border p-3 rounded bg-light text-wrap">LAMINA MARMOLIZADA</h3>
+                                    <p class="item-intro text-muted">NEGRO RAYAS 2</p>
+                                    <img class="img-fluid d-block mx-auto" src="./img/UV/NEGRO RAYAS 2.png" alt="..." />
+                                    <p class="border p-3 rounded bg-light text-wrap" style="max-width: 100%;">
+                                        Dale un toque de sofisticación sutil a tus espacios con nuestra lámina UV Negro Rayas 2. A diferencia del diseño Negro Rayas, que presenta un patrón más audaz y cargado, esta versión ofrece una disposición de líneas más equilibrada y elegante, perfecta para quienes buscan un estilo moderno pero discreto. Su acabado brillante y duradero mantiene una apariencia impecable con el tiempo, ideal para revestir muebles, paredes o detalles decorativos. ¡Renueva tus espacios con la distinción y armonía del Negro Rayas 2!</p>
+                                    <ul class="list-inline">
+                                        <li>
+                                            <strong>MEDIDAS:</strong>
+                                            1.22 * 2.44
+                                        </li>
+                                        <li>
+                                            <strong>PRECIO:</strong>
+                                            $120.000COP
+                                            
+                                        </ul>
+                                        <!-- Botón Añadir al carrito -->
+
+                                        <!-- Botón cerrar -->
+                                        <button class="btn btn-primary btn-xl text-uppercase" data-bs-dismiss="modal" type="button" onclick="enviarMensajeWhatsApp18()">
+                                            <i class="fab fa-whatsapp me-1"></i> COMPRAR
+                                        </button>
+                                        
+                                        <script>
+                                            function enviarMensajeWhatsApp18() {
+                                                // Especificar manualmente el nombre del producto
+                                                var productName = "NEGRO RAYAS 2"; // Reemplaza con el nombre que desees
+                                                
+                                                // Crear el mensaje con el nombre del producto
+                                                var message = `¡Hola! 😊 Estoy interesado en el producto Lámina UV ${productName} 🛒✨. ¿Me podrías enviar más detalles y el precio? 💸 ¡Gracias! 🙌 Quedo atento a tu respuesta. 📩`;
+                                                
+                                                // Codificar el mensaje para la URL
+                                                var encodedMessage = encodeURIComponent(message);
+                                                
+                                                // Número de teléfono de WhatsApp (reemplaza esto por el número real con el código de país)
+                                                var phoneNumber = '+573197245235';  // Asegúrate de reemplazar con el número correcto
+                                                
+                                                // Redirigir al enlace de WhatsApp con el mensaje
+                                                var url = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+                                                window.open(url, '_blank');
+                                            }
+                                        </script>
+
+
+                                        <style>
+                                            .container {
+  overflow-x: auto; /* Habilitar desplazamiento horizontal */
+  white-space: nowrap; /* Mantener las columnas en una sola fila */
+  overflow-y: hidden; /* Desactiva el desplazamiento vertical */
+
+}
+
+
+                                        </style>
+                                        
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Portfolio item 19 modal popup-->
+        <div class="portfolio-modal modal fade" id="portfolioModal19" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="close-modal" data-bs-dismiss="modal"><img src="./img/close.png" width="70%" height="70%" alt="Close modal" /></div>
+                    <div class="container">
+                        <div class="row justify-content-center">
+                            <div class="col-lg-8">
+                                <div class="modal-body">
+                                    <!-- Project details-->
+                                    <h3 class="border p-3 rounded bg-light text-wrap">LAMINA MARMOLIZADA</h3>
+                                    <p class="item-intro text-muted">ESPEJO DORADA</p>
+                                    <img class="img-fluid d-block mx-auto" src="./img/UV/LAMINA ESPEJO DORADA.png" alt="..." />
+                                    <p class="border p-3 rounded bg-light text-wrap" style="max-width: 100%;">
+                                        Aporta un toque de lujo y amplitud a tus espacios con nuestra lámina UV Espejo Dorada. Su acabado brillante y reflectante crea una sensación de profundidad y luminosidad, mientras que su elegante tono dorado añade sofisticación y exclusividad. Perfecta para quienes buscan un diseño moderno y lujoso, esta lámina es ideal para revestir muebles, paredes o detalles decorativos, brindando un efecto visual impactante. ¡Renueva tus espacios con el brillo y la elegancia de Espejo Dorada y dale un aire de distinción a tu hogar o negocio!
+                                    </p>
+                                    <ul class="list-inline">
+                                        <li>
+                                            <strong>MEDIDAS:</strong>
+                                            1.22 * 2.44
+                                        </li>
+                                        <li>
+                                            <strong>PRECIO:</strong>
+                                            $180.000COP
+                                            
+                                        </ul>
+                                        <!-- Botón Añadir al carrito -->
+
+                                        <!-- Botón cerrar -->
+                                        <button class="btn btn-primary btn-xl text-uppercase" data-bs-dismiss="modal" type="button" onclick="enviarMensajeWhatsApp19()">
+                                            <i class="fab fa-whatsapp me-1"></i> COMPRAR
+                                        </button>
+                                        
+                                        <script>
+                                            function enviarMensajeWhatsApp19() {
+                                                // Especificar manualmente el nombre del producto
+                                                var productName = "ESPEJO DORADA"; // Reemplaza con el nombre que desees
+                                                
+                                                // Crear el mensaje con el nombre del producto
+                                                var message = `¡Hola! 😊 Estoy interesado en el producto Lámina UV ${productName} 🛒✨. ¿Me podrías enviar más detalles y el precio? 💸 ¡Gracias! 🙌 Quedo atento a tu respuesta. 📩`;
+                                                
+                                                // Codificar el mensaje para la URL
+                                                var encodedMessage = encodeURIComponent(message);
+                                                
+                                                // Número de teléfono de WhatsApp (reemplaza esto por el número real con el código de país)
+                                                var phoneNumber = '+573197245235';  // Asegúrate de reemplazar con el número correcto
+                                                
+                                                // Redirigir al enlace de WhatsApp con el mensaje
+                                                var url = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+                                                window.open(url, '_blank');
+                                            }
+                                        </script>
+
+
+                                        <style>
+                                            .container {
+  overflow-x: auto; /* Habilitar desplazamiento horizontal */
+  white-space: nowrap; /* Mantener las columnas en una sola fila */
+  overflow-y: hidden; /* Desactiva el desplazamiento vertical */
+
+}
+
+
+                                        </style>
+                                        
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Portfolio item 20 modal popup-->
+        <div class="portfolio-modal modal fade" id="portfolioModal20" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="close-modal" data-bs-dismiss="modal"><img src="./img/close.png" width="70%" height="70%" alt="Close modal" /></div>
+                    <div class="container">
+                        <div class="row justify-content-center">
+                            <div class="col-lg-8">
+                                <div class="modal-body">
+                                    <!-- Project details-->
+                                    <h3 class="border p-3 rounded bg-light text-wrap">LAMINA MARMOLIZADA</h3>
+                                    <p class="item-intro text-muted">ESPEJO PLATA</p>
+                                    <img class="img-fluid d-block mx-auto" src="./img/UV/LAMINA ESPEJO PLATA.png" alt="..." />
+                                    <p class="border p-3 rounded bg-light text-wrap" style="max-width: 100%;">
+                                        Dale a tus espacios un toque de modernidad y amplitud con nuestra lámina UV Espejo Plata. Su acabado reflectante crea una sensación de mayor luminosidad y profundidad, mientras que su tono plateado aporta elegancia y versatilidad. Perfecta para quienes buscan un diseño sofisticado y atemporal, su superficie brillante y duradera garantiza una apariencia impecable con el tiempo. Ideal para revestir muebles, paredes o detalles decorativos, esta lámina transforma cualquier ambiente con un estilo vanguardista y refinado. ¡Renueva tus espacios con el brillo y la distinción de Espejo Plata! 
+                                        </p>
+                                    <ul class="list-inline">
+                                        <li>
+                                            <strong>MEDIDAS:</strong>
+                                            1.22 * 2.44
+                                        </li>
+                                        <li>
+                                            <strong>PRECIO:</strong>
+                                            $180.000COP
+                                            
+                                        </ul>
+                                        <!-- Botón Añadir al carrito -->
+
+                                        <!-- Botón cerrar -->
+                                        <button class="btn btn-primary btn-xl text-uppercase" data-bs-dismiss="modal" type="button" onclick="enviarMensajeWhatsApp20()">
+                                            <i class="fab fa-whatsapp me-1"></i> COMPRAR
+                                        </button>
+                                        
+                                        <script>
+                                            function enviarMensajeWhatsApp20() {
+                                                // Especificar manualmente el nombre del producto
+                                                var productName = "ESPEJO PLATA"; // Reemplaza con el nombre que desees
+                                                
+                                                // Crear el mensaje con el nombre del producto
+                                                var message = `¡Hola! 😊 Estoy interesado en el producto Lámina UV ${productName} 🛒✨. ¿Me podrías enviar más detalles y el precio? 💸 ¡Gracias! 🙌 Quedo atento a tu respuesta. 📩`;
+                                                
+                                                // Codificar el mensaje para la URL
+                                                var encodedMessage = encodeURIComponent(message);
+                                                
+                                                // Número de teléfono de WhatsApp (reemplaza esto por el número real con el código de país)
+                                                var phoneNumber = '+573197245235';  // Asegúrate de reemplazar con el número correcto
+                                                
+                                                // Redirigir al enlace de WhatsApp con el mensaje
+                                                var url = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+                                                window.open(url, '_blank');
+                                            }
+                                        </script>
+
+
+                                        <style>
+                                            .container {
+  overflow-x: auto; /* Habilitar desplazamiento horizontal */
+  white-space: nowrap; /* Mantener las columnas en una sola fila */
+  overflow-y: hidden; /* Desactiva el desplazamiento vertical */
+
+}
+
+
+                                        </style>
+                                        
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    
+    
+    
+
+        
+        
+        
+
+
+
+
+        
+        <!-- Bootstrap core JS-->
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+        <!-- Core theme JS-->
+        <script src="./js/java.js"></script>
+
+    </body>
+</html>
+
