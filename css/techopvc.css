@@ -5,6 +5,7 @@ body {
     background-color: rgba(240, 240, 240, 0.9);
     text-align: center;
     overflow-x: hidden;
+    zoom: 97%;
 }
 .fondo {
     position: fixed; /* Fija la imagen de fondo */

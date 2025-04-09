@@ -33,7 +33,7 @@
         </div>
         
         <div class="current-section-indicator" id="section-indicator">
-            Sección actual: Overview
+            COMPRAR
         </div>
     </div>
 
@@ -44,11 +44,11 @@ const sections = [
     { name: "3", fragmentImage: "./img/guardaescoba/sandy.png", backgroundImage: "./img/guardaescoba/fondo-sandy.png" },
     { name: "4", fragmentImage: "./img/guardaescoba/metropolitano.png", backgroundImage: "./img/guardaescoba/fondo-metropolitano.png" },
     { name: "5", fragmentImage: "./img/guardaescoba/wengueoscuro.png", backgroundImage: "./img/guardaescoba/fondo-wengueoscuro.png" },  
-    { name: "5", fragmentImage: "./img/guardaescoba/blanco.png", backgroundImage: "./img/guardaescoba/fondo-blanco.png" },  
-    { name: "5", fragmentImage: "./img/guardaescoba/amarillo.png", backgroundImage: "./img/guardaescoba/fondo-amarillo.png" },  
-    { name: "Modelo Vintage", fragmentImage: "./img/modelo-vintage.jpg", backgroundImage: "./img/fondo-vintage.jpg" },
-    { name: "GRECIA", fragmentImage: "./img/guardaescoba/grecia.jpg", backgroundImage: "./img/guardaescoba/fondo-grecia.jpg" },
-    { name: "Modelo Moderno", fragmentImage: "./img/modelo-moderno.jpg", backgroundImage: "./img/fondo-moderno.jpg" },
+    { name: "6", fragmentImage: "./img/guardaescoba/blanco.png", backgroundImage: "./img/guardaescoba/fondo-blanco.png" },  
+    { name: "7", fragmentImage: "./img/guardaescoba/amarillo.png", backgroundImage: "./img/guardaescoba/fondo-amarillo.png" },  
+    { name: "8", fragmentImage: "./img/guardaescoba/pino.jpg", backgroundImage: "./img/guardaescoba/fondo-pino.jpg" },  
+    { name: "9", fragmentImage: "./img/guardaescoba/cedrorojo.jpg", backgroundImage: "./img/guardaescoba/fondo-cedrorojo.jpg" },
+    { name: "10", fragmentImage: "./img/modelo-moderno.jpg", backgroundImage: "./img/fondo-moderno.jpg" },
     { name: "Modelo Rústico", fragmentImage: "./img/modelo-rustico.jpg", backgroundImage: "./img/fondo-rustico.jpg" },
     { name: "Modelo Elegante", fragmentImage: "./img/modelo-elegante.jpg", backgroundImage: "./img/fondo-elegante.jpg" },
     { name: "Modelo Industrial", fragmentImage: "./img/modelo-industrial.jpg", backgroundImage: "./img/fondo-industrial.jpg" },
@@ -148,7 +148,7 @@ function rotateSlider(direction) {
     
     // Actualizar el texto central y el indicador
     centerText.textContent = sections[currentSectionIndex].name;
-    sectionIndicator.textContent = `Sección actual: ${sections[currentSectionIndex].name}`;
+    sectionIndicator.textContent = `COMPRAR: ${sections[currentSectionIndex].name}`;
 }
 
 nextBtn.addEventListener('click', () => rotateSlider('next'));

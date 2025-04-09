@@ -25,6 +25,7 @@ body {
   background-color: var(--bs-body-bg);
   -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+  zoom: 95%; /* <-- esto aplica el zoom */
 }
 
 /* Estilo para fondo gris platinado en modo móvil vertical */
