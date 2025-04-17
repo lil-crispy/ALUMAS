@@ -251,4 +251,12 @@ header img::after {
 .tab:hover {
     background: #dcdcdc;
     color: #007BFF;
+
 }
+.icono-usuario {
+    width: 24px;
+    height: 24px;
+    margin-right: 10px;
+    vertical-align: middle;
+}
+

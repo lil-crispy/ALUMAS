@@ -9,11 +9,13 @@
 </head>
 <body>
     <nav class="tab-container">
+        <img src="./img/vendedor.png" alt="Usuario" class="icono-usuario" id="logo-usuario">
         <a href="#inicio" class="tab">Sobre Nosotros</a>
         <a href="./PROYECTOS.html" class="tab">Proyectos</a>
         <a href="#servicios" class="tab">Servicios</a>
         <a href="#contacto" class="tab">Cotizar</a>
     </nav>
+    
       <!-- Contenedor de íconos -->
       <div class="iconos">
         <a href="https://maps.app.goo.gl/xq44wHAkhKJX5gRz8" target="_blank">
@@ -88,7 +90,7 @@
             <div class="info">
                 <h2>TECHO PVC</h2>
                 <p>LAMINA CIELO RASO PVC</p>
-                <span>hola como estas</span>
+                <span>24 items</span>
             </div>
         </div>
     </a>
@@ -173,4 +175,20 @@
         CHAT
     </a>
 </body>
+<script>
+    document.getElementById('logo-usuario').addEventListener('click', function() {
+        // Pedir la contraseña
+        const claveCorrecta = '79333587'; // Aquí define la clave de acceso correcta
+        const claveUsuario = prompt('Por favor, ingresa la clave de acceso:');
+
+        if (claveUsuario === claveCorrecta) {
+            // Si la contraseña es correcta, redirigir a la página de remisión
+            window.location.href = 'remision.html';  // Ajusta la ruta si es necesario
+        } else {
+            // Si la contraseña es incorrecta
+            alert('Contraseña incorrecta. Acceso denegado.');
+        }
+    });
+</script>
+
 </html>

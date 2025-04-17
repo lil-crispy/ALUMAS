@@ -2,37 +2,100 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Remisión ALUMAS</title>
+  <link rel="icon" type="image/svg+xml" href="./img/LOGO3.png" />
+
+  <!-- Estilos personalizados -->
   <link rel="stylesheet" href="./css/remision.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <!-- Cargar fuentes personalizadas -->
   <style>
     @font-face {
       font-family: 'Bauhaus';
       src: local('Bauhaus 93'), local('Bauhaus93');
     }
+
     .valor-u[contenteditable="true"] {
       direction: ltr;
       unicode-bidi: plaintext;
       text-align: left;
     }
+
+    #form-transporte {
+      display: none;
+      margin: 10px 0;
+      padding: 10px;
+      border: 1px solid #aaa;
+      border-radius: 10px;
+      background-color: #f9f9f9;
+    }
+
+    .campo-form {
+      margin-bottom: 10px;
+    }
+
+    #info-transporte {
+      margin-top: 10px;
+      font-size: 14px;
+    }
+
+    .checkbox-transporte {
+      margin: 10px 0;
+    }
   </style>
+
+  <!-- Librerías para PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script>
+    window.jsPDF = window.jspdf.jsPDF;
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
+
 <body>
 
   <div class="contenedor-principal" id="contenido-factura">
     <div class="encabezado">
       <div>
-        <div class="titulo">FERRETERIA</div>
-        <div class="subtitulo">ALUMAS</div>
+        <div class="titulo"></div>
+        <img src="./img/LOGO4.png" alt="Logo ALUMAS" style="max-width: 300px; display: block; margin: 0 auto;">
       </div>
     </div>
 
     <div class="info">
       <p><strong>FECHA:</strong> 16-abr</p>
-      <p><strong>CLIENTE:</strong> <span contenteditable="true" class="editable-linea">_</span></p>
-      <p><strong>NIT:</strong> 1000366180-1</p>
-      <p><strong>CEL:</strong> 3197245235</p>
+      <p><strong>CLIENTE:</strong> <span contenteditable="true" id="nombre-cliente" class="editable-linea"></span></p>
+      <p><strong>NIT:</strong> 901797743-2</p>
+      <p><strong>CEL 1:</strong> 3118203930</p>
+      <p><strong>CEL 2:</strong> 3197245235</p>
       <p><strong>DIR:</strong> CALLE 139#109-46</p>
+      <div id="info-transporte"></div>
+    </div>
+
+    <div class="checkbox-transporte">
+      <input type="checkbox" id="activar-transporte" onchange="toggleTransporte()"> <label for="activar-transporte">Añadir transporte</label>
+    </div>
+
+    <div id="form-transporte">
+      <div class="campo-form">
+        <label>Nombre del cliente:</label>
+        <input type="text" id="trans-nombre">
+      </div>
+      <div class="campo-form">
+        <label>Dirección de envío:</label>
+        <input type="text" id="trans-direccion">
+      </div>
+      <div class="campo-form">
+        <label>Teléfono:</label>
+        <input type="text" id="trans-telefono">
+      </div>
+      <div class="campo-form">
+        <label>Costo del transporte:</label>
+        <input type="number" id="trans-costo">
+      </div>
+      <button onclick="guardarTransporte()">Guardar transporte</button>
     </div>
 
     <div class="contenedor-tabla">
@@ -48,19 +111,21 @@
             <th class="col-desc">DESCRIPCIÓN</th>
             <th class="col-valor">VALOR U</th>
             <th class="col-valor">VALOR T</th>
+   
           </tr>
         </thead>
         <tbody id="tabla-productos">
-          <tr>
-            <td contenteditable="true" class="cant"></td>
-            <td contenteditable="true"></td>
-            <td contenteditable="true" class="valor-u"></td>
-            <td class="valor-t"></td>
-          </tr>
+          <tr><td contenteditable="true" class="cant"></td><td contenteditable="true"></td><td contenteditable="true" class="valor-u"></td><td class="valor-t"></td></tr>
+          <tr><td contenteditable="true" class="cant"></td><td contenteditable="true"></td><td contenteditable="true" class="valor-u"></td><td class="valor-t"></td></tr>
+          <tr><td contenteditable="true" class="cant"></td><td contenteditable="true"></td><td contenteditable="true" class="valor-u"></td><td class="valor-t"></td></tr>
+          <tr><td contenteditable="true" class="cant"></td><td contenteditable="true"></td><td contenteditable="true" class="valor-u"></td><td class="valor-t"></td></tr>
+          <tr><td contenteditable="true" class="cant"></td><td contenteditable="true"></td><td contenteditable="true" class="valor-u"></td><td class="valor-t"></td></tr>
+          <tr><td contenteditable="true" class="cant"></td><td contenteditable="true"></td><td contenteditable="true" class="valor-u"></td><td class="valor-t"></td></tr>
+          <tr><td contenteditable="true" class="cant"></td><td contenteditable="true"></td><td contenteditable="true" class="valor-u"></td><td class="valor-t"></td></tr>
         </tbody>
       </table>
     </div>
-
+  
     <p class="total" id="total-general">TOTAL: $ 0</p>
 
     <img src="./img/LOGO3.png" alt="Logo ALUMAS" class="logo-grande">
@@ -71,6 +136,9 @@
       <small>EL USO DE LA FACTURA ES INDISPENSABLE PARA CUALQUIER TIPO DE DEVOLUCIÓN.</small>
       <small>NO SE REMBOLSA EL DINERO EN CASO QUE EL PRODUCTO NO CUMPLA CON EL FUNCIONAMIENTO.</small>
       <small>SE PUEDE CAMBIAR POR OTRO DEL MISMO VALOR SIEMPRE Y CUANDO ESTÉ EN BUEN ESTADO.</small>
+      <div style="text-align: right; margin-top: 40px;">
+        <img src="./img/firma.png" alt="Firma" style="width: 150px; opacity: 0.7;">
+      </div>
     </div>
 
     <div class="boton-imprimir">
@@ -81,44 +149,55 @@
 
   <script>
     const tabla = document.getElementById('tabla-productos');
-
+  
+    // Función para formatear los valores a pesos
     function formatearPesos(valor) {
       const numero = parseInt(valor);
       if (isNaN(numero)) return '$ 0';
       return '$ ' + numero.toLocaleString('es-CO');
     }
-
+  
+    // Función para actualizar los totales de la tabla
     function actualizarTotales() {
       let totalGeneral = 0;
-
+  
       tabla.querySelectorAll('tr').forEach(fila => {
-        const cant = parseInt(fila.querySelector('.cant')?.innerText || 0);
+        const cant = parseInt(fila.querySelector('.cant').innerText || 0);
         const valorUCell = fila.querySelector('.valor-u');
-        const valorUTxt = valorUCell?.innerText.replace(/[^\d]/g, '') || '0';
+        const valorUTxt = valorUCell?.innerText.replace(/[^\d.,-]/g, '') || '0';
         const valorU = parseInt(valorUTxt);
-
+  
         const totalFila = cant * valorU;
         fila.querySelector('.valor-t').innerText = formatearPesos(totalFila);
-
+  
         if (!isNaN(totalFila)) totalGeneral += totalFila;
       });
-
+  
       document.getElementById('total-general').innerText = 'TOTAL: ' + formatearPesos(totalGeneral);
     }
+  
+    // Escucha de cambios en la tabla
+    tabla.addEventListener('input', (e) => {
+      const target = e.target;
+      if (target.classList.contains('cant') || target.classList.contains('valor-u')) { 
 
-    tabla.addEventListener('input', actualizarTotales);
-
+        actualizarTotales();
+      }
+    });
+  
+    // Función para agregar una nueva fila a la tabla
     function agregarFila() {
       const nuevaFila = document.createElement('tr');
       nuevaFila.innerHTML = `
-        <td contenteditable="true" class="cant"></td>
+        <td contenteditable="true" class="cant" style="direction: ltr; text-align: left;"></td>
         <td contenteditable="true"></td>
-        <td contenteditable="true" class="valor-u"></td>
+        <td contenteditable="true" class="valor-u" style="direction: ltr; text-align: left;"></td>
         <td class="valor-t"></td>
       `;
       tabla.appendChild(nuevaFila);
     }
-
+  
+    // Función para eliminar la última fila de la tabla
     function eliminarFila() {
       const filas = tabla.querySelectorAll('tr');
       if (filas.length > 1) {
@@ -126,7 +205,8 @@
         actualizarTotales();
       }
     }
-
+  
+    // Función para limpiar toda la tabla
     function limpiarTabla() {
       tabla.querySelectorAll('tr').forEach(fila => {
         fila.querySelectorAll('td').forEach(celda => {
@@ -139,20 +219,103 @@
       });
       actualizarTotales();
     }
-
-    function descargarPDF() {
-      const contenido = document.getElementById("contenido-factura");
-      const opciones = {
-        margin:       0.3,
-        filename:     'remision_alumas.pdf',
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2 },
-        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
-      };
-      html2pdf().set(opciones).from(contenido).save();
-    }
+  
     
-  </script>
+    function descargarPDF() {
+  const contenido = document.getElementById("contenido-factura");
 
+  html2canvas(contenido, {
+    scale: 2,
+    useCORS: true
+  }).then(canvas => {
+    const imgData = canvas.toDataURL('image/jpeg', 1.0);
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'pt',
+      format: 'letter'
+    });
+
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+
+    // Escalamos para que ocupe solo el 60% de la página
+    const scaleFactor = 0.6;
+    const imgWidth = pageWidth * scaleFactor;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+    const x = (pageWidth - imgWidth) / 2;
+    const y = (pageHeight - imgHeight) / 2;
+
+    pdf.addImage(imgData, 'JPEG', x, y, imgWidth, imgHeight);
+    pdf.save("remision_alumas.pdf");
+  });
+}
+
+
+
+  
+    // Función para mostrar el formulario de transporte
+    function toggleTransporte() {
+      const form = document.getElementById('form-transporte');
+      form.style.display = document.getElementById('activar-transporte').checked ? 'block' : 'none';
+    }
+  
+    // Función para guardar los datos del transporte y agregarlo a la tabla
+    function guardarTransporte() {
+      const nombre = document.getElementById('trans-nombre').value;
+      const direccion = document.getElementById('trans-direccion').value;
+      const telefono = document.getElementById('trans-telefono').value;
+      const costo = parseInt(document.getElementById('trans-costo').value) || 0;
+  
+      // Mostrar datos de transporte
+      document.getElementById('nombre-cliente').innerText = nombre;
+      document.getElementById('info-transporte').innerHTML = `
+        
+      `;
+  
+      // Agregar fila con datos de transporte a la tabla
+      const fila = document.createElement('tr');
+      fila.innerHTML = `
+        <td contenteditable="false" class="cant">1</td>
+        <td contenteditable="false">TRANSPORTE</td>
+        <td contenteditable="false" class="valor-u">${costo}</td>
+        <td class="valor-t">${formatearPesos(costo)}</td>
+      `;
+      tabla.appendChild(fila);
+      actualizarTotales();
+  
+
+    }
+    function limpiarTabla() {
+  tabla.querySelectorAll('tr').forEach(fila => {
+    fila.querySelectorAll('td').forEach(celda => {
+      if (celda.isContentEditable) {
+        celda.innerText = '';
+      } else if (celda.classList.contains('valor-t')) {
+        celda.innerText = '';
+      }
+    });
+  });
+  actualizarTotales();
+
+  // Limpiar formulario de transporte y eliminar fila
+  document.getElementById('trans-nombre').value = '';
+  document.getElementById('trans-direccion').value = '';
+  document.getElementById('trans-telefono').value = '';
+  document.getElementById('trans-costo').value = '';
+  document.getElementById('nombre-cliente').innerText = '';
+  document.getElementById('info-transporte').innerHTML = '';
+
+  const filas = tabla.querySelectorAll('tr');
+  filas.forEach(fila => {
+    const descripcion = fila.cells[1]?.textContent.trim();
+    if (descripcion === 'TRANSPORTE') {
+      tabla.removeChild(fila);
+    }
+  });
+}
+
+  </script>
+  
 </body>
 </html>

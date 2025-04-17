@@ -66,10 +66,17 @@ th, td {
   text-align: center;
   word-wrap: break-word;
   text-transform: uppercase;
+  td[contenteditable="true"] {
+    direction: ltr;
+    text-align: left;
+  }
+  
 }
 
 .col-cant {
-  width: 10%;
+  width: 5%;
+  text-align: left;
+  direction: ltr;
 }
 
 .col-desc {
@@ -78,7 +85,7 @@ th, td {
 }
 
 .col-valor {
-  width: 15%;
+  width: 12%;
 }
 
 .valor-u input {
@@ -115,6 +122,32 @@ th, td {
   margin-top: 15px;
 }
 
+/* Estilos para el formulario de transporte */
+#formulario-transporte {
+  display: none;
+  margin-top: 15px;
+  border: 1px solid #ccc;
+  padding: 10px;
+  text-align: left;
+  background: #f9f9f9;
+}
+
+#formulario-transporte input {
+  margin: 5px 0;
+  width: 100%;
+  padding: 5px;
+}
+
+#transporte-datos {
+  margin-top: 10px;
+  text-align: left;
+}
+
+#transporte-toggle {
+  margin-top: 20px;
+}
+
+/* Responsive */
 @media screen and (max-width: 600px) {
   .encabezado .titulo {
     font-size: 1.8em;
@@ -126,6 +159,11 @@ th, td {
     font-size: 0.8em;
     padding: 3px;
     text-transform: uppercase;
+    td[contenteditable="true"] {
+      direction: ltr;
+      text-align: left;
+    }
+    
   }
   .acciones-tabla button {
     padding: 4px 6px;
@@ -137,4 +175,107 @@ th, td {
   .total {
     font-size: 1em;
   }
+}
+
+/* Estilos para impresión */
+@media print {
+  body {
+    width: 80mm;
+    max-width: 80mm;
+    font-size: 10px;
+    padding: 0;
+    margin: 0 auto;
+    background: white;
+  }
+
+  .contenedor-principal {
+    width: 100%;
+    max-width: 100%;
+    padding: 0;
+    margin: 0 auto;
+    text-align: left;
+  }
+
+  .encabezado .titulo {
+    font-size: 1.2em;
+    text-align: center;
+  }
+
+  .encabezado .subtitulo {
+    font-size: 1em;
+    text-align: center;
+  }
+
+  .acciones-tabla,
+  .boton-imprimir,
+  #transporte-toggle,
+  label[for="transporte-toggle"],
+  .acciones-tabla button {
+    display: none !important;
+  }
+
+  .contenedor-tabla {
+    width: 100%;
+    overflow: hidden;
+  }
+
+  table {
+    width: 96%;
+    table-layout: fixed;
+    font-size: 9px;
+    border-collapse: collapse;
+    margin: 0 auto;
+  }
+
+  th, td {
+    padding: 2px 3px;
+    font-size: 9px;
+    word-break: break-word;
+    border: 1px solid #000;
+    td[contenteditable="true"] {
+      direction: ltr;
+      text-align: left;
+    }
+    
+  }
+
+  .col-cant {
+    width: 10%;
+  }
+
+  .col-desc {
+    width: 45%;
+  }
+
+  .col-valor {
+    width: 10%;
+  }
+
+  .logo-grande {
+    width: 70%;
+    max-width: 80%;
+    height: auto;
+    display: block;
+    margin: 10px auto;
+  }
+
+  .total {
+    font-size: 1em;
+    text-align: right;
+    margin-top: 10px;
+  }
+}
+
+/* Corrección de dirección de escritura y cursor */
+.cant, .valor-u {
+  direction: ltr;
+  text-align: left;
+  unicode-bidi: plaintext;
+  
+  
+}
+.pdf-scale {
+  transform: scale(0.4);
+  transform-origin: top left;
+  width: 250%; /* Compensar el escalado */
 }
