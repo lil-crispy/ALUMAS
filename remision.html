@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Remisión ALUMAS</title>
+  <link rel="stylesheet" href="./css/remision.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <style>
+    @font-face {
+      font-family: 'Bauhaus';
+      src: local('Bauhaus 93'), local('Bauhaus93');
+    }
+    .valor-u[contenteditable="true"] {
+      direction: ltr;
+      unicode-bidi: plaintext;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="contenedor-principal" id="contenido-factura">
+    <div class="encabezado">
+      <div>
+        <div class="titulo">FERRETERIA</div>
+        <div class="subtitulo">ALUMAS</div>
+      </div>
+    </div>
+
+    <div class="info">
+      <p><strong>FECHA:</strong> 16-abr</p>
+      <p><strong>CLIENTE:</strong> <span contenteditable="true" class="editable-linea">_</span></p>
+      <p><strong>NIT:</strong> 1000366180-1</p>
+      <p><strong>CEL:</strong> 3197245235</p>
+      <p><strong>DIR:</strong> CALLE 139#109-46</p>
+    </div>
+
+    <div class="contenedor-tabla">
+      <div class="acciones-tabla">
+        <button onclick="agregarFila()">➕</button>
+        <button onclick="eliminarFila()">🗑️</button>
+        <button onclick="limpiarTabla()">🧹 Limpiar</button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th class="col-cant">CANT</th>
+            <th class="col-desc">DESCRIPCIÓN</th>
+            <th class="col-valor">VALOR U</th>
+            <th class="col-valor">VALOR T</th>
+          </tr>
+        </thead>
+        <tbody id="tabla-productos">
+          <tr>
+            <td contenteditable="true" class="cant"></td>
+            <td contenteditable="true"></td>
+            <td contenteditable="true" class="valor-u"></td>
+            <td class="valor-t"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="total" id="total-general">TOTAL: $ 0</p>
+
+    <img src="./img/LOGO3.png" alt="Logo ALUMAS" class="logo-grande">
+
+    <div class="mensaje">
+      <p><strong>***GRACIAS POR SU COMPRA***</strong></p>
+      <small>SI NECESITA FACTURA ELECTRÓNICA ENVIAR ESTA REMISIÓN Y EL RUT AL 3015827791</small>
+      <small>EL USO DE LA FACTURA ES INDISPENSABLE PARA CUALQUIER TIPO DE DEVOLUCIÓN.</small>
+      <small>NO SE REMBOLSA EL DINERO EN CASO QUE EL PRODUCTO NO CUMPLA CON EL FUNCIONAMIENTO.</small>
+      <small>SE PUEDE CAMBIAR POR OTRO DEL MISMO VALOR SIEMPRE Y CUANDO ESTÉ EN BUEN ESTADO.</small>
+    </div>
+
+    <div class="boton-imprimir">
+      <button onclick="window.print()">🖨️ Imprimir</button>
+      <button onclick="descargarPDF()">📄 Descargar PDF</button>
+    </div>
+  </div>
+
+  <script>
+    const tabla = document.getElementById('tabla-productos');
+
+    function formatearPesos(valor) {
+      const numero = parseInt(valor);
+      if (isNaN(numero)) return '$ 0';
+      return '$ ' + numero.toLocaleString('es-CO');
+    }
+
+    function actualizarTotales() {
+      let totalGeneral = 0;
+
+      tabla.querySelectorAll('tr').forEach(fila => {
+        const cant = parseInt(fila.querySelector('.cant')?.innerText || 0);
+        const valorUCell = fila.querySelector('.valor-u');
+        const valorUTxt = valorUCell?.innerText.replace(/[^\d]/g, '') || '0';
+        const valorU = parseInt(valorUTxt);
+
+        const totalFila = cant * valorU;
+        fila.querySelector('.valor-t').innerText = formatearPesos(totalFila);
+
+        if (!isNaN(totalFila)) totalGeneral += totalFila;
+      });
+
+      document.getElementById('total-general').innerText = 'TOTAL: ' + formatearPesos(totalGeneral);
+    }
+
+    tabla.addEventListener('input', actualizarTotales);
+
+    function agregarFila() {
+      const nuevaFila = document.createElement('tr');
+      nuevaFila.innerHTML = `
+        <td contenteditable="true" class="cant"></td>
+        <td contenteditable="true"></td>
+        <td contenteditable="true" class="valor-u"></td>
+        <td class="valor-t"></td>
+      `;
+      tabla.appendChild(nuevaFila);
+    }
+
+    function eliminarFila() {
+      const filas = tabla.querySelectorAll('tr');
+      if (filas.length > 1) {
+        tabla.removeChild(filas[filas.length - 1]);
+        actualizarTotales();
+      }
+    }
+
+    function limpiarTabla() {
+      tabla.querySelectorAll('tr').forEach(fila => {
+        fila.querySelectorAll('td').forEach(celda => {
+          if (celda.isContentEditable) {
+            celda.innerText = '';
+          } else if (celda.classList.contains('valor-t')) {
+            celda.innerText = '';
+          }
+        });
+      });
+      actualizarTotales();
+    }
+
+    function descargarPDF() {
+      const contenido = document.getElementById("contenido-factura");
+      const opciones = {
+        margin:       0.3,
+        filename:     'remision_alumas.pdf',
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2 },
+        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+      };
+      html2pdf().set(opciones).from(contenido).save();
+    }
+    
+  </script>
+
+</body>
+</html>
