@@ -65,10 +65,10 @@
     </div>
 
     <div class="info">
-      <p><strong>FECHA:</strong> 16-abr</p>
+      <p id="fecha-actual"><strong>FECHA:</strong></p>
       <p><strong>CLIENTE:</strong> <span contenteditable="true" id="nombre-cliente" class="editable-linea"></span></p>
       <p><strong>NIT:</strong> 901797743-2</p>
-      <p><strong>CEL 1:</strong> 3118203930</p>
+      <p><strong>CEL 1:</strong> 3015827791</p>
       <p><strong>CEL 2:</strong> 3197245235</p>
       <p><strong>DIR:</strong> CALLE 139#109-46</p>
       <div id="info-transporte"></div>
@@ -127,6 +127,7 @@
     </div>
   
     <p class="total" id="total-general">TOTAL: $ 0</p>
+    
 
     <img src="./img/LOGO3.png" alt="Logo ALUMAS" class="logo-grande">
 
@@ -144,31 +145,35 @@
     <div class="boton-imprimir">
       <button onclick="window.print()">🖨️ Imprimir</button>
       <button onclick="descargarPDF()">📄 Descargar PDF</button>
+      <label>
+        <input type="checkbox" id="check-cotizacion"> Cotización
+      </label>
+      
     </div>
   </div>
 
   <script>
     const tabla = document.getElementById('tabla-productos');
+    let celdaActiva = null;
   
-    // Función para formatear los valores a pesos
     function formatearPesos(valor) {
       const numero = parseInt(valor);
       if (isNaN(numero)) return '$ 0';
       return '$ ' + numero.toLocaleString('es-CO');
     }
   
-    // Función para actualizar los totales de la tabla
     function actualizarTotales() {
       let totalGeneral = 0;
   
       tabla.querySelectorAll('tr').forEach(fila => {
-        const cant = parseInt(fila.querySelector('.cant').innerText || 0);
+        const cant = parseInt(fila.querySelector('.cant')?.innerText || 0);
         const valorUCell = fila.querySelector('.valor-u');
-        const valorUTxt = valorUCell?.innerText.replace(/[^\d.,-]/g, '') || '0';
+        const valorUTxt = valorUCell?.innerText.replace(/[^\d]/g, '') || '0';
         const valorU = parseInt(valorUTxt);
   
         const totalFila = cant * valorU;
-        fila.querySelector('.valor-t').innerText = formatearPesos(totalFila);
+        const totalCelda = fila.querySelector('.valor-t');
+        if (totalCelda) totalCelda.innerText = formatearPesos(totalFila);
   
         if (!isNaN(totalFila)) totalGeneral += totalFila;
       });
@@ -176,146 +181,221 @@
       document.getElementById('total-general').innerText = 'TOTAL: ' + formatearPesos(totalGeneral);
     }
   
-    // Escucha de cambios en la tabla
     tabla.addEventListener('input', (e) => {
       const target = e.target;
-      if (target.classList.contains('cant') || target.classList.contains('valor-u')) { 
-
+      if (target.classList.contains('cant') || target.classList.contains('valor-u')) {
         actualizarTotales();
       }
     });
   
-    // Función para agregar una nueva fila a la tabla
     function agregarFila() {
       const nuevaFila = document.createElement('tr');
       nuevaFila.innerHTML = `
-        <td contenteditable="true" class="cant" style="direction: ltr; text-align: left;"></td>
-        <td contenteditable="true"></td>
-        <td contenteditable="true" class="valor-u" style="direction: ltr; text-align: left;"></td>
+        <td class="cant"></td>
+        <td></td>
+        <td class="valor-u"></td>
         <td class="valor-t"></td>
       `;
       tabla.appendChild(nuevaFila);
+      actualizarFechaHora();
     }
   
-    // Función para eliminar la última fila de la tabla
     function eliminarFila() {
       const filas = tabla.querySelectorAll('tr');
       if (filas.length > 1) {
         tabla.removeChild(filas[filas.length - 1]);
         actualizarTotales();
+        actualizarFechaHora();
       }
     }
   
-    // Función para limpiar toda la tabla
     function limpiarTabla() {
       tabla.querySelectorAll('tr').forEach(fila => {
         fila.querySelectorAll('td').forEach(celda => {
-          if (celda.isContentEditable) {
-            celda.innerText = '';
-          } else if (celda.classList.contains('valor-t')) {
+          if (!celda.classList.contains('valor-t')) {
+            celda.textContent = '';
+          } else {
             celda.innerText = '';
           }
+          actualizarFechaHora();
         });
       });
+  
       actualizarTotales();
+  
+      // Limpiar transporte
+      document.getElementById('trans-nombre').value = '';
+      document.getElementById('trans-direccion').value = '';
+      document.getElementById('trans-telefono').value = '';
+      document.getElementById('trans-costo').value = '';
+      document.getElementById('nombre-cliente').innerText = '';
+      document.getElementById('info-transporte').innerHTML = '';
+  
+      tabla.querySelectorAll('tr').forEach(fila => {
+        const descripcion = fila.cells[1]?.textContent.trim();
+        if (descripcion === 'TRANSPORTE') {
+          tabla.removeChild(fila);
+        }
+      });
     }
   
-    
     function descargarPDF() {
-  const contenido = document.getElementById("contenido-factura");
-
-  html2canvas(contenido, {
-    scale: 2,
-    useCORS: true
-  }).then(canvas => {
-    const imgData = canvas.toDataURL('image/jpeg', 1.0);
-    const pdf = new jsPDF({
-      orientation: 'portrait',
-      unit: 'pt',
-      format: 'letter'
-    });
-
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-
-    // Escalamos para que ocupe solo el 60% de la página
-    const scaleFactor = 0.6;
-    const imgWidth = pageWidth * scaleFactor;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-    const x = (pageWidth - imgWidth) / 2;
-    const y = (pageHeight - imgHeight) / 2;
-
-    pdf.addImage(imgData, 'JPEG', x, y, imgWidth, imgHeight);
-    pdf.save("remision_alumas.pdf");
-  });
-}
-
-
-
+      const contenido = document.getElementById("contenido-factura");
+      html2canvas(contenido, { scale: 2, useCORS: true }).then(canvas => {
+        const imgData = canvas.toDataURL('image/jpeg', 1.0);
+        const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'letter' });
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const scaleFactor = 0.6;
+        const imgWidth = pageWidth * scaleFactor;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        const x = (pageWidth - imgWidth) / 2;
+        const y = (pageHeight - imgHeight) / 2;
   
-    // Función para mostrar el formulario de transporte
+        pdf.addImage(imgData, 'JPEG', x, y, imgWidth, imgHeight);
+        pdf.save("remision_alumas.pdf");
+      });
+    }
+  
     function toggleTransporte() {
       const form = document.getElementById('form-transporte');
       form.style.display = document.getElementById('activar-transporte').checked ? 'block' : 'none';
     }
   
-    // Función para guardar los datos del transporte y agregarlo a la tabla
     function guardarTransporte() {
       const nombre = document.getElementById('trans-nombre').value;
       const direccion = document.getElementById('trans-direccion').value;
       const telefono = document.getElementById('trans-telefono').value;
       const costo = parseInt(document.getElementById('trans-costo').value) || 0;
   
-      // Mostrar datos de transporte
       document.getElementById('nombre-cliente').innerText = nombre;
-      document.getElementById('info-transporte').innerHTML = `
-        
-      `;
+      document.getElementById('info-transporte').innerHTML = ``;
   
-      // Agregar fila con datos de transporte a la tabla
       const fila = document.createElement('tr');
       fila.innerHTML = `
-        <td contenteditable="false" class="cant">1</td>
-        <td contenteditable="false">TRANSPORTE</td>
-        <td contenteditable="false" class="valor-u">${costo}</td>
+        <td class="cant">1</td>
+        <td>TRANSPORTE</td>
+        <td class="valor-u">${costo}</td>
         <td class="valor-t">${formatearPesos(costo)}</td>
       `;
       tabla.appendChild(fila);
       actualizarTotales();
-  
-
     }
-    function limpiarTabla() {
-  tabla.querySelectorAll('tr').forEach(fila => {
-    fila.querySelectorAll('td').forEach(celda => {
-      if (celda.isContentEditable) {
-        celda.innerText = '';
-      } else if (celda.classList.contains('valor-t')) {
-        celda.innerText = '';
+  
+    tabla.addEventListener('click', (e) => {
+      const celda = e.target.closest('td');
+      if (!celda || celda.classList.contains('valor-t')) return;
+      celda.setAttribute('contenteditable', 'true');
+      celda.focus();
+      celdaActiva = celda;
+    });
+  
+    tabla.addEventListener('dblclick', (e) => {
+      const celda = e.target.closest('td');
+      if (celda && !celda.classList.contains('valor-t')) {
+        celda.setAttribute('contenteditable', 'true');
+        celda.focus();
       }
     });
-  });
-  actualizarTotales();
+  
+    tabla.addEventListener('keydown', (e) => {
+      if (!celdaActiva) return;
+  
+      const fila = celdaActiva.parentElement;
+      const columnas = Array.from(fila.children);
+      const colIndex = columnas.indexOf(celdaActiva);
+      let nuevaCelda;
+  
+      switch (e.key) {
+        case 'ArrowRight':
+          nuevaCelda = fila.children[colIndex + 1];
+          break;
+        case 'ArrowLeft':
+          nuevaCelda = fila.children[colIndex - 1];
+          break;
+        case 'ArrowDown':
+          const filaAbajo = fila.nextElementSibling;
+          if (filaAbajo) nuevaCelda = filaAbajo.children[colIndex];
+          break;
+        case 'ArrowUp':
+          const filaArriba = fila.previousElementSibling;
+          if (filaArriba) nuevaCelda = filaArriba.children[colIndex];
+          break;
+        case 'Enter':
+          e.preventDefault();
+          const siguienteFila = fila.nextElementSibling;
+          if (siguienteFila) nuevaCelda = siguienteFila.children[colIndex];
+          break;
+      }
+  
+      if (nuevaCelda && !nuevaCelda.classList.contains('valor-t')) {
+        nuevaCelda.setAttribute('contenteditable', 'true');
+        nuevaCelda.focus();
+        celdaActiva = nuevaCelda;
+      }
+    });
+  
+    tabla.addEventListener('blur', (e) => {
+      const celda = e.target.closest('td');
+      if (celda && !celda.classList.contains('valor-t')) {
+        celda.removeAttribute('contenteditable');
+      }
+    }, true);
+    document.getElementById('check-cotizacion').addEventListener('change', function () {
+  const mensajeDiv = document.querySelector('.mensaje');
+  const logos = document.querySelectorAll('.logo-grande');
 
-  // Limpiar formulario de transporte y eliminar fila
-  document.getElementById('trans-nombre').value = '';
-  document.getElementById('trans-direccion').value = '';
-  document.getElementById('trans-telefono').value = '';
-  document.getElementById('trans-costo').value = '';
-  document.getElementById('nombre-cliente').innerText = '';
-  document.getElementById('info-transporte').innerHTML = '';
+  if (this.checked) {
+    // Cambiar el contenido del div mensaje
+    mensajeDiv.innerHTML = `
+      <p style="font-size: 22px; font-weight: bold; text-align: center; margin-top: 40px;">
+        COTIZACIÓN - NO VÁLIDO COMO COMPROBANTE DE COMPRA
+      </p>
+    `;
+    
+    // Ocultar los logos
+    logos.forEach(logo => logo.style.display = 'none');
+  } else {
+    // Restaurar el mensaje original
+    mensajeDiv.innerHTML = `
+      <p><strong>***GRACIAS POR SU COMPRA***</strong></p>
+      <small>SI NECESITA FACTURA ELECTRÓNICA ENVIAR ESTA REMISIÓN Y EL RUT AL 3015827791</small>
+      <small>EL USO DE LA FACTURA ES INDISPENSABLE PARA CUALQUIER TIPO DE DEVOLUCIÓN.</small>
+      <small>NO SE REMBOLSA EL DINERO EN CASO QUE EL PRODUCTO NO CUMPLA CON EL FUNCIONAMIENTO.</small>
+      <small>SE PUEDE CAMBIAR POR OTRO DEL MISMO VALOR SIEMPRE Y CUANDO ESTÉ EN BUEN ESTADO.</small>
+      <div style="text-align: right; margin-top: 40px;">
+        <img src="./img/firma.png" alt="Firma" style="width: 150px; opacity: 0.7;">
+      </div>
+    `;
 
-  const filas = tabla.querySelectorAll('tr');
-  filas.forEach(fila => {
-    const descripcion = fila.cells[1]?.textContent.trim();
-    if (descripcion === 'TRANSPORTE') {
-      tabla.removeChild(fila);
-    }
-  });
+    // Mostrar los logos nuevamente
+    logos.forEach(logo => logo.style.display = 'block');
+  }
+});
+// Seleccionar todo el contenido de la celda activa al presionar Shift
+tabla.addEventListener('keydown', (e) => {
+  if (e.key === 'Shift' && celdaActiva) {
+    const range = document.createRange();
+    range.selectNodeContents(celdaActiva);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+});
+// Actualizar la fecha y hora actual en el div
+function actualizarFechaHora() {
+  const ahora = new Date();
+  const opciones = { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' };
+  const fechaFormateada = ahora.toLocaleString('es-CO', opciones).replace('.', '');
+  document.getElementById('fecha-actual').innerHTML = `<strong>FECHA:</strong> ${fechaFormateada}`;
 }
 
+// Llamar la función al cargar la página
+actualizarFechaHora();
+
+
   </script>
+  
   
 </body>
 </html>
