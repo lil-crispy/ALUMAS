@@ -618,12 +618,19 @@
                                         onclick="descargarPDF()">
                                         DESCARGAR PDF
                                     </button>
+                                    <br>
+                                    <br>
+
+                                    <button onclick="imprimirCotizacion()" style="padding: 10px 15px; font-size: 16px; cursor: pointer;">
+                                        🖨️ Imprimir
+                                      </button>
 
                                     <script
                                         src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
                                     <script
                                         src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
                                     <script>
+                                        
                                         function calcularCotizacion() {
                                             let metros = parseFloat(document.getElementById("metros").value);
                                             if (isNaN(metros) || metros <= 0) {
@@ -680,6 +687,44 @@
                                             doc.text("Contacto: +57 3197245235 - Email: ferredistribucionesalumassas@gmail.com", 105, doc.internal.pageSize.height - 10, null, null, "center");
                                             doc.save("cotizacion.pdf");
                                         }
+                                        function imprimirCotizacion() {
+    const { jsPDF } = window.jspdf;
+    let doc = new jsPDF({
+        unit: 'mm',
+        format: [80, 297] // tamaño A4 con ancho de 80mm y altura de A4 (297mm)
+    });
+
+    doc.addImage("./img/LOG1.png", "PNG", 5, 5, 30, 30, '', 'FAST'); // Ajusta la imagen al tamaño adecuado
+    doc.setFontSize(8); // Tamaño de fuente más pequeño para adaptarse al tamaño de la página
+
+    doc.text("Fecha: " + new Date().toLocaleDateString(), 55, 10);
+    if (document.getElementById("incluirDatos").checked) {
+        let nombre = document.getElementById("nombre").value;
+        let cedula = document.getElementById("cedula").value;
+        doc.text(`Nombre: ${nombre}`, 5, 25);
+        doc.text(`Cédula/NIT: ${cedula}`, 5, 30);
+    }
+
+    doc.setFontSize(12);
+    doc.text("COTIZACION TECHO PVC", 5, 40);
+    doc.line(5, 41, 75, 41); // Línea debajo del texto
+
+    // Ajuste para la tabla con autoTable
+    doc.autoTable({
+        html: "#cotizadorTable",
+        startY: 45, // Comienza a partir de 45mm
+        margin: { left: 5, right: 5 }, // Márgenes pequeños para adaptarse a la página
+        styles: { fontSize: 7 }, // Tamaño de fuente reducido para la tabla
+    });
+
+    doc.setFontSize(8);
+    doc.text("Contacto: +57 3197245235 - Email: ferredistribucionesalumassas@gmail.com", 5, doc.internal.pageSize.height - 10, null, null, "center");
+
+    // Guardar el PDF
+    doc.save("cotizacion.pdf");
+}
+
+                                        
                                         function filtrarCotizacion() {
                                             let soloTecho = document.getElementById("soloTecho").checked;
                                             let filas = document.querySelectorAll("#cotizadorTable tbody tr");
