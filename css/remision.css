@@ -100,9 +100,9 @@ th, td {
 }
 
 .total {
-  font-size: 1.2em;
+  font-size: 1.5em;
   margin-top: 10px;
-  text-align: right;
+  text-align: center;
 }
 
 .logo-grande {
@@ -116,7 +116,15 @@ th, td {
   margin-top: 10px;
   font-size: 0.9em;
   text-align: center;
+  line-height: 1.1;         /* Reduce espacio entre líneas */
 }
+
+.mensaje p,
+.mensaje small {
+  margin: 0;                 /* Quita márgenes verticales */
+  padding: 0;
+}
+  
 
 .boton-imprimir {
   margin-top: 15px;
@@ -260,8 +268,8 @@ th, td {
   }
 
   .total {
-    font-size: 1em;
-    text-align: right;
+    font-size: 2em;
+    text-align: center;
     margin-top: 10px;
   }
 }
@@ -278,4 +286,33 @@ th, td {
   transform: scale(0.4);
   transform-origin: top left;
   width: 250%; /* Compensar el escalado */
+}
+@media print {
+  @page {
+    size: 80mm auto; /* ancho fijo, alto automático */
+    margin: 0;        /* sin márgenes */
+  }
+
+  body {
+    width: 80mm;
+    margin: 1;
+    padding: 0;
+    font-size: 12px;
+    zoom: 95%;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th, td {
+    border: 1px solid black;
+    padding: 4px;
+    text-align: left;
+  }
+
+  button {
+    display: none; /* ocultar botones al imprimir */
+  }
 }
