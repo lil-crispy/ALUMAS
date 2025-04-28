@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Catálogo Virtual</title>
+  <link rel="stylesheet" href="./css/aluminio.css">
+</head>
+<body>
+
+<header>Catálogo Virtual</header>
+
+<div class="buscar">
+  <input type="text" id="buscador" placeholder="Buscar producto..." onkeyup="filtrarProductos()">
+</div>
+
+<button class="abrir-carrito" onclick="toggleCarrito()">🛒 Ver Carrito</button>
+
+<div class="catalogo" id="catalogo">
+  <!-- Productos de ejemplo -->
+  <div class="producto" data-nombre="Martillo">
+    <img src="https://via.placeholder.com/100" alt="Martillo">
+    <div class="descripcion">
+      Martillo de acero forjado.
+    </div>
+    <div class="acciones">
+      <input type="number" value="1" min="1">
+      <button onclick="agregarAlCarrito('Martillo', 50000, this)">Agregar</button>
+    </div>
+  </div>
+
+  <div class="producto" data-nombre="Destornillador">
+    <img src="https://via.placeholder.com/100" alt="Destornillador">
+    <div class="descripcion">
+      Destornillador de precisión.
+    </div>
+    <div class="acciones">
+      <input type="number" value="1" min="1">
+      <button onclick="agregarAlCarrito('Destornillador', 25000, this)">Agregar</button>
+    </div>
+  </div>
+</div>
+
+<div class="carrito-container" id="carrito">
+  <div class="carrito-header">Carrito</div>
+  <div id="carrito-items"></div>
+  <div class="carrito-total" id="total">Total: $0</div>
+  <button class="btn-comprar" onclick="mostrarFormulario()">Comprar</button>
+
+  <div class="formulario-compra" id="formulario-compra">
+    <input type="text" id="nombre-ferreteria" placeholder="Nombre de la ferretería">
+    <input type="text" id="direccion-ferreteria" placeholder="Dirección de la ferretería">
+    <button class="btn-comprar" onclick="finalizarCompra()">Finalizar Compra</button>
+  </div>
+</div>
+
+<script>
+  let carrito = [];
+
+  function toggleCarrito() {
+    document.getElementById('carrito').classList.toggle('open');
+  }
+
+  function agregarAlCarrito(nombre, precio, boton) {
+    const cantidadInput = boton.parentElement.querySelector('input[type="number"]');
+    const cantidad = parseInt(cantidadInput.value);
+    const productoDiv = boton.closest('.producto');
+    const imgSrc = productoDiv.querySelector('img').src;
+
+    carrito.push({ nombre, precio, cantidad, imgSrc });
+    mostrarCarrito();
+  }
+
+  function mostrarCarrito() {
+    const carritoItems = document.getElementById('carrito-items');
+    carritoItems.innerHTML = '';
+
+    let total = 0;
+
+    carrito.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'carrito-item';
+      div.innerHTML = `
+        <img src="${item.imgSrc}" alt="${item.nombre}">
+        <div class="carrito-item-details">
+          <div>${item.nombre}</div>
+          <div>Cant: ${item.cantidad}</div>
+          <div>$${(item.precio * item.cantidad).toLocaleString()}</div>
+        </div>
+      `;
+      carritoItems.appendChild(div);
+      total += item.precio * item.cantidad;
+    });
+
+    document.getElementById('total').textContent = `Total: $${total.toLocaleString()}`;
+  }
+
+  function filtrarProductos() {
+    const input = document.getElementById('buscador').value.toLowerCase();
+    const productos = document.querySelectorAll('.producto');
+    productos.forEach(p => {
+      const nombre = p.getAttribute('data-nombre').toLowerCase();
+      p.style.display = nombre.includes(input) ? 'flex' : 'none';
+    });
+  }
+
+  function mostrarFormulario() {
+    document.getElementById('formulario-compra').style.display = 'flex';
+  }
+
+  function finalizarCompra() {
+    const nombre = document.getElementById('nombre-ferreteria').value.trim();
+    const direccion = document.getElementById('direccion-ferreteria').value.trim();
+
+    if (!nombre || !direccion) {
+      alert('Por favor llena todos los campos.');
+      return;
+    }
+
+    let mensaje = `*Pedido de ferretería*\n`;
+    mensaje += `*Nombre:* ${nombre}\n`;
+    mensaje += `*Dirección:* ${direccion}\n\n`;
+
+    carrito.forEach(item => {
+      mensaje += `🔹 ${item.nombre} (Cant: ${item.cantidad}) - $${(item.precio * item.cantidad).toLocaleString()}\n`;
+    });
+
+    const totalTexto = document.getElementById('total').textContent;
+    mensaje += `\n*${totalTexto}*`;
+
+    const url = `https://wa.me/57319724535?text=${encodeURIComponent(mensaje)}`;
+
+    window.open(url, '_blank');
+  }
+</script>
+
+</body>
+</html>
