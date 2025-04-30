@@ -8,7 +8,7 @@
 </head>
 <body>
 
-<header>Catálogo Virtual</header>
+<header>DISTRIBUCION PARA FERRETERIA</header>
 
 <div class="buscar">
   <input type="text" id="buscador" placeholder="Buscar producto..." onkeyup="filtrarProductos()">
@@ -17,29 +17,404 @@
 <button class="abrir-carrito" onclick="toggleCarrito()">🛒 Ver Carrito</button>
 
 <div class="catalogo" id="catalogo">
-  <!-- Productos de ejemplo -->
-  <div class="producto" data-nombre="Martillo">
-    <img src="https://via.placeholder.com/100" alt="Martillo">
-    <div class="descripcion">
-      Martillo de acero forjado.
-    </div>
+  <div class="producto" data-nombre="TUBO 5/8 CROMADO">
+    <img src="./img/distribucion/tubo5-8dorado.png" alt="tubo5/8cromado">
+    <div class="descripcion">TUBO 5/8 DORADO *6MT</div>
+    <div class="precio">$18.000</div>
     <div class="acciones">
       <input type="number" value="1" min="1">
-      <button onclick="agregarAlCarrito('Martillo', 50000, this)">Agregar</button>
+      <button onclick="agregarAlCarrito('TUBO 5/8 DORADO', 18000, this)">Agregar</button>
+    </div>
+  </div>
+  
+  <div class="producto" data-nombre="TUBO 5/8 CROMADO">
+    <img src="./img/distribucion/tubo5-8cromado.png" alt="tubo5/8cromado">
+    <div class="descripcion">TUBO 5/8 CROMADO *6MT</div>
+    <div class="precio">$18.000</div>
+    <div class="acciones">
+      <input type="number" value="1" min="1">
+      <button onclick="agregarAlCarrito('TUBO 5/8 CROMADO', 18000, this)">AGREGAR</button>
     </div>
   </div>
 
-  <div class="producto" data-nombre="Destornillador">
-    <img src="https://via.placeholder.com/100" alt="Destornillador">
-    <div class="descripcion">
-      Destornillador de precisión.
-    </div>
+  <div class="producto" data-nombre="TUBO 5/8 CAFE">
+    <img src="./img/distribucion/tubo5-8cafe.png" alt="tubo5/8cafe">
+    <div class="descripcion">TUBO 5/8 CAFE *6MT</div>
+    <div class="precio">$18.000</div>
     <div class="acciones">
       <input type="number" value="1" min="1">
-      <button onclick="agregarAlCarrito('Destornillador', 25000, this)">Agregar</button>
+      <button onclick="agregarAlCarrito('TUBO 5/8 CAFE', 18000, this)">AGREGAR</button>
     </div>
   </div>
+
+  <div class="producto" data-nombre="TUBO 3/4 DORADO">
+    <img src="./img/distribucion/tubo3-4dorado.png" alt="tubo3/4dorado">
+    <div class="descripcion">TUBO 3/4 DORADO *6MT</div>
+    <div class="precio">$23.000</div>
+    <div class="acciones">
+      <input type="number" value="1" min="1">
+      <button onclick="agregarAlCarrito('TUBO 3/4 DORADO', 23000, this)">AGREGAR</button>
+    </div>
+  </div>
+
+  <div class="producto" data-nombre="TUBO 3/4 CROMADO">
+    <img src="./img/distribucion/tubo3-4cromado.png" alt="tubo3/4cromado">
+    <div class="descripcion">TUBO 3/4 CROMADO *6MT</div>
+    <div class="precio">$23.000</div>
+    <div class="acciones">
+      <input type="number" value="1" min="1">
+      <button onclick="agregarAlCarrito('TUBO 3/4 CROMADO', 23000, this)">AGREGAR</button>
+    </div>
+  </div>
+
+  <div class="producto" data-nombre="TUBO 3/4 CAFE">
+    <img src="./img/distribucion/tubo3-4cafe.png" alt="tubo3/4cafe">
+    <div class="descripcion">TUBO 3/4 CAFE *6MT</div>
+    <div class="precio">$23.000</div>
+    <div class="acciones">
+      <input type="number" value="1" min="1">
+      <button onclick="agregarAlCarrito('TUBO 3/4 CAFE', 23000, this)">AGREGAR</button>
+    </div>
+  </div>
+
+  <div class="producto" data-nombre="TUBO 1&quot; DORADO">
+    <img src="./img/distribucion/tubo1-dorado.png" alt="tubo1dorado">
+    <div class="descripcion">TUBO 1&quot; DORADO *6MT</div>
+    <div class="precio">$33.000</div>
+    <div class="acciones">
+      <input type="number" value="1" min="1">
+      <button onclick="agregarAlCarrito('TUBO 1&quot; DORADO', 33000, this)">AGREGAR</button>
+    </div>
+  </div>
+
+  <div class="producto" data-nombre="TUBO 1&quot; CROMADO">
+    <img src="./img/distribucion/tubo1-cromado.png" alt="tubo1cromado">
+    <div class="descripcion">TUBO 1&quot; CROMADO *6MT</div>
+    <div class="precio">$33.000</div>
+    <div class="acciones">
+      <input type="number" value="1" min="1">
+      <button onclick="agregarAlCarrito('TUBO 1&quot; CROMADO', 33000, this)">AGREGAR</button>
+    </div>
+  </div>
+
+  <div class="producto" data-nombre="TUBO 1&quot; CAFE">
+    <img src="./img/distribucion/tubo1-cafe.png" alt="tubo1cafe">
+    <div class="descripcion">TUBO 1&quot; CAFE *6MT</div>
+    <div class="precio">$33.000</div>
+    <div class="acciones">
+      <input type="number" value="1" min="1">
+      <button onclick="agregarAlCarrito('TUBO 1&quot; CAFE', 33000, this)">AGREGAR</button>
+    </div>
+  </div>
+
+  <div class="producto" data-nombre="WIN ESPAÑOL">
+    <img src="./img/distribucion/winespanol.png" alt="winespanol">
+    <div class="descripcion">WIN ESPAÑOL</div>
+    <div class="precio">$14.000</div>
+    <div class="acciones">
+      <input type="number" value="1" min="1">
+      <button onclick="agregarAlCarrito('WIN ESPAÑOL', 14000, this)">AGREGAR</button>
+    </div>
+  </div>
+
+  <div class="producto" data-nombre="WIN TRADICIONAL">
+    <img src="./img/distribucion/wintradicional.png" alt="wintradicional">
+    <div class="descripcion">WIN TRADICIONAL</div>
+    <div class="precio">$12.500</div>
+    <div class="acciones">
+      <input type="number" value="1" min="1">
+      <button onclick="agregarAlCarrito('WIN TRADICIONAL', 12500, this)">AGREGAR</button>
+    </div>
+  </div>
+
+  <div class="producto" data-nombre="BOQUILLERA 3*1">
+    <img src="./img/distribucion/boquillera3x1.jpg" alt="boquillera3x1">
+    <div class="descripcion">BOQUILLERA 3*1</div>
+    <div class="precio">$75.000</div>
+    <div class="acciones">
+      <input type="number" value="1" min="1">
+      <button onclick="agregarAlCarrito('BOQUILLERA 3*1', 75000, this)">AGREGAR</button>
+    </div>
+  </div>
+
+  <div class="producto" data-nombre="BOQUILLERA 3*11/2">
+    <img src="./img/distribucion/boquillera3x1.5.png" alt="boquillera3x1.5">
+    <div class="descripcion">BOQUILLERA 3*11/2</div>
+    <div class="precio">$78.000</div>
+    <div class="acciones">
+      <input type="number" value="1" min="1">
+      <button onclick="agregarAlCarrito('BOQUILLERA 3*11/2', 78000, this)">AGREGAR</button>
+    </div>
+  </div>
+
+  <div class="producto" data-nombre="PIRLAN EN ALUMINIO">
+    <img src="./img/distribucion/pirlan.png" alt="pirlan">
+    <div class="descripcion">PIRLAN EN ALUMINIO</div>
+    <div class="precio">$32.000</div>
+    <div class="acciones">
+      <input type="number" value="1" min="1">
+      <button onclick="agregarAlCarrito('PIRLAN EN ALUMINIO', 32000, this)">AGREGAR</button>
+    </div>
+  </div>
+
+  <div class="producto" data-nombre="TEE LAVADERO">
+    <img src="./img/distribucion/tee.png" alt="tee lavadero">
+    <div class="descripcion">TEE LAVADERO</div>
+    <div class="precio">$17.000</div>
+    <div class="acciones">
+      <input type="number" value="1" min="1">
+      <button onclick="agregarAlCarrito('TEE LAVADERO', 17000, this)">AGREGAR</button>
+    </div>
+  </div>
+
+  <div class="producto" data-nombre="TUBO OVALDAO CLOSET *3MT">
+    <img src="./img/distribucion/tuboovaldocloset.png" alt="tubo ovaldao closet">
+    <div class="descripcion">TUBO OVALDAO CLOSET *3MT</div>
+    <div class="precio">$17.000</div>
+    <div class="acciones">
+      <input type="number" value="1" min="1">
+      <button onclick="agregarAlCarrito('TUBO OVALDAO CLOSET *3MT', 17000, this)">AGREGAR</button>
+    </div>
+  </div>
+
+  <div class="producto" data-nombre="TUBO LISO 1&quot;">
+    <img src="./img/distribucion/tuboliso1.png" alt="tubo liso 1">
+    <div class="descripcion">TUBO LISO 1&quot;</div>
+    <div class="precio">$45.000</div>
+    <div class="acciones">
+      <input type="number" value="1" min="1">
+      <button onclick="agregarAlCarrito('TUBO LISO 1&quot;', 45000, this)">AGREGAR</button>
+    </div>
+  </div>
+
+  <div class="producto" data-nombre="TUBO LISO 3/4">
+    <img src="./img/distribucion/tuboliso3-4.png" alt="tubo liso 3/4">
+    <div class="descripcion">TUBO LISO 3/4</div>
+    <div class="precio">$35.000</div>
+    <div class="acciones">
+      <input type="number" value="1" min="1">
+      <button onclick="agregarAlCarrito('TUBO LISO 3/4', 35000, this)">AGREGAR</button>
+    </div>
+  </div>
+
+  <div class="producto" data-nombre="ANGULO 1&quot; ALUMINIO">
+    <img src="./img/distribucion/angulo1.png" alt="angulo 1 aluminio">
+    <div class="descripcion">ANGULO 1&quot; ALUMINIO</div>
+    <div class="precio">$32.000</div>
+    <div class="acciones">
+      <input type="number" value="1" min="1">
+      <button onclick="agregarAlCarrito('ANGULO 1&quot; ALUMINIO', 32000, this)">AGREGAR</button>
+    </div>
+  </div>
+
+  <div class="producto" data-nombre="ANGULO 3/4 ALUMINIO">
+    <img src="./img/distribucion/angulo3-4.png" alt="angulo 3/4 aluminio">
+    <div class="descripcion">ANGULO 3/4 ALUMINIO</div>
+    <div class="precio">$25.000</div>
+    <div class="acciones">
+      <input type="number" value="1" min="1">
+      <button onclick="agregarAlCarrito('ANGULO 3/4 ALUMINIO', 25000, this)">AGREGAR</button>
+    </div>
+  </div>
+
+  <div class="producto" data-nombre="TUBO 1/2 DORADO">
+    <img src="./img/distribucion/tubo1-2dorado.png" alt="tubo 1/2 dorado">
+    <div class="descripcion">TUBO 1/2 DORADO</div>
+    <div class="precio">$16.000</div>
+    <div class="acciones">
+      <input type="number" value="1" min="1">
+      <button onclick="agregarAlCarrito('TUBO 1/2 DORADO', 16000, this)">AGREGAR</button>
+    </div>
+  </div>
+
+  <div class="producto" data-nombre="TUBO 1/2 CROMADO">
+    <img src="./img/distribucion/tubo1-2cromado.png" alt="tubo 1/2 cromado">
+    <div class="descripcion">TUBO 1/2 CROMADO</div>
+    <div class="precio">$16.000</div>
+    <div class="acciones">
+      <input type="number" value="1" min="1">
+      <button onclick="agregarAlCarrito('TUBO 1/2 CROMADO', 16000, this)">AGREGAR</button>
+    </div>
+  </div>
+
+  <div class="producto" data-nombre="TUBO 1/2 CAFE">
+    <img src="./img/distribucion/tubo1-2cafe.png" alt="tubo 1/2 cafe">
+    <div class="descripcion">TUBO 1/2 CAFE</div>
+    <div class="precio">$16.000</div>
+    <div class="acciones">
+      <input type="number" value="1" min="1">
+      <button onclick="agregarAlCarrito('TUBO 1/2 CAFE', 16000, this)">AGREGAR</button>
+    </div>
+  </div>
+  <div class="producto" data-nombre="OMEGA">
+    <img src="./img/distribucion/omega.png" alt="OMEGA">
+    <div class="descripcion">
+      OMEGA 2.40
+    </div>
+    <div class="precio">$3.500</div>
+    <div class="acciones">
+      <input type="number" value="1" min="1">
+      <button onclick="agregarAlCarrito('OMEGA', 3500, this)">AGREGAR</button>
+    </div>
+  </div>
+  
+  <div class="producto" data-nombre="VIGUETA">
+    <img src="./img/distribucion/vigueta.png" alt="VIGUETA">
+    <div class="descripcion">
+      VIGUETA 2.40
+    </div>
+    <div class="precio">$3.500</div>
+    <div class="acciones">
+      <input type="number" value="1" min="1">
+      <button onclick="agregarAlCarrito('VIGUETA', 3500, this)">AGREGAR</button>
+    </div>
+  </div>
+  
+  <div class="producto" data-nombre="ANGULO">
+    <img src="./img/distribucion/angulo.png" alt="ANGULO">
+    <div class="descripcion">
+      ANGULO 2.40
+    </div>
+    <div class="precio">$2.500</div>
+    <div class="acciones">
+      <input type="number" value="1" min="1">
+      <button onclick="agregarAlCarrito('ANGULO', 2500, this)">AGREGAR</button>
+    </div>
+  </div>
+  <div class="producto" data-nombre="PARAL BASE 6">
+    <img src="./img/distribucion/paralbase6.png" alt="PARAL BASE 6">
+    <div class="descripcion">
+      PARAL BASE 6
+    </div>
+    <div class="precio">$8.500</div>
+    <div class="acciones">
+      <input type="number" value="1" min="1">
+      <button onclick="agregarAlCarrito('PARAL BASE 6', 8500, this)">AGREGAR</button>
+    </div>
+  </div>
+  
+  <div class="producto" data-nombre="CANAL BASE 6">
+    <img src="./img/distribucion/canalbase6.png" alt="CANAL BASE 6">
+    <div class="descripcion">
+      CANAL BASE 6
+    </div>
+    <div class="precio">$8.500</div>
+    <div class="acciones">
+      <input type="number" value="1" min="1">
+      <button onclick="agregarAlCarrito('CANAL BASE 6', 8500, this)">AGREGAR</button>
+    </div>
+  </div>
+  
+  <div class="producto" data-nombre="CANAL BASE 9">
+    <img src="./img/distribucion/canalbase9.png" alt="CANAL BASE 9">
+    <div class="descripcion">
+      CANAL BASE 9
+    </div>
+    <div class="precio">$10.500</div>
+    <div class="acciones">
+      <input type="number" value="1" min="1">
+      <button onclick="agregarAlCarrito('CANAL BASE 9', 10500, this)">AGREGAR</button>
+    </div>
+  </div>
+  
+  <div class="producto" data-nombre="PARAL BASE 9">
+    <img src="./img/distribucion/paralbase9.png" alt="PARAL BASE 9">
+    <div class="descripcion">
+      PARAL BASE 9
+    </div>
+    <div class="precio">$10.500</div>
+    <div class="acciones">
+      <input type="number" value="1" min="1">
+      <button onclick="agregarAlCarrito('PARAL BASE 9', 10500, this)">AGREGAR</button>
+    </div>
+  </div>
+  
+  <div class="producto" data-nombre="CANALETA 1/2">
+    <img src="./img/distribucion/canaleta12.png" alt="CANALETA 1/2">
+    <div class="descripcion">
+      CANALETA 1/2
+    </div>
+    <div class="precio">$2.500</div>
+    <div class="acciones">
+      <input type="number" value="1" min="1">
+      <button onclick="agregarAlCarrito('CANALETA 1/2', 2500, this)">AGREGAR</button>
+    </div>
+  </div>
+  
+  <div class="producto" data-nombre="CANALETA 3/4">
+    <img src="./img/distribucion/canaleta34.png" alt="CANALETA 3/4">
+    <div class="descripcion">
+      CANALETA 3/4
+    </div>
+    <div class="precio">$3.500</div>
+    <div class="acciones">
+      <input type="number" value="1" min="1">
+      <button onclick="agregarAlCarrito('CANALETA 3/4', 3500, this)">AGREGAR</button>
+    </div>
+  </div>
+  
+  <div class="producto" data-nombre="CANALETA 1&quot;">
+    <img src="./img/distribucion/canaleta1.png" alt="CANALETA 1&quot;">
+    <div class="descripcion">
+      CANALETA 1"
+    </div>
+    <div class="precio">$4.500</div>
+    <div class="acciones">
+      <input type="number" value="1" min="1">
+      <button onclick="agregarAlCarrito('CANALETA 1&quot;', 4500, this)">AGREGAR</button>
+    </div>
+  </div>
+  
+  <div class="producto" data-nombre="CANALETA 1&quot;1/2">
+    <img src="./img/distribucion/canaleta112.png" alt="CANALETA 1&quot;1/2">
+    <div class="descripcion">
+      CANALETA 1"1/2
+    </div>
+    <div class="precio">$7.500</div>
+    <div class="acciones">
+      <input type="number" value="1" min="1">
+      <button onclick="agregarAlCarrito('CANALETA 1&quot;1/2', 7500, this)">AGREGAR</button>
+    </div>
+  </div>
+  
+  <div class="producto" data-nombre="ESQUINERA ECONOMICA">
+    <img src="./img/distribucion/esquineraeconomica.png" alt="ESQUINERA ECONOMICA">
+    <div class="descripcion">
+      ESQUINERA ECONOMICA
+    </div>
+    <div class="precio">$1.500</div>
+    <div class="acciones">
+      <input type="number" value="1" min="1">
+      <button onclick="agregarAlCarrito('ESQUINERA ECONOMICA', 1500, this)">AGREGAR</button>
+    </div>
+  </div>
+  
+  <div class="producto" data-nombre="ESQUINERA ADHESIVA">
+    <img src="./img/distribucion/esquineraadhesiva.png" alt="ESQUINERA ADHESIVA">
+    <div class="descripcion">
+      ESQUINERA ADHESIVA
+    </div>
+    <div class="precio">$4.000</div>
+    <div class="acciones">
+      <input type="number" value="1" min="1">
+      <button onclick="agregarAlCarrito('ESQUINERA ADHESIVA', 4000, this)">AGREGAR</button>
+    </div>
+  </div>
+  
+  <div class="producto" data-nombre="WIN PLASTICO VARIEDAD DE COLORES">
+    <img src="./img/distribucion/winplastico.png" alt="WIN PLASTICO VARIEDAD DE COLORES">
+    <div class="descripcion">
+      WIN PLASTICO VARIEDAD DE COLORES
+    </div>
+    <div class="precio">$3.500</div>
+    <div class="acciones">
+      <input type="number" value="1" min="1">
+      <button onclick="agregarAlCarrito('WIN PLASTICO VARIEDAD DE COLORES', 3500, this)">AGREGAR</button>
+    </div>
+  </div>
+  
 </div>
+
 
 <div class="carrito-container" id="carrito">
   <div class="carrito-header">Carrito</div>
@@ -53,9 +428,22 @@
     <button class="btn-comprar" onclick="finalizarCompra()">Finalizar Compra</button>
   </div>
 </div>
+<div id="notificacion" style="display:none; position:fixed; top:10px; left:50%; transform:translateX(-50%); background-color:#4CAF50; color:white; padding:10px 20px; border-radius:5px; z-index:9999; font-weight:bold;">
+  EL PRODUCTO SE HA AGREGADO CORRECTAMENTE
+</div>
 
 <script>
   let carrito = [];
+
+  function mostrarNotificacion(nombre) {
+    const notificacion = document.getElementById("notificacion");
+    notificacion.textContent = `✅ ${nombre} SE HA AGREGADO CORRECTAMENTE`;
+    notificacion.style.display = "block";
+
+    setTimeout(() => {
+      notificacion.style.display = "none";
+    }, 3000); // Se oculta después de 3 segundos
+  }
 
   function toggleCarrito() {
     document.getElementById('carrito').classList.toggle('open');
@@ -69,6 +457,12 @@
 
     carrito.push({ nombre, precio, cantidad, imgSrc });
     mostrarCarrito();
+    mostrarNotificacion(nombre);
+  }
+
+  function eliminarDelCarrito(index) {
+    carrito.splice(index, 1);
+    mostrarCarrito();
   }
 
   function mostrarCarrito() {
@@ -77,7 +471,7 @@
 
     let total = 0;
 
-    carrito.forEach(item => {
+    carrito.forEach((item, index) => {
       const div = document.createElement('div');
       div.className = 'carrito-item';
       div.innerHTML = `
@@ -87,6 +481,7 @@
           <div>Cant: ${item.cantidad}</div>
           <div>$${(item.precio * item.cantidad).toLocaleString()}</div>
         </div>
+        <button class="eliminar-item" onclick="eliminarDelCarrito(${index})">🗑️</button>
       `;
       carritoItems.appendChild(div);
       total += item.precio * item.cantidad;
@@ -129,10 +524,10 @@
     mensaje += `\n*${totalTexto}*`;
 
     const url = `https://wa.me/57319724535?text=${encodeURIComponent(mensaje)}`;
-
     window.open(url, '_blank');
   }
 </script>
+
 
 </body>
 </html>
