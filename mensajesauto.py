@@ -4,7 +4,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
+from webdriver_manager .chrome import ChromeDriverManager
 import urllib.parse
 import datetime
 import time
@@ -23,6 +23,8 @@ print(f"Hoy es {hoy.upper()}")
 mensajes_por_dia = {
     "lunes": [
         ("573000000001", "¡Feliz lunes! ¿Necesitas algo hoy?")
+
+
     ],
     "martes": [
         ("573227329097", "Hola Cristian, ¿cómo estás? ¿Estás necesitando algo para el día de hoy?"),
