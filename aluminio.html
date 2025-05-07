@@ -12,12 +12,58 @@
 <body>
 
 <header>DISTRIBUCION PARA FERRETERIA</header>
+<div id="ticket" style="display: none; font-family: monospace; padding: 10px;">
+  <!-- Logo y número de celular -->
+  <h1 style="text-align: center; font-family: 'Arial', sans-serif;">ALUMAS</h1>
+  <h3 style="text-align: center;">🛒 ORDEN DE COMPRA </h3>
+  <samp style="text-align: center;">📞 3197245235 </samp>
+  <div style="text-align: center; margin-top: 20px;">_______________________</div>
+  <div style="text-align: center; margin-top: 20px;">Descripcion de prodcutos:</div>
+
+  <!-- Los items del ticket, ahora más cerca de la línea -->
+  <div id="ticket-items" style="margin-top: 5px;"></div>
+
+  <div id="ticket-total" style="margin-top: 10px;"></div>
+
+  <div style="text-align: center; margin-top: 20px;">Gracias por su compra</div>
+</div>
+
+<!-- Estilos responsivos -->
+<style>
+  @media (max-width: 600px) {
+    #ticket {
+      padding: 15px;
+    }
+
+    #ticket h1 {
+      font-size: 18px;
+      font-family: 'Arial', sans-serif; /* Cambié la fuente */
+    }
+
+    #ticket h3 {
+      font-size: 12px;
+    }
+
+    #ticket-items,
+    #ticket-total {
+      font-size: 14px;
+    }
+
+    #ticket img {
+      max-width: 80px;
+    }
+
+    #ticket span {
+      font-size: 12px;
+    }
+  }
+</style>
 
 <div class="buscar">
   <input type="text" id="buscador" placeholder="Buscar producto..." onkeyup="filtrarProductos()">
 </div>
 
-<button class="abrir-carrito" onclick="toggleCarrito()">🛒 Ver Carrito</button>
+<button class="abrir-carrito" id="btn-carrito">🛒 Ver Carrito</button>
 
 <div class="catalogo" id="catalogo">
   <div class="producto" data-nombre="TUBO 5/8 CROMADO">
@@ -26,8 +72,7 @@
     <div class="precio">$18.000</div>
     <div class="acciones">
       <input type="number" value="1" min="1">
-      <button onclick="agregarAlCarrito('TUBO 5/8 DORADO', 18000, this)">Agregar</button>
-    </div>
+      <button onclick="agregarAlCarrito('TUBO 5/8 DORADO', 18000, this)">Agregar</button>    </div>
   </div>
   
   <div class="producto" data-nombre="TUBO 5/8 CROMADO">
@@ -825,6 +870,8 @@
   <div class="formulario-compra" id="formulario-compra">
     <input type="text" id="nombre-ferreteria" placeholder="Nombre de la ferretería">
     <input type="text" id="direccion-ferreteria" placeholder="Dirección de la ferretería">
+    <button onclick="imprimirOrdenCompra()" class="btn-imprimir">🖨️ Imprimir orden de compra</button>
+
     <button class="btn-comprar" onclick="finalizarCompra()">Finalizar Compra</button>
   </div>
 </div>
@@ -839,10 +886,7 @@
     const notificacion = document.getElementById("notificacion");
     notificacion.textContent = `✅ ${mensaje}`;
     notificacion.style.display = "block";
-
-    setTimeout(() => {
-      notificacion.style.display = "none";
-    }, 3000);
+    setTimeout(() => { notificacion.style.display = "none"; }, 3000);
   }
 
   function toggleCarrito() {
@@ -851,18 +895,12 @@
 
   function ajustarCantidadUE(cantidad, unidades) {
     let cantidadesValidas = [];
-
     for (let i = 1; i <= 1000; i++) {
-      unidades.forEach(ue => {
-        cantidadesValidas.push(ue * i);
-      });
+      unidades.forEach(ue => cantidadesValidas.push(ue * i));
     }
-
-    let mejorCantidad = cantidadesValidas.reduce((prev, curr) => {
-      return Math.abs(curr - cantidad) < Math.abs(prev - cantidad) ? curr : prev;
-    });
-
-    return mejorCantidad;
+    return cantidadesValidas.reduce((prev, curr) => 
+      Math.abs(curr - cantidad) < Math.abs(prev - cantidad) ? curr : prev
+    );
   }
 
   function agregarAlCarrito(nombre, precio, boton) {
@@ -872,11 +910,9 @@
     const imgSrc = productoDiv.querySelector('img').src;
 
     const ueData = productoDiv.getAttribute('data-ue');
-
     if (ueData) {
       const unidades = ueData.split(',').map(Number);
       const cantidadAjustada = ajustarCantidadUE(cantidad, unidades);
-
       if (cantidad !== cantidadAjustada) {
         cantidad = cantidadAjustada;
         cantidadInput.value = cantidadAjustada;
@@ -888,7 +924,6 @@
       mostrarNotificacion(`${nombre} se ha agregado correctamente`);
     }
 
-    // Se asegura de agregar el producto al carrito
     carrito.push({ nombre, precio, cantidad, imgSrc });
     mostrarCarrito();
   }
@@ -901,7 +936,6 @@
   function mostrarCarrito() {
     const carritoItems = document.getElementById('carrito-items');
     carritoItems.innerHTML = '';
-
     let total = 0;
 
     carrito.forEach((item, index) => {
@@ -939,7 +973,6 @@
   function finalizarCompra() {
     const nombre = document.getElementById('nombre-ferreteria').value.trim();
     const direccion = document.getElementById('direccion-ferreteria').value.trim();
-
     if (!nombre || !direccion) {
       alert('Por favor llena todos los campos.');
       return;
@@ -948,19 +981,60 @@
     let mensaje = `*Pedido de ferretería*\n`;
     mensaje += `*Nombre:* ${nombre}\n`;
     mensaje += `*Dirección:* ${direccion}\n\n`;
-
     carrito.forEach(item => {
       mensaje += `🔹 ${item.nombre} (Cant: ${item.cantidad}) - $${(item.precio * item.cantidad).toLocaleString()}\n`;
     });
 
     const totalTexto = document.getElementById('total').textContent;
     mensaje += `\n*${totalTexto}*`;
-
     const url = `https://wa.me/57319724535?text=${encodeURIComponent(mensaje)}`;
     window.open(url, '_blank');
   }
-</script>
 
+  // ✅ Event listeners cuando el DOM esté listo
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('btn-carrito').addEventListener('click', toggleCarrito);
+    document.querySelectorAll('.agregar-btn').forEach((btn, i) => {
+      btn.addEventListener('click', function () {
+        const producto = btn.closest('.producto');
+        const nombre = producto.querySelector('.descripcion').textContent;
+        const precioTexto = producto.querySelector('.precio').textContent.replace('$', '').replace('.', '');
+        agregarAlCarrito(nombre, parseInt(precioTexto), btn);
+      });
+    });
+
+    document.getElementById('buscador').addEventListener('keyup', filtrarProductos);
+  });
+  function imprimirOrdenCompra() {
+  const ticket = document.getElementById('ticket');
+  const itemsDiv = document.getElementById('ticket-items');
+  const totalDiv = document.getElementById('ticket-total');
+  
+  itemsDiv.innerHTML = '';
+  let total = 0;
+
+  carrito.forEach(item => {
+    const subtotal = item.precio * item.cantidad;
+    total += subtotal;
+    itemsDiv.innerHTML += `
+      <div>
+        ${item.nombre}  
+        x${item.cantidad} - $${subtotal.toLocaleString()}
+      </div>`;
+  });
+
+  totalDiv.textContent = `TOTAL: $${total.toLocaleString()}`;
+
+  // Abrir nueva ventana e imprimir
+  const ventana = window.open('', '', 'width=300,height=600');
+  ventana.document.write(`<pre>${ticket.innerHTML}</pre>`);
+  ventana.document.close();
+  ventana.focus();
+  ventana.print();
+  ventana.close();
+}
+
+</script>
 
 
 </body>
