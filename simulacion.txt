@@ -63,7 +63,7 @@
 
     ],
     "martes": [
- ("573154193572", "Señora Nancy, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
+("573154193572", "Señora Nancy, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
 ("573143822236", "Señora Dora, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
 ("573125571718", "Señor Alfonso, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
 ("573115522672", "Señor Eugenio, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),

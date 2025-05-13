@@ -10775,7 +10775,8 @@ body {
     position: relative;
     overflow-x: scroll; /* Habilitar desplazamiento horizontal */
     overflow-y: hidden; /* Deshabilitar desplazamiento vertical */
-    white-space: nowrap; /* Evitar que los elementos dentro del body se alineen en varias líneas */
+    white-space: nowrap; 
+    zoom: 85%;
   }
   
 p {
@@ -11402,7 +11403,7 @@ section#contact form#contactForm :-ms-input-placeholder {
   top: 0;
   left: 0;
   width: 200px;
-  height: 100vh;
+  height: 120vh;
   background-color:#bfbfbf;
   overflow-y: auto;
   padding: 10px;
