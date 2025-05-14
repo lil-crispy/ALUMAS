@@ -652,6 +652,7 @@ progress {
 @media (min-width: 768px) {
   .container-md, .container-sm, .container {
     max-width: 720px;
+    zoom: 85%;
   }
 }
 @media (min-width: 992px) {
