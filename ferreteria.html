@@ -12,7 +12,6 @@
       overflow-x: hidden;
     }
 
-    /* Encabezado dinámico */
     header {
       background: linear-gradient(90deg, #004aad, #00c6ff);
       color: white;
@@ -20,6 +19,7 @@
       text-align: center;
       animation: fadeInDown 1s ease;
     }
+
     header h1 {
       font-size: 2.5em;
       margin: 0;
@@ -36,13 +36,13 @@
       50% { transform: scale(1.05); }
     }
 
-    /* Carruseles */
     .slider-row {
       display: flex;
       overflow: hidden;
       white-space: nowrap;
       height: 130px;
       margin: 10px 0;
+      justify-content: center;
     }
 
     .slider-track {
@@ -54,17 +54,15 @@
       animation: scroll-right 20s linear infinite;
     }
 
-
-.brand-logo {
-  width: 200px;
-  height: 150px;
-  object-fit: contain;
-  margin: 0 30px;
-  cursor: pointer;
-  background: white;
-  box-sizing: border-box;
-}
-
+    .brand-logo {
+      width: 200px;
+      height: 150px;
+      object-fit: contain;
+      margin: 0 30px;
+      cursor: pointer;
+      background: white;
+      box-sizing: border-box;
+    }
 
     .brand-logo:hover {
       transform: scale(1.1);
@@ -80,7 +78,6 @@
       100% { transform: translateX(50%); }
     }
 
-    /* Modal */
     .modal {
       display: none;
       position: fixed;
@@ -89,19 +86,33 @@
       background: rgba(0,0,0,0.6);
       justify-content: center;
       align-items: center;
+      z-index: 999;
     }
 
     .modal-content {
       background: white;
-      padding: 30px;
+      padding: 20px;
       border-radius: 10px;
-      max-width: 400px;
+      max-width: 1000px;
+      width: 100%;
+      max-height: 150%;
+      height: 90%;
+      overflow: auto;
       text-align: center;
       box-shadow: 0 10px 20px rgba(0,0,0,0.3);
     }
 
+    iframe {
+      width: 100%;
+      height: 600px;
+      border: none;
+      margin-top: 15px;
+      
+
+    }
+
     .close-btn {
-      margin-top: 20px;
+      margin-top: 15px;
       background: #004aad;
       color: white;
       border: none;
@@ -113,6 +124,22 @@
     .close-btn:hover {
       background: #002c80;
     }
+
+    .buy-btn {
+      margin-top: 10px;
+      background: #00c853;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .buy-btn:hover {
+      background: #009624;
+    }
   </style>
 </head>
 <body>
@@ -121,70 +148,76 @@
     <h1>Descubre Nuestras Marcas Aliadas</h1>
   </header>
 
-  <!-- 5 filas de marcas -->
-  <div class="slider-row">
-    <div class="slider-track">
-      <img src="./img/ferreteria/legrand.png" class="brand-logo" alt="Marca 1" onclick="showModal('Marca 1', 'Descripción de Marca 1')">
-      <img src="./img/ferreteria/lexmana.png" class="brand-logo" alt="Marca 2" onclick="showModal('Marca 2', 'Descripción de Marca 2')">
-      <img src="./img/ferreteria/grival.png" class="brand-logo" alt="Marca 3" onclick="showModal('Marca 3', 'Descripción de Marca 3')">
-      <img src="./img/ferreteria/bocherini.png" class="brand-logo">
-    </div>
+<!-- 5 filas de marcas -->
+<div class="slider-row">
+  <div class="slider-track">
+    <img src="./img/ferreteria/legrand.png" class="brand-logo" alt="Legrand" onclick="showModal('Legrand', 'https://listado.mercadolibre.com.co/legrand#D[A:legrand]')">
+    <img src="./img/ferreteria/lexmana.png" class="brand-logo" alt="Lexmana" onclick="showModal('Lexmana', 'https://irp.cdn-website.com/f2af522d/files/uploaded/Lexmana_Catalogo_50_an-os_Iluminacion_LED_2025.pdf')">
+<img src="./img/ferreteria/grival.png" class="brand-logo" alt="Grival" onclick="showModal('Grival', './img/ferreteria/catalogo_grival.pdf#zoom=50')">
+<img src="./img/ferreteria/bocherini.png" class="brand-logo" alt="bocherini" onclick="showModal('Bocherini', './img/ferreteria/catalogo_bocherini.pdf#zoom=110')">
   </div>
+</div>
 
-  <div class="slider-row">
-    <div class="slider-track">
-      <img src="./img/ferreteria/gricol.png" class="brand-logo" alt="Marca 4" onclick="showModal('Marca 4', 'Descripción de Marca 4')">
-      <img src="./img/ferreteria/corona.png" class="brand-logo" alt="Marca 5" onclick="showModal('Marca 5', 'Descripción de Marca 5')">
-      <img src="./img/ferreteria/texsa.png" class="brand-logo" alt="Marca 6" onclick="showModal('Marca 6', 'Descripción de Marca 6')">
-      <img src="./img/ferreteria/taumm.png" class="brand-logo" alt="Marca 7" onclick="showModal('Marca 7', 'Descripción de Marca 7')">
-    </div>
+<div class="slider-row">
+  <div class="slider-track">
+    <img src="./img/ferreteria/gricol.png" class="brand-logo" alt="Gricol" onclick="showModal('Gricol', './img/ferreteria/catalogo_gricol.pdf#zoom=105')">
+    <img src="./img/ferreteria/corona.png" class="brand-logo" alt="Corona" onclick="showModal('Corona', './img/ferreteria/catalogo_corona.pdf#zoom=75')">
+    <img src="./img/ferreteria/texsa.png" class="brand-logo" alt="Texsa" onclick="showModal('Texsa', './img/ferreteria/catalogo_texsa.pdf#zoom=110')">
+    <img src="./img/ferreteria/taumm.png" class="brand-logo" alt="Taumm" onclick="showModal('Taumm', './img/ferreteria/catalogo_taumm.pdf#zoom=100')">
   </div>
+</div>
 
-  <div class="slider-row">
-    <div class="slider-track">
-      <img src="marca7.png" class="brand-logo" alt="Marca 7" onclick="showModal('Marca 7', 'Descripción de Marca 7')">
-      <img src="marca8.png" class="brand-logo" alt="Marca 8" onclick="showModal('Marca 8', 'Descripción de Marca 8')">
-      <img src="marca9.png" class="brand-logo" alt="Marca 9" onclick="showModal('Marca 9', 'Descripción de Marca 9')">
-      <img src="marca7.png" class="brand-logo">
-    </div>
+<div class="slider-row">
+  <div class="slider-track">
+    <img src="./img/ferreteria/ahover.png" class="brand-logo" alt="Ajover" onclick="showModal('Ajover', './img/ferreteria/catalogo_ajover.pdf')">
+    <img src="./img/ferreteria/cemex.png" class="brand-logo" alt="Cemex" onclick="showModal('Cemex', './img/ferreteria/catalogo_cemex.pdf')">
+    <img src="./img/ferreteria/mercury.png" class="brand-logo" alt="Mercury" onclick="showModal('Mercury', './img/ferreteria/catalogo_mercury.pdf')">
+    <img src="./img/ferreteria/siplas.png" class="brand-logo" alt="Siplas" onclick="showModal('Siplas', './img/ferreteria/catalogo_siplas.pdf#zoom=98')">
   </div>
+</div>
 
-  <div class="slider-row">
-    <div class="slider-track">
-      <img src="marca10.png" class="brand-logo" alt="Marca 10" onclick="showModal('Marca 10', 'Descripción de Marca 10')">
-      <img src="marca11.png" class="brand-logo" alt="Marca 11" onclick="showModal('Marca 11', 'Descripción de Marca 11')">
-      <img src="marca12.png" class="brand-logo" alt="Marca 12" onclick="showModal('Marca 12', 'Descripción de Marca 12')">
-      <img src="marca10.png" class="brand-logo">
-    </div>
-  </div>
 
-  <div class="slider-row">
-    <div class="slider-track">
-      <img src="marca13.png" class="brand-logo" alt="Marca 13" onclick="showModal('Marca 13', 'Descripción de Marca 13')">
-      <img src="marca14.png" class="brand-logo" alt="Marca 14" onclick="showModal('Marca 14', 'Descripción de Marca 14')">
-      <img src="marca15.png" class="brand-logo" alt="Marca 15" onclick="showModal('Marca 15', 'Descripción de Marca 15')">
-      <img src="marca13.png" class="brand-logo">
-    </div>
+<div class="slider-row">
+  <div class="slider-track">
+    <img src="./img/ferreteria/pavco.png" class="brand-logo" alt="Pavco" onclick="showModal('Pavco', './img/ferreteria/catalogo_pavco.pdf')">
+    <img src="./img/ferreteria/dewalt.png" class="brand-logo" alt="Dewalt" onclick="showModal('Dewalt', './img/ferreteria/catalogo_dewalt.pdf#zoom=100')">
+    <img src="./img/ferreteria/truper.png" class="brand-logo" alt="Truper" onclick="showModal('Truper', './img/ferreteria/catalogo_truper.pdf#zoom=100')">
+    <img src="./img/ferreteria/mapei.png" class="brand-logo" alt="Mapei" onclick="showModal('Mapei', './img/ferreteria/catalogo_mapei.pdf')">
   </div>
+</div>
+
+<div class="slider-row">
+  <div class="slider-track">
+    <img src="./img/ferreteria/gerfor.png" class="brand-logo" alt="Gerfor" onclick="showModal('Gerfor', './img/ferreteria/catalogo_gerfor.pdf')">
+    <img src="./img/ferreteria/aquablue.png" class="brand-logo" alt="Aquablue" onclick="showModal('Aquablue', './img/ferreteria/catalogo_aquablue.pdf#zoom=110')">
+    <img src="./img/ferreteria/sika.png" class="brand-logo" alt="Sika" onclick="showModal('Sika', './img/ferreteria/catalogo_sika.pdf#zoom=115')">
+    <img src="./img/ferreteria/3m.png" class="brand-logo" alt="3M" onclick="showModal('3M', './img/ferreteria/catalogo_3m.pdf#zoom=100')">
+  </div>
+</div>
+
 
   <!-- Modal -->
   <div id="modal" class="modal">
     <div class="modal-content">
       <h2 id="modal-title"></h2>
-      <p id="modal-desc"></p>
+      <iframe id="modal-iframe" src=""></iframe>
+      <a href="#" id="buy-link" class="buy-btn" target="_blank">¡Compra con nosotros!</a>
+      <br>
       <button class="close-btn" onclick="closeModal()">Cerrar</button>
     </div>
   </div>
 
   <script>
-    function showModal(title, desc) {
+    function showModal(title, url) {
       document.getElementById('modal-title').innerText = title;
-      document.getElementById('modal-desc').innerText = desc;
+      document.getElementById('modal-iframe').src = url;
+      document.getElementById('buy-link').href = "https://wa.me/573197245235?text=Hola%20estoy%20interesado%20en%20productos%20de%20la%20marca%20" + encodeURIComponent(title);
       document.getElementById('modal').style.display = 'flex';
     }
 
     function closeModal() {
       document.getElementById('modal').style.display = 'none';
+      document.getElementById('modal-iframe').src = ""; // limpiar por seguridad
     }
   </script>
 

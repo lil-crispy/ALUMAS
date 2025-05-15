@@ -120,7 +120,7 @@
     </a>
 
     <!-- Sección 6 -->
-    <a href="ferreteria_general.html" class="tarjeta-enlace">
+    <a href="./ferreteria.html" class="tarjeta-enlace">
         <div class="tarjeta">
             <img src="./img/BANNER FERRETERIA.png" alt="Ferretería General">
             <div class="info">
@@ -167,6 +167,81 @@
         </div>
     </a>
 </div>
+
+<!-- Testimonios -->
+<div class="testimonial-container">
+  <div class="testimonial active">
+    <img src="./img/clientes/user2.jpg" alt="Cliente 1" class="avatar">
+    <p class="comment">“Excelente servicio y atención. Muy recomendado.”</p>
+    <h4>- Carolina Gómez</h4>
+  </div>
+
+  <div class="testimonial">
+    <img src="./img/clientes/user1.jpg" alt="Cliente 2" class="avatar">
+    <p class="comment">“Los productos son de alta calidad y el envío fue rápido.”</p>
+    <h4>- Luis Martínez</h4>
+  </div>
+
+  <div class="testimonial">
+    <img src="./img/clientes/user3.jpg" alt="Cliente 3" class="avatar">
+    <p class="comment">“La variedad de productos me sorprendió, encontré justo lo que buscaba.”</p>
+    <h4>- Carlos Pérez</h4>
+  </div>
+
+  <div class="testimonial">
+    <img src="./img/clientes/user4.jpg" alt="Cliente 4" class="avatar">
+    <p class="comment">“Compra fácil y segura, además el soporte postventa es excelente.”</p>
+    <h4>- Marta Rodríguez</h4>
+  </div>
+
+  <div class="testimonial">
+    <img src="./img/clientes/user5.jpg" alt="Cliente 5" class="avatar">
+    <p class="comment">“Me encantó la rapidez en la entrega y la calidad del empaque.”</p>
+    <h4>- Jorge Sánchez</h4>
+  </div>
+
+  <div class="testimonial">
+    <img src="./img/clientes/user.png" alt="Cliente 6" class="avatar">
+    <p class="comment">“Productos confiables y duraderos, volveré a comprar sin duda.”</p>
+    <h4>- Sofía Torres</h4>
+  </div>
+
+  <div class="testimonial">
+    <img src="./img/clientes/user7.jpg" alt="Cliente 7" class="avatar">
+    <p class="comment">“Atención personalizada que hizo la diferencia en mi compra.”</p>
+    <h4>- Diego Ramírez</h4>
+  </div>
+
+  <div class="testimonial">
+    <img src="./img/clientes/user8.jpg" alt="Cliente 8" class="avatar">
+    <p class="comment">“Los mejores precios y promociones que he encontrado en el mercado.”</p>
+    <h4>- Laura Mendoza</h4>
+  </div>
+
+  <div class="testimonial">
+    <img src="./img/clientes/user9.jpg" alt="Cliente 9" class="avatar">
+    <p class="comment">“Recomiendo totalmente, cumplió con todas mis expectativas.”</p>
+    <h4>- Fernando López</h4>
+  </div>
+
+  <button class="comment-btn" onclick="openCommentModal()">Comentar</button>
+  <button class="close-comments" onclick="closeComments()">✖</button>
+</div>
+
+<div id="commentModal" class="comment-modal">
+  <div class="modal-inner">
+    <h3>Deja tu comentario</h3>
+    <input type="text" id="userName" placeholder="Tu nombre" required>
+    <input type="file" id="userPhoto" accept="image/*" style="display: none;">
+    <label for="userPhoto" class="upload-label">Subir foto</label>
+
+    <textarea id="userComment" placeholder="Escribe tu comentario..." required></textarea>
+    <button onclick="submitComment()">Guardar</button>
+    <button onclick="closeCommentModal()">Cancelar</button>
+  </div>
+</div>
+
+
          
 
     <!-- Botón WhatsApp -->
@@ -176,19 +251,88 @@
     </a>
 </body>
 <script>
-    document.getElementById('logo-usuario').addEventListener('click', function() {
-        // Pedir la contraseña
-        const claveCorrecta = '79333587'; // Aquí define la clave de acceso correcta
-        const claveUsuario = prompt('Por favor, ingresa la clave de acceso:');
 
-        if (claveUsuario === claveCorrecta) {
-            // Si la contraseña es correcta, redirigir a la página de remisión
-            window.location.href = 'remision.html';  // Ajusta la ruta si es necesario
-        } else {
-            // Si la contraseña es incorrecta
-            alert('Contraseña incorrecta. Acceso denegado.');
-        }
-    });
+    function closeComments() {
+  document.querySelector('.testimonial-container').style.display = 'none';
+}
+
+  // Validación de contraseña para acceso a remisión
+  document.getElementById('logo-usuario').addEventListener('click', function () {
+    const claveCorrecta = '79333587';
+    const claveUsuario = prompt('Por favor, ingresa la clave de acceso:');
+
+    if (claveUsuario === claveCorrecta) {
+      window.location.href = 'remision.html';
+    } else {
+      alert('Contraseña incorrecta. Acceso denegado.');
+    }
+  });
+
+  // Rotación automática de testimonios
+  let current = 0;
+  setInterval(() => {
+    const testimonials = document.querySelectorAll('.testimonial');
+    if (testimonials.length === 0) return;
+
+    testimonials[current].classList.remove('active');
+    current = (current + 1) % testimonials.length;
+    testimonials[current].classList.add('active');
+  }, 5000);
+
+  // Abrir modal de comentario
+  function openCommentModal() {
+    document.getElementById('commentModal').style.display = 'flex';
+  }
+
+  // Cerrar modal
+  function closeCommentModal() {
+    document.getElementById('commentModal').style.display = 'none';
+  }
+
+  // Enviar comentario
+  function submitComment() {
+    const name = document.getElementById('userName').value.trim();
+    const comment = document.getElementById('userComment').value.trim();
+    const photoInput = document.getElementById('userPhoto');
+    const file = photoInput.files[0];
+
+    if (!name || !comment) {
+      alert('Por favor completa tu nombre y comentario.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      const imgSrc = file ? e.target.result : './img/default-user.png';
+      addTestimonial(name, comment, imgSrc);
+      closeCommentModal();
+      document.getElementById('userName').value = '';
+      document.getElementById('userComment').value = '';
+      document.getElementById('userPhoto').value = '';
+    };
+
+    if (file) {
+      reader.readAsDataURL(file);
+    } else {
+      reader.onload();
+    }
+
+
+  }
+
+  // Agregar testimonio al contenedor
+  function addTestimonial(name, comment, imgSrc) {
+    const container = document.querySelector('.testimonial-container');
+    const newTestimonial = document.createElement('div');
+    newTestimonial.classList.add('testimonial');
+    newTestimonial.innerHTML = `
+      <img src="${imgSrc}" alt="${name}" class="avatar">
+      <p class="comment">“${comment}”</p>
+      <h4>- ${name}</h4>
+    `;
+    container.insertBefore(newTestimonial, container.querySelector('.comment-btn'));
+  }
 </script>
+
 
 </html>
