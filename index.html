@@ -251,16 +251,15 @@
     </a>
 </body>
 <script>
-
-    function closeComments() {
-  document.querySelector('.testimonial-container').style.display = 'none';
-}
+  // Cerrar sección de testimonios
+  function closeComments() {
+    document.querySelector('.testimonial-container').style.display = 'none';
+  }
 
   // Validación de contraseña para acceso a remisión
   document.getElementById('logo-usuario').addEventListener('click', function () {
     const claveCorrecta = '79333587';
     const claveUsuario = prompt('Por favor, ingresa la clave de acceso:');
-
     if (claveUsuario === claveCorrecta) {
       window.location.href = 'remision.html';
     } else {
@@ -289,37 +288,6 @@
     document.getElementById('commentModal').style.display = 'none';
   }
 
-  // Enviar comentario
-  function submitComment() {
-    const name = document.getElementById('userName').value.trim();
-    const comment = document.getElementById('userComment').value.trim();
-    const photoInput = document.getElementById('userPhoto');
-    const file = photoInput.files[0];
-
-    if (!name || !comment) {
-      alert('Por favor completa tu nombre y comentario.');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = function (e) {
-      const imgSrc = file ? e.target.result : './img/default-user.png';
-      addTestimonial(name, comment, imgSrc);
-      closeCommentModal();
-      document.getElementById('userName').value = '';
-      document.getElementById('userComment').value = '';
-      document.getElementById('userPhoto').value = '';
-    };
-
-    if (file) {
-      reader.readAsDataURL(file);
-    } else {
-      reader.onload();
-    }
-
-
-  }
-
   // Agregar testimonio al contenedor
   function addTestimonial(name, comment, imgSrc) {
     const container = document.querySelector('.testimonial-container');
@@ -330,9 +298,45 @@
       <p class="comment">“${comment}”</p>
       <h4>- ${name}</h4>
     `;
-    container.insertBefore(newTestimonial, container.querySelector('.comment-btn'));
+    const commentBtn = container.querySelector('.comment-btn');
+    container.insertBefore(newTestimonial, commentBtn);
+  }
+
+  // Enviar comentario desde el modal
+  function submitComment() {
+    const name = document.getElementById('userName').value.trim();
+    const comment = document.getElementById('userComment').value.trim();
+    const photoInput = document.getElementById('userPhoto');
+    const file = photoInput.files[0];
+    const defaultPhoto = './img/clientes/user.png';
+
+    if (!name || !comment) {
+      alert('Por favor completa tu nombre y comentario.');
+      return;
+    }
+
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        addTestimonial(name, comment, e.target.result);
+        resetCommentForm();
+      };
+      reader.readAsDataURL(file);
+    } else {
+      addTestimonial(name, comment, defaultPhoto);
+      resetCommentForm();
+    }
+  }
+
+  // Resetear formulario de comentario y cerrar modal
+  function resetCommentForm() {
+    document.getElementById('userName').value = '';
+    document.getElementById('userComment').value = '';
+    document.getElementById('userPhoto').value = '';
+    closeCommentModal();
   }
 </script>
+
 
 
 </html>
