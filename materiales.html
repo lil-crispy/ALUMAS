@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ALUMAS | Catálogo de Materiales</title>
+    <style>
+      .logo-container {
+  position: absolute;
+  top: 12%; /* Un poco más abajo */
+  left: 50%; /* Centrado horizontal */
+  transform: translateX(-50%);
+  z-index: 1000;
+  width: 300px;  /* Mucho más grande */
+  height: 300px;
+  border-radius: 50%;
+  overflow: visible; /* Para que la sombra y zoom no se corten */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  filter: grayscale(100%);
+  transition: box-shadow 0.4s ease;
+  cursor: pointer;
+}
+
+/* La imagen cubre el contenedor redondo */
+.logo-container img.logo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  transition: transform 0.4s ease, filter 0.4s ease;
+}
+
+/* Efecto al pasar el mouse */
+.logo-container:hover {
+  box-shadow: 0 0 20px 8px rgba(255, 255, 200, 0.9); /* Borde iluminado */
+  filter: grayscale(0%); /* Imagen a color */
+}
+
+.logo-container:hover img.logo {
+  transform: scale(1.15); /* Sobresale un 15% */
+  filter: drop-shadow(0 0 8px rgba(255, 255, 180, 0.8)); /* Sombra ligera */
+}
+
+/* Responsividad para pantallas pequeñas */
+@media (max-width: 480px) {
+  .logo-container {
+    width: 180px;
+    height: 180px;
+    top: 10%;
+  }
+  .logo-container:hover {
+    box-shadow: 0 0 12px 4px rgba(255, 255, 200, 0.8);
+  }
+  .logo-container:hover img.logo {
+    transform: scale(1.1);
+    filter: drop-shadow(0 0 5px rgba(255, 255, 180, 0.7));
+  }
+}
+
+
+      /* Reset */
+      *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+      html,body{height:100%;font-family:Arial,Helvetica,sans-serif;color:#fff}
+
+      /* Fondo fotográfico de materiales de construcción */
+      /* Imagen de ladrillos, bolsas de cemento y arena (Unsplash, alta resolución y libre uso) */
+      body{
+        background:url("https://images.unsplash.com/photo-1523413651479-597eb2da0ad6?auto=format&fit=crop&w=1600&q=80") center/cover no-repeat fixed;
+      }
+
+      /* Capa de oscurecimiento para legibilidad */
+      body::before{content:"";position:absolute;inset:0;background:rgba(0,0,0,.55);z-index:-1}
+
+      main{display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:100%;padding:2rem;text-align:center}
+      h1{font-size:clamp(2rem,5vw,3.5rem);margin-bottom:1rem}
+      p{font-size:clamp(1rem,2.4vw,1.25rem);max-width:60ch;line-height:1.5}
+
+      /* Botón WhatsApp */
+      .btn{
+        margin-top:2rem;padding:.9rem 2.4rem;font-size:1rem;font-weight:600;border:none;border-radius:999px;background:#25d366;color:#fff;cursor:pointer;display:inline-flex;align-items:center;gap:.6rem;text-decoration:none;transition:transform .2s,box-shadow .2s;
+      }
+      .btn:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,.3)}
+      .btn svg{width:1.2rem;height:1.2rem;fill:currentColor}
+
+      @media(max-width:480px){p{font-size:1rem}.btn{width:100%;justify-content:center}}
+    </style>
+  </head>
+  <body>
+    <main>
+        <div class="logo-container">
+        <img src="./img/LOG1.png" alt="Logo" class="logo" onclick="window.location.href='index.html';">
+    </div>
+      <p>Tu aliado en perfilería, tubos de aluminio y accesorios para construcción y decoración.</p>
+      <!-- Reemplaza 573001234567 con tu número con código de país sin + -->
+      <a class="btn" href="https://wa.me/573001234567?text=Hola%20ALUMAS,%20quisiera%20cotizar%20materiales" target="_blank" rel="noopener noreferrer">
+        <!-- Ícono simple de WhatsApp (SVG) -->
+        <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><path d="M16 0C7.164 0 0 7.164 0 16c0 2.82.738 5.603 2.138 8.05L.02 32l8.185-2.09A15.94 15.94 0 0 0 16 32c8.836 0 16-7.164 16-16S24.836 0 16 0Zm0 29.43c-2.5 0-4.949-.662-7.08-1.92l-.506-.29-4.862 1.24 1.29-4.738-.33-.547A13.45 13.45 0 0 1 2.57 16C2.57 8.955 8.955 2.57 16 2.57S29.43 8.955 29.43 16 23.045 29.43 16 29.43Zm8.122-10.78c-.444-.222-2.631-1.297-3.038-1.444-.407-.148-.703-.222-.999.222-.296.444-1.148 1.444-1.409 1.74-.26.296-.518.334-.962.111-.444-.222-1.874-.69-3.566-2.203-1.318-1.178-2.208-2.63-2.466-3.074-.26-.444-.028-.684.195-.906.2-.2.444-.518.666-.777.222-.26.296-.445.444-.74.148-.296.074-.555-.037-.777-.111-.222-.999-2.409-1.369-3.296-.37-.888-.744-.777-1.036-.777-.259 0-.555-.037-.85-.037-.296 0-.777.111-1.185.555-.408.444-1.556 1.519-1.556 3.7 0 2.181 1.593 4.297 1.815 4.593.222.296 3.131 4.786 7.59 6.708 1.061.458 1.888.73 2.532.93 1.064.339 2.034.292 2.798.177.853-.127 2.631-1.074 3.004-2.113.37-1.04.37-1.93.259-2.112-.11-.185-.407-.296-.85-.518Z"/></svg>
+        Cotizar
+      </a>
+    </main>
+  </body>
+</html>
