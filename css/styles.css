@@ -155,6 +155,7 @@ header img::after {
         flex-direction: column;
         display: flex;
         justify-items: center;
+        align-items: center;
     }
 }
 
@@ -178,6 +179,7 @@ header img::after {
     height: 150px;
     object-fit: cover;
 }
+
 
 .info {
     padding: 1rem;

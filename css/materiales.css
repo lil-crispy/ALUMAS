@@ -1,0 +1,157 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f5f5f5;
+    padding: 20px;
+    text-align: center;
+}
+
+.contenedor-tarjetas {
+    display: grid;
+    grid-template-columns: repeat(10, 5cm);
+    gap: 16px;
+    justify-content: center;
+    overflow: hidden; /* Evita desbordamiento horizontal */
+}
+
+.contenedor-tarjetas {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 16px;
+    padding: 20px;
+}
+
+.tarjeta {
+    position: relative;
+    width: 180px;
+    height: 280px;
+    background-size: cover;
+    background-position: center;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    color: white;
+    font-weight: bold;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 10px;
+    text-shadow: 1px 1px 2px black;
+    transition: transform 0.3s;
+    cursor: pointer;
+}
+
+.tarjeta:hover {
+    transform: scale(1.05);
+}
+
+.carrito {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 24px;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.tarjeta:hover .carrito {
+    opacity: 1;
+}
+
+/* ANIMACIÓN DE MATERIALES */
+#animacion-material {
+    position: fixed;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    width: 100%;
+    height: 100%;
+    z-index: 999;
+}
+
+.material-item {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    background-size: cover;
+    animation: caer 2.5s linear forwards;
+    opacity: 0.8;
+    pointer-events: none;
+    top: -40px;
+    z-index: 1000;
+}
+
+@keyframes caer {
+    0% {
+        transform: translateY(0) scale(1);
+        opacity: 0.9;
+    }
+    70% {
+        transform: translateY(80vh) scale(0.95);
+        opacity: 0.8;
+    }
+    100% {
+        transform: translateY(100vh) scale(0.9);
+        opacity: 0;
+    }
+}
+
+
+/* Fuente fuerte y profesional */
+@import url('https://fonts.googleapis.com/css2?family=Anton&display=swap');
+
+.header {
+    background-color: #2e2e2e; /* Gris tipo cemento */
+    color: #d4e157;            /* Verde tipo señalética de obra */
+    padding: 40px 20px;
+    text-align: center;
+    border-bottom: 5px solid #c0a000; /* Línea inferior como viga metálica */
+}
+
+.titulo {
+    font-family: 'Anton', sans-serif;
+    font-size: 3em;
+    letter-spacing: 1px;
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+    .titulo {
+        font-size: 2.2em;
+    }
+}
+
+@media (max-width: 480px) {
+    .titulo {
+        font-size: 1.8em;
+    }
+}
+.particula-arena {
+    position: absolute;
+    top: -10px;
+    width: 4px;
+    height: 4px;
+    background-color: rgba(255, 215, 0, 0.8); /* color amarillo arena */
+    border-radius: 50%;
+    pointer-events: none;
+    animation: caida-polvo linear forwards;
+    z-index: 999;
+    opacity: 0.9;
+}
+
+@keyframes caida-polvo {
+    0% {
+        transform: translateY(0);
+        opacity: 0.8;
+    }
+    100% {
+        transform: translateY(100vh);
+        opacity: 0;
+    }
+}
