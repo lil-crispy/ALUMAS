@@ -5,6 +5,49 @@
   <meta charset="UTF-8">
   <title>Ferreteria y Marcas</title>
   <style>
+
+.logo-container {
+  position: absolute;
+  top: -12px;
+  right: 20px;
+  z-index: 1000; /* Asegura que el logo esté encima de otros elementos */
+  width: 170px; /* Define el tamaño del contenedor */
+  height: 170px; /* Define la altura del contenedor */
+  border-radius: 50%; /* Hace el contenedor redondo */
+  overflow: hidden; /* Asegura que la imagen se ajuste al contenedor redondo */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: box-shadow 0.3s ease; /* Suaviza la transición del efecto de la luz */
+}
+
+/* Estilo del logo */
+.logo {
+  width: 100%; /* Hace que la imagen ocupe todo el contenedor */
+  height: 100%; /* Asegura que la imagen cubra todo el contenedor */
+  object-fit: cover; /* Asegura que la imagen se recorte si es necesario */
+  transition: transform 0.3s ease;
+}
+
+/* Efecto de iluminación al pasar el mouse por encima */
+.logo-container:hover {
+  box-shadow: 0 0 20px 8px rgba(255, 255, 255, 0.7); /* Luz redonda al pasar el mouse */
+}
+
+.logo-container:hover .logo {
+  transform: scale(1.1); /* Aumenta el tamaño de la imagen ligeramente */
+}
+@media (max-width: 768px) { /* Ajusta el ancho según necesites */
+  .logo-container {
+      display: none;
+  }
+}
+@media (max-width: 768px) { /* Ajusta el ancho según necesites */
+  .left-column {
+      display: none;
+  }
+}
+
     body {
       margin: 0;
       padding: 0;
@@ -140,6 +183,8 @@
 
     .buy-btn:hover {
       background: #009624;
+    
+    
     }
   </style>
 </head>
@@ -148,7 +193,10 @@
   <header>
     <h1>Descubre Nuestras Marcas Aliadas</h1>
     <h4>selecciona una marca para ver productos</h4>
-
+    <div class="logo-container">
+        <img src="./img/LOG1.png" alt="Logo" class="logo" onclick="window.location.href='index.html';">
+    </div>
+    
   </header>
 
 <!-- 5 filas de marcas -->
@@ -223,6 +271,15 @@
       document.getElementById('modal-iframe').src = ""; // limpiar por seguridad
     }
   </script>
+<a href="https://wa.me/573001234567?text=Hola%2C%20quiero%20cotizar%20productos%20de%20ferreter%C3%ADa" target="_blank" style="display: flex; align-items: center; justify-content: center; background-color: #25D366; color: white; text-decoration: none; padding: 15px; font-size: 16px; font-weight: bold; user-select: none; cursor: pointer; transition: background-color 0.3s;"
+   onmouseover="this.style.backgroundColor='#1DA851'"
+   onmouseout="this.style.backgroundColor='#25D366'">
+  <svg xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 32 32" width="24" height="24" style="margin-right: 10px;">
+    <path d="M16 .001c-8.822 0-16 7.178-16 16 0 2.822.734 5.57 2.133 7.986l-2.16 7.942 8.168-2.14c2.328 1.279 4.957 1.958 7.859 1.958 8.822 0 16-7.178 16-16s-7.178-16-16-16zm0 29.504c-2.48 0-4.891-.67-7.02-1.936l-.506-.301-4.848 1.27 1.27-4.727-.328-.518c-1.324-2.084-2.029-4.494-2.029-6.992 0-7.381 6.02-13.4 13.4-13.4 7.381 0 13.4 6.02 13.4 13.4s-6.02 13.4-13.4 13.4zm7.34-9.536c-.369-.184-2.184-1.082-2.523-1.205-.34-.123-.588-.184-.836.184s-.961 1.205-1.18 1.455c-.217.248-.428.279-.797.094-.369-.184-1.559-.574-2.969-1.834-1.096-.979-1.836-2.184-2.051-2.553-.217-.369-.023-.568.162-.752.168-.167.369-.428.553-.641.184-.217.248-.369.369-.617.123-.248.062-.465-.031-.641-.094-.184-.836-2.018-1.145-2.762-.301-.723-.607-.625-.836-.637-.217-.012-.465-.014-.713-.014s-.641.092-.975.432c-.334.34-1.277 1.248-1.277 3.039s1.309 3.525 1.49 3.768c.184.248 2.572 3.936 6.234 5.518.871.375 1.547.598 2.078.764.873.277 1.668.238 2.295.145.7-.105 2.184-.891 2.492-1.748.309-.855.309-1.59.217-1.748-.09-.16-.334-.248-.703-.432z"/>
+  </svg>
+  Si no encontraste el producto en los catálogos, puedes preguntarnos directamente por WhatsApp y seguramente lo tendremos solamente oprime    ,  <u>AQUI</u>
+</a>
+
 
 </body>
 </html>

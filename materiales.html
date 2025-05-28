@@ -5,45 +5,54 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Materiales de Construcción</title>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="./img/LOGO3.png" />
   <style>
+    /* (Tu CSS original, sin cambios) */
+    /* Solo quité los estilos de <a> para que no parezca un link */
+    
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
     }
 
- body {
-  margin: 0;
-  font-family: 'Roboto', sans-serif;
-  overflow-x: hidden;
-  position: relative;
-}
+    body {
+      font-family: 'Roboto', sans-serif;
+      overflow-x: hidden;
+      position: relative;
+      opacity: 1;
+      transition: opacity 0.8s ease, transform 0.8s ease;
+    }
 
-.fondo-oscuro {
-  background-image: url("./img/MATERIALES/fondo.jpg");
-  background-repeat: no-repeat;
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
-  position: fixed;
-  top: 0; left: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: -1;
-  opacity: 0.9; /* nivel de transparencia */
-}
+    body.fade-out {
+      opacity: 0;
+      transform: scale(1.03);
+    }
 
-.contenido {
-  padding: 20px;
-  text-align: center;
-  position: relative;
-  z-index: 1;
-}
+    .fondo-oscuro {
+      background-image: url("./img/MATERIALES/fondo.png");
+      background-repeat: no-repeat;
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: -1;
+      opacity: 0.9;
+    }
+
+    .contenido {
+      padding: 20px;
+      text-align: center;
+      position: relative;
+      z-index: 1;
+    }
 
     .header {
       background-color: #000000;
       color: #f3c911;
-      padding: 20px;
       padding: 40px 20px;
       text-align: center;
       border-bottom: 5px solid #f3c911;
@@ -54,32 +63,34 @@
     }
 
     .contenedor-tarjetas {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
       gap: 16px;
+      max-width: 1400px;
+      margin: 0 auto;
       padding: 20px;
     }
 
     .tarjeta {
-  width: 180px;
-  height: 280px;
-  background-size: cover;
-  background-position: center;
-  border-radius: 20px;
-  border: 3px solid #ffffff; /* 
-  color: #ffdb39; /* texto amarillo */
-  font-weight: bold;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  padding: 10px;
-  text-shadow: 1px 1px 2px rgb(255, 238, 0);
-  cursor: pointer;
-  position: relative;
-  transition: transform 0.3s, box-shadow 0.3s;
-  color: #000000;
-}
+      width: 180px;
+      height: 280px;
+      background-size: cover;
+      background-position: center;
+      border-radius: 20px;
+      border: 3px solid #ffffff;
+      font-weight: bold;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 10px;
+      text-shadow: 1px 1px 2px rgb(255, 238, 0);
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.3s, box-shadow 0.3s;
+      color: #000000;
+      text-decoration: none;
+      user-select: none;
+    }
 
     .tarjeta:hover {
       transform: scale(1.05);
@@ -90,7 +101,7 @@
       top: 10px;
       right: 10px;
       font-size: 24px;
-      opacity: 0;
+      opacity: 1;
       transition: opacity 0.3s;
     }
 
@@ -98,105 +109,318 @@
       opacity: 1;
     }
 
-    #botonCotiza {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 10000;
-      background-color: #fbc02d;
-      color: #000;
-      font-size: 24px;
-      font-weight: bold;
-      padding: 16px 32px;
-      border: none;
-      border-radius: 8px;
-      display: none;
-      cursor: pointer;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-    }
-
-    #botonCotiza:hover {
-      background-color: #ffeb3b;
-    }
-
-    /* Partículas */
-    .particula {
-      position: fixed;
-      top: -20px;
-      width: 6px;
-      height: 6px;
-      background-color: #fbc02d;
+    .logo-container {
+      position: absolute;
+      top: -12px;
+      right: 20px;
+      z-index: 1000;
+      width: 170px;
+      height: 170px;
       border-radius: 50%;
-      z-index: 9999;
-      pointer-events: none;
-      opacity: 0.85;
-      animation: caer 3s ease-out forwards;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: box-shadow 0.3s ease;
+      filter: grayscale(100%);
     }
 
-    @keyframes caer {
-      to {
-        transform: translateY(120vh) rotate(720deg);
-        opacity: 0;
-      }
+    .logo-container:hover {
+      box-shadow: 0 0 20px 5px #f3c911;
+      filter: grayscale(0%);
+    }
+
+    .logo {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.3s ease;
+    }
+
+    .logo:hover {
+      transform: scale(1.05);
+    }
+
+    /* MODAL */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 2000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background: rgba(0, 0, 0, 0.85);
+      animation: fadeIn 0.5s ease forwards;
+    }
+
+    .modal-content {
+      background: #fff;
+      margin: 10% auto;
+      padding: 30px;
+      border-radius: 20px;
+      max-width: 500px;
+      text-align: center;
+      box-shadow: 0 0 25px #f3c911;
+      animation: popIn 0.6s ease forwards;
+      position: relative;
+    }
+
+    .modal-content h2 {
+      font-size: 2em;
+      color: #000;
+      margin-bottom: 10px;
+    }
+
+    .modal-content p {
+      font-size: 1.1em;
+      margin: 10px 0;
+      color: #444;
+    }
+
+    .cta-button {
+      background: #f3c911;
+      color: #000;
+      padding: 16px 32px;
+      font-size: 1.3em;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: bold;
+      margin-top: 20px;
+      transition: background 0.3s ease, transform 0.3s ease;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .cta-button:hover {
+      background: #000;
+      color: #f3c911;
+      transform: scale(1.05);
+    }
+
+    .close {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+      position: absolute;
+      top: 20px;
+      right: 30px;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes popIn {
+      0% { transform: scale(0.8); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
     }
   </style>
 </head>
 <body>
-<div class="fondo-oscuro"></div>
+
+  <div class="logo-container">
+      <img src="./img/LOG1.png" alt="Logo" class="logo" onclick="window.location.href='index.html';">
+  </div>
+
+  <!-- Modal -->
+  <div id="promo-modal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>🎉 ¡Felicidades!</h2>
+      <p>Has desbloqueado un <strong>descuento exclusivo</strong> por comprar directamente desde nuestra página web.</p>
+      <p><strong>Construye tu casa sin problemas</strong> con envíos locales rápidos y asesoría personalizada.</p>
+      
+      <button class="cta-button" onclick="abrirModal()">Cotiza aquí</button>
+      
+      <a href="https://wa.me/573197245235?text=Hola%2C%20quiero%20aprovechar%20el%20descuento%20exclusivo%20de%20la%20web" target="_blank" class="cta-button" style="background-color: #25D366; margin-top: 10px;">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp" style="height: 20px; vertical-align: middle; margin-right: 8px;">
+        HABLAR POR WHATSAPP
+      </a>
+    </div>
+  </div>
+
+  <!-- MODAL -->
+<div id="modalCotizacion" class="modal">
+  <div class="modal-contenido">
+    <span class="cerrar" onclick="cerrarModal()">&times;</span>
+    <h2>Solicita tu cotización</h2>
+
+    <form id="formularioCotizacion" onsubmit="enviarFormulario(event)">
+      <input type="text" id="nombre" placeholder="Tu nombre" required>
+      <input type="tel" id="telefono" placeholder="Tu teléfono" required>
+      <input type="email" id="email" placeholder="Tu correo (opcional)">
+      <textarea id="mensaje" placeholder="¿Qué necesitas cotizar?" required></textarea>
+      <button type="submit">Enviar</button>
+    </form>
+
+    <!-- MENSAJE DE ÉXITO -->
+    <div id="mensajeExito" style="display: none; text-align: center;">
+      <div style="font-size: 40px; color: green;">✔</div>
+      <p><strong>Tus datos fueron enviados</strong></p>
+      <p>Nos contactaremos contigo pronto.</p>
+      <p>Si deseas atención más rápida y personalizada:</p>
+      <a href="https://wa.me/573197245235?text=Hola%2C%20quiero%20aprovechar%20el%20descuento%20exclusivo%20de%20la%20web" target="_blank" class="btn-wsp">Oprime aquí</a>
+    </div>
+  </div>
+</div>
+
+<!-- ESTILOS -->
+<style>
+  .modal {
+    display: none;
+    position: fixed;
+    z-index: 999;
+    left: 0; top: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6);
+  }
+  .modal-contenido {
+    background: #fff;
+    margin: 10% auto;
+    padding: 20px;
+    width: 90%;
+    max-width: 400px;
+    border-radius: 10px;
+    position: relative;
+  }
+  .cerrar {
+    position: absolute;
+    top: 10px; right: 15px;
+    font-size: 24px;
+    cursor: pointer;
+  }
+  input, textarea {
+    width: 100%;
+    margin: 10px 0;
+    padding: 8px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+  }
+  button[type="submit"] {
+    background: #28a745;
+    color: #fff;
+    border: none;
+    padding: 10px;
+    width: 100%;
+    cursor: pointer;
+    border-radius: 5px;
+  }
+  .btn-wsp {
+    display: inline-block;
+    background-color: #25d366;
+    color: white;
+    padding: 10px 20px;
+    margin-top: 15px;
+    text-decoration: none;
+    border-radius: 5px;
+  }
+</style>
+
+<!-- SCRIPT -->
+<script>
+  function abrirModal() {
+    document.getElementById("modalCotizacion").style.display = "block";
+  }
+  function cerrarModal() {
+    document.getElementById("modalCotizacion").style.display = "none";
+    document.getElementById("formularioCotizacion").style.display = "block";
+    document.getElementById("mensajeExito").style.display = "none";
+  }
+  function enviarFormulario(e) {
+    e.preventDefault();
+    // Aquí podrías agregar lógica para enviar los datos (por email o backend)
+    document.getElementById("formularioCotizacion").style.display = "none";
+    document.getElementById("mensajeExito").style.display = "block";
+  }
+</script>
+
+  <div class="fondo-oscuro"></div>
+
   <header class="header">
     <h1 class="titulo">Materiales de Construcción</h1>
   </header>
 
-<div class="contenedor-tarjetas">
-  <div class="tarjeta" style="background-image: url('./img/MATERIALES/arena.jpg');">ARENA PEÑA <div class="carrito">&#128722;</div></div>
-  <div class="tarjeta" style="background-image: url('./img/MATERIALES/arenaposo.jpg');">ARENA DE POZO <div class="carrito">&#128722;</div></div>
-  <div class="tarjeta" style="background-image: url('./img/MATERIALES/arenario.jpg');">ARENA DE RÍO <div class="carrito">&#128722;</div></div>
-  <div class="tarjeta" style="background-image: url('./img/MATERIALES/mixtp.jpg');">MIXTO <div class="carrito">&#128722;</div></div>
-  <div class="tarjeta" style="background-image: url('./img/MATERIALES/cemento.jpg');">CEMENTO <div class="carrito">&#128722;</div></div>
-  <div class="tarjeta" style="background-image: url('./img/MATERIALES/ladrillo.jpg');">BLOQUE Y LADRILLO <div class="carrito">&#128722;</div></div>
-  <div class="tarjeta" style="background-image: url('./img/MATERIALES/mortero.jpg');">MORTERO <div class="carrito">&#128722;</div></div>
-  <div class="tarjeta" style="background-image: url('./img/MATERIALES/placafacil.jpg');">PLACA FÁCIL <div class="carrito">&#128722;</div></div>
-  <div class="tarjeta" style="background-image: url('./img/MATERIALES/estuco.jpg');">ESTUCO <div class="carrito">&#128722;</div></div>
-  <div class="tarjeta" style="background-image: url('./img/MATERIALES/pintura.jpg');">PINTURA <div class="carrito">&#128722;</div></div>
-  <div class="tarjeta" style="background-image: url('./img/MATERIALES/yeso.jpg');">YESO Y CAOLIN <div class="carrito">&#128722;</div></div>
-  <div class="tarjeta" style="background-image: url('./img/MATERIALES/peganteceramico.jpg');">PEGANTE CERÁMICO <div class="carrito">&#128722;</div></div>
-  <div class="tarjeta" style="background-image: url('./img/MATERIALES/hierro.jpg');">HIERROS <div class="carrito">&#128722;</div></div>
-  <div class="tarjeta" style="background-image: url('./img/MATERIALES/gravilla.jpg');">GRAVILLA <div class="carrito">&#128722;</div></div>
+ <div class="contenedor-tarjetas">
+  <div class="tarjeta" style="background-image: url('./img/MATERIALES/arena.jpg');">
+    ARENA PEÑA <div class="carrito">&#128722;</div>
+  </div>
+  <div class="tarjeta" style="background-image: url('./img/MATERIALES/arenaposo.jpg');">
+    ARENA DE POZO <div class="carrito">&#128722;</div>
+  </div>
+  <div class="tarjeta" style="background-image: url('./img/MATERIALES/arenario.jpg');">
+    ARENA DE RÍO <div class="carrito">&#128722;</div>
+  </div>
+  <div class="tarjeta" style="background-image: url('./img/MATERIALES/mixtp.jpg');">
+    MIXTO <div class="carrito">&#128722;</div>
+  </div>
+  <div class="tarjeta" style="background-image: url('./img/MATERIALES/cemento.jpg');">
+    CEMENTO <div class="carrito">&#128722;</div>
+  </div>
+  <div class="tarjeta" style="background-image: url('./img/MATERIALES/ladrillo.jpg');">
+    BLOQUE Y LADRILLO <div class="carrito">&#128722;</div>
+  </div>
+  <div class="tarjeta" style="background-image: url('./img/MATERIALES/mortero.jpg');">
+    MORTERO <div class="carrito">&#128722;</div>
+  </div>
+  <div class="tarjeta" style="background-image: url('./img/MATERIALES/placafacil.jpg');">
+    PLACA FÁCIL <div class="carrito">&#128722;</div>
+  </div>
+  <div class="tarjeta" style="background-image: url('./img/MATERIALES/estuco.jpg');">
+    ESTUCO <div class="carrito">&#128722;</div>
+  </div>
+  <div class="tarjeta" style="background-image: url('./img/MATERIALES/pintura.jpg');">
+    PINTURA <div class="carrito">&#128722;</div>
+  </div>
+  <div class="tarjeta" style="background-image: url('./img/MATERIALES/yeso.jpg');">
+    YESO Y CAOLIN <div class="carrito">&#128722;</div>
+  </div>
+  <div class="tarjeta" style="background-image: url('./img/MATERIALES/peganteceramico.jpg');">
+    PEGANTE CERÁMICO <div class="carrito">&#128722;</div>
+  </div>
+  <div class="tarjeta" style="background-image: url('./img/MATERIALES/hierro.jpg');">
+    HIERROS <div class="carrito">&#128722;</div>
+  </div>
+  <div class="tarjeta" style="background-image: url('./img/MATERIALES/gravilla.jpg');">
+    GRAVILLA <div class="carrito">&#128722;</div>
+  </div>
 </div>
 
 
-  <button id="botonCotiza" onclick="window.location.href='#cotiza'">Cotiza aquí</button>
-
   <script>
+    // Obtener modal
+    const modal = document.getElementById('promo-modal');
+
+    // Obtener botón cerrar modal
+    const closeBtn = modal.querySelector('.close');
+
+    // Obtener todas las tarjetas
     const tarjetas = document.querySelectorAll('.tarjeta');
-    const botonCotiza = document.getElementById('botonCotiza');
 
-    function crearParticulas(cantidad) {
-      for (let i = 0; i < cantidad; i++) {
-        const p = document.createElement('div');
-        p.classList.add('particula');
-        p.style.left = Math.random() * 100 + 'vw';
-        p.style.top = (Math.random() * -200) + 'px'; // Empiezan más arriba
-        const size = Math.random() * 6 + 4;
-        p.style.width = `${size}px`;
-        p.style.height = `${size}px`;
-        p.style.backgroundColor = ['#fbc02d', '#e0a800', '#c49b00'][Math.floor(Math.random() * 3)];
-        p.style.animationDuration = (Math.random() * 1.5 + 2) + 's';
-        document.body.appendChild(p);
-
-        setTimeout(() => p.remove(), 3500);
-      }
-    }
-
+    // Abrir modal al hacer clic en cualquier tarjeta
     tarjetas.forEach(tarjeta => {
       tarjeta.addEventListener('click', () => {
-        botonCotiza.style.display = 'none';
-        crearParticulas(800); // Cubre más la pantalla
-        setTimeout(() => {
-          botonCotiza.style.display = 'block';
-        }, 3000);
+        modal.style.display = 'block';
       });
+    });
+
+    // Cerrar modal al hacer clic en la "X"
+    closeBtn.addEventListener('click', () => {
+      modal.style.display = 'none';
+    });
+
+    // Cerrar modal al hacer clic fuera del contenido
+    window.addEventListener('click', e => {
+      if (e.target === modal) {
+        modal.style.display = 'none';
+      }
     });
   </script>
 

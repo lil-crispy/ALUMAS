@@ -171,7 +171,7 @@ input, select, textarea {
 	}
 
 		a:hover {
-			color: #d64760;
+			color: #2aabc2;
 		}
 
 	h1, h2, h3, h4, h5, h6 {
@@ -386,22 +386,26 @@ input, select, textarea {
 			margin: 5px;
 			height: 16em;
 			box-shadow: 0 0 0 10px #ffffff;
+			
 		}
 
 			#main .item.span-1 {
 				width: 20em;
+				font-family: 'Courier New', Courier, monospace;
 			}
 
 			#main .item.span-2 {
 				width: 30em;
+				font-family: 'Courier New', Courier, monospace;
 			}
 
 			#main .item.span-3 {
 				width: 40em;
+				font-family: 'Courier New', Courier, monospace;
 			}
 
 			#main .item.intro {
-				background-color: #d64760;
+				background-color: #8da0a3;;
 				background-image: url("images/overlay.png");
 				display: -moz-flex;
 				display: -webkit-flex;
@@ -421,6 +425,7 @@ input, select, textarea {
 				#main .item.intro h1 {
 					font-size: 3em;
 					line-height: 1em;
+					font-family: fantasy;
 				}
 
 				#main .item.intro p {

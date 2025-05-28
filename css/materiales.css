@@ -13,20 +13,14 @@ body {
 }
 
 .contenedor-tarjetas {
-    display: grid;
-    grid-template-columns: repeat(10, 5cm);
-    gap: 16px;
-    justify-content: center;
-    overflow: hidden; /* Evita desbordamiento horizontal */
+  display: grid;
+  grid-template-columns: repeat(7, 1fr); /* 7 tarjetas por fila */
+  gap: 16px;
+  max-width: 1400px; /* Ajusta según el tamaño deseado */
+  margin: 0 auto;
+  padding: 20px;
 }
 
-.contenedor-tarjetas {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 16px;
-    padding: 20px;
-}
 
 .tarjeta {
     position: relative;
@@ -154,4 +148,19 @@ body {
         transform: translateY(100vh);
         opacity: 0;
     }
+}
+.logo-container {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 1000; /* Asegura que el logo esté encima de otros elementos */
+  width: 170px; /* Define el tamaño del contenedor */
+  height: 170px; /* Define la altura del contenedor */
+  border-radius: 50%; /* Hace el contenedor redondo */
+  overflow: hidden; /* Asegura que la imagen se ajuste al contenedor redondo */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: box-shadow 0.3s ease; /* Suaviza la transición del efecto de la luz */
+  filter: grayscale(100%);
 }
