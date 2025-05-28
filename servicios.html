@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Servicios ALUMAS con líneas dinámicas</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: #eeeeff;
+    }
+
+    h1 {
+      text-align: center;
+      margin: 20px 0;
+      color: #111827;
+    }
+
+    .container {
+      width: 90%;
+      max-width: 1200px;
+      margin: auto;
+      position: relative; /* necesario para posicionar el SVG */
+      padding-bottom: 50px; /* espacio para las líneas al final */
+    }
+
+    .service-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 40px 0;
+      flex-wrap: wrap;
+      position: relative;
+      z-index: 2; /* por encima del SVG */
+    }
+
+    .card {
+      width: 45%;
+      background-color: #fff;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      padding: 15px;
+      text-align: center;
+    }
+
+    .card h3 {
+      margin-bottom: 10px;
+    }
+
+    .card img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      border-radius: 8px;
+    }
+
+    .description {
+      width: 45%;
+      font-size: 1rem;
+      color: #374151;
+    }
+
+    .description p {
+      margin-bottom: 10px;
+    }
+
+    .description button {
+      background-color: #10b981;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .left .card {
+      order: 1;
+    }
+
+    .left .description {
+      order: 2;
+    }
+
+    .right .card {
+      order: 2;
+    }
+
+    .right .description {
+      order: 1;
+    }
+
+    @media (max-width: 768px) {
+      .service-row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .card, .description {
+        width: 100%;
+      }
+    }
+
+    /* Estilo SVG para las líneas */
+    #connectionLines {
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none; /* que no interfiera con clicks */
+      z-index: 1; /* detrás de las tarjetas */
+      overflow: visible;
+    }
+    .logo-container {
+    position: fixed;
+    top: -20px;
+    right: 0;
+   
+    width: 150px; /* Tamaño un poco más pequeño para no tapar */
+    height: 150px;
+    border-radius: 50%; /* Contenedor redondo */
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: box-shadow 0.3s ease;
+    margin: 0; /* Sin márgenes */
+}
+
+.logo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.logo-container:hover {
+    box-shadow: 0 0 20px 8px rgba(255, 255, 255, 0.7);
+}
+
+.logo-container:hover .logo {
+    transform: scale(1.3);
+}
+
+@media (max-width: 708px) {
+    .logo-container {
+        display: none;
+    }
+}
+
+@media (max-width: 768px) {
+    .left-column {
+        display: none;
+    }
+}
+
+  </style>
+
+          <div class="logo-container">
+            <img src="./img/LOG1.png" alt="Logo" class="logo" onclick="window.location.href='index.html';">
+        </div>
+</head>
+<body>
+  <h1>CONTRATACIONES ALUMAS</h1>
+  <div class="container" id="container">
+
+    <div class="service-row left">
+      <div class="card">
+        <h3>🚚 Transporte y Domicilios</h3>
+        <img src="ruta-a-tu-imagen.jpg" alt="Transporte" />
+      </div>
+      <div class="description">
+        <p>En ALUMAS tu pedido está en buenas manos.
+
+Contamos con vehículos propios, lo que nos permite garantizar que tu mercancía llegue rápido, segura y en perfecto estado. No dependemos de terceros: cuidamos cada entrega como si fuera para nosotros.
+
+Además, solo realizamos envíos locales, lo que nos permite ofrecer un servicio más ágil, confiable y personalizado. Conocemos bien nuestra zona y eso nos da ventaja para cumplir siempre con responsabilidad y puntualidad.
+
+Confía en ALUMAS. Enviamos más que productos: entregamos compromiso.</p>
+        <button onclick="window.open('https://wa.me/573197245235?text=Estoy%20interesado%20en%20el%20servicio%20de%20Transporte%20y%20Domicilios','_blank')">Cotizar servicio</button>
+      </div>
+    </div>
+
+    <div class="service-row right">
+      <div class="card">
+        <h3>🛠 Mantenimiento de Cubiertas y Terrazas</h3>
+        <img src="./img/SERVICIOS/cubiertas.jpg" alt="Cubiertas" />
+      </div>
+      <div class="description">
+        <p>En ALUMAS entendemos la importancia de mantener tu cubierta en perfecto estado. Por eso, conectamos a nuestros clientes con contratistas expertos y de confianza, con amplia experiencia en instalación, reparación y mantenimiento de cubiertas de todo tipo.
+
+Es importante aclarar que nosotros no realizamos directamente el servicio, sino que actuamos como un puente entre el cliente y el contratista. Nuestra prioridad es ayudarte a encontrar mano de obra calificada que trabaje con responsabilidad y calidad. Por ello, solo recomendamos profesionales que hemos evaluado previamente y que cuentan con buenos antecedentes de trabajo.
+
+Sin embargo, la garantía del servicio corre directamente por cuenta del contratista, ya que es quien ejecuta el trabajo. En ALUMAS facilitamos el contacto, pero no asumimos responsabilidades sobre la ejecución, dejando claro que se trata de un acuerdo entre el cliente y el profesional.
+
+Si buscas soluciones confiables para el mantenimiento de tu cubierta, cuenta con nosotros para recomendarte expertos reales, responsables y comprometidos.</p>
+        <button onclick="window.open('https://wa.me/57573197245235?text=Estoy%20interesado%20en%20el%20servicio%20de%20Mantenimiento%20de%20Cubiertas%20y%20Terrazas','_blank')">Cotizar servicio</button>
+      </div>
+    </div>
+
+    <div class="service-row left">
+      <div class="card">
+        <h3>🏠 Instalación de Techo PVC</h3>
+        <img src="./img/SERVICIOS/techopvc.jpg" alt="Techo PVC" />
+      </div>
+      <div class="description">
+        <p>Servicio de instalación de techos confiable y de alta calidad, realizado por instaladores certificados, especializados y dedicados 100% a este tipo de trabajo. Nuestro equipo cuenta con la experiencia y formación necesarias para garantizar una instalación segura, estética y duradera.
+
+A diferencia de otros servicios, esta instalación sí está respaldada directamente por ALUMAS, ya que trabajamos con personal fijo y altamente calificado. Y si decides comprar la mercancía con nosotros, extendemos la garantía de instalación hasta por 3 años, cubriendo cualquier inconveniente relacionado con la mano de obra.
+
+Con nosotros no solo adquieres materiales de calidad, también obtienes la tranquilidad de contar con un equipo profesional que responde por su trabajo.
+
+ALUMAS – Instalamos con responsabilidad, garantía y experiencia.</p>
+        <button onclick="window.open('https://wa.me/57573197245235?text=Estoy%20interesado%20en%20el%20servicio%20de%20Instalación%20de%20Techo%20PVC','_blank')">Cotizar servicio</button>
+      </div>
+    </div>
+
+    <div class="service-row right">
+      <div class="card">
+        <h3>🪵 Instalación de Piso SPC</h3>
+        <img src="./img/SERVICIOS/piso.png" alt="Piso SPC" />
+      </div>
+      <div class="description">
+        <p>Un buen piso no solo depende del material, sino también de una instalación correcta. Por eso, contamos con instaladores certificados y especializados exclusivamente en instalación de pisos, asegurando un acabado profesional y duradero.
+
+Nuestro equipo se dedica a este trabajo con total compromiso y precisión, cuidando cada detalle para que el resultado final supere tus expectativas.
+
+Y si decides adquirir el piso con nosotros, te ofrecemos una garantía de instalación de hasta 3 años, respaldada directamente por ALUMAS. Esto te asegura no solo calidad en los productos, sino también tranquilidad en la ejecución del trabajo.
+
+Confía en ALUMAS. Piso nuevo, instalación garantizada.</p>
+        <button onclick="window.open('https://wa.me/573197245235?text=Estoy%20interesado%20en%20el%20servicio%20de%20Instalación%20de%20Piso%20SPC','_blank')">Cotizar servicio</button>
+      </div>
+    </div>
+
+    <div class="service-row left">
+      <div class="card">
+        <h3>🧱 Instalación de Pared UV y WPC</h3>
+        <img src="./img/SERVICIOS/uv.jpg" alt="Pared WPC" />
+      </div>
+      <div class="description">
+        <p>Ofrecemos un servicio especializado en instalación de paredes en lámina UV, ideal para espacios modernos, higiénicos y de fácil mantenimiento. Trabajamos con instaladores certificados, expertos en este tipo de revestimiento, que garantizan una instalación precisa, limpia y duradera.
+
+Nos aseguramos de que cada proyecto sea ejecutado con seriedad y dedicación, cuidando cada detalle para que obtengas un acabado impecable.
+
+Además, si compras la lámina UV directamente con nosotros, te ofrecemos una garantía de instalación de hasta 3 años, respaldada por ALUMAS. Esto significa tranquilidad y respaldo real tanto en el producto como en la mano de obra.
+
+Transforma tus espacios con la confianza y experiencia de ALUMAS.
+
+</p>
+        <button onclick="window.open('https://wa.me/573197245235?text=Estoy%20interesado%20en%20el%20servicio%20de%20Instalación%20de%20Pared%20UV%20y%20WPC','_blank')">Cotizar servicio</button>
+      </div>
+    </div>
+
+    <div class="service-row right">
+      <div class="card">
+        <h3>🔐 Cerrajería</h3>
+        <img src="./img/SERVICIOS/cerrajeria.jpg" alt="Cerrajería" />
+      </div>
+      <div class="description">
+        <p>Cerrajería especializada ,
+
+
+En ALUMAS contamos con más de 20 años de experiencia trabajando en soluciones de cerrajería para hogares, negocios y proyectos industriales. Durante este tiempo, hemos atendido cientos de instalaciones, ajustes y trabajos personalizados, siempre con enfoque en la seguridad, funcionalidad y buen acabado.
+
+Trabajamos con personal altamente calificado, comprometido con cada detalle del proceso, desde la medición hasta la instalación final. Ya sea que necesites cerraduras, puertas metálicas, accesorios o estructuras especiales, te ofrecemos un servicio técnico confiable y con profundo conocimiento del oficio.
+
+Confía en la experiencia. En ALUMAS, la cerrajería es parte de nuestra historia.</p>
+        <button onclick="window.open('https://wa.me/573197245235?text=Estoy%20interesado%20en%20el%20servicio%20de%20Cerrajería','_blank')">Cotizar servicio</button>
+      </div>
+    </div>
+
+    <div class="service-row left">
+      <div class="card">
+        <h3>🚰 Plomería</h3>
+        <img src="./img/SERVICIOS/plomeria.jpg" alt="Plomería" />
+      </div>
+      <div class="description">
+        <p> Te ayudamos a resolver tus necesidades de plomería con eficiencia y confianza. Contamos con plomeros experimentados, capacitados para atender instalaciones, reparaciones y adecuaciones tanto en espacios residenciales como comerciales.
+
+Nuestro compromiso es conectar a nuestros clientes con personal serio y responsable, que trabaja con orden, limpieza y respeto por tu tiempo y tu espacio. Sabemos que los problemas de agua no pueden esperar, por eso te ofrecemos soluciones rápidas, confiables y bien hechas.
+
+En plomería, la experiencia y la responsabilidad marcan la diferencia. Y en ALUMAS te conectamos con lo mejor.</p>
+        <button onclick="window.open('https://wa.me/573197245235?text=Estoy%20interesado%20en%20el%20servicio%20de%20Plomería','_blank')">Cotizar servicio</button>
+      </div>
+    </div>
+
+    <div class="service-row right">
+      <div class="card">
+        <h3>💡 Electricidad</h3>
+        <img src="./img/SERVICIOS/electricidad.jpg" alt="Electricidad" />
+      </div>
+      <div class="description">
+        <p>
+
+Entendemos que los trabajos eléctricos requieren precisión, seguridad y experiencia. Por eso, trabajamos con electricistas calificados, con amplio conocimiento en instalaciones, mantenimiento y soluciones eléctricas para hogares, oficinas y comercios.
+
+Te conectamos con profesionales responsables, que siguen normas técnicas y trabajan con cuidado en cada detalle, desde una simple conexión hasta proyectos más complejos. Nuestro objetivo es ayudarte a resolver tus necesidades eléctricas de forma segura, eficiente y con total confianza.
+
+En temas eléctricos, no se improvisa. Con ALUMAS, accedes a manos expertas.</p>
+        <button onclick="window.open('https://wa.me/573197245235?text=Estoy%20interesado%20en%20el%20servicio%20de%20Electricidad','_blank')">Cotizar servicio</button>
+      </div>
+    </div>
+
+    <!-- SVG para las líneas -->
+    <svg id="connectionLines" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"></svg>
+
+  </div>
+
+  <script>
+    function drawConnections() {
+      const container = document.getElementById('container');
+      const svg = document.getElementById('connectionLines');
+
+      // Limpia SVG antes de dibujar
+      while (svg.firstChild) {
+        svg.removeChild(svg.firstChild);
+      }
+
+      // Ajusta SVG al tamaño del container
+      const containerRect = container.getBoundingClientRect();
+      svg.style.width = containerRect.width + 'px';
+      svg.style.height = containerRect.height + 'px';
+      svg.setAttribute('viewBox', `0 0 ${containerRect.width} ${containerRect.height}`);
+
+      // Obtiene todas las filas de servicio
+      const rows = Array.from(container.querySelectorAll('.service-row'));
+      const leftRows = rows.filter(r => r.classList.contains('left'));
+      const rightRows = rows.filter(r => r.classList.contains('right'));
+
+      // Asumimos que filas pares (0,2,4..) son izquierda y las impares (1,3,5..) derecha, en el mismo orden
+      // Vamos a conectar la card de izquierda con la card de derecha correspondiente
+
+      const connections = Math.min(leftRows.length, rightRows.length);
+
+      for (let i = 0; i < connections; i++) {
+        const leftCard = leftRows[i].querySelector('.card');
+        const rightCard = rightRows[i].querySelector('.card');
+
+        const leftRect = leftCard.getBoundingClientRect();
+        const rightRect = rightCard.getBoundingClientRect();
+
+        // Ajustar las coordenadas relativas al container (svg top-left = container top-left)
+        const startX = leftRect.right - containerRect.left;
+        const startY = leftRect.top + leftRect.height / 2 - containerRect.top;
+
+        const endX = rightRect.left - containerRect.left;
+        const endY = rightRect.top + rightRect.height / 2 - containerRect.top;
+
+        // Dibuja una curva cubic bézier
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        const controlX1 = startX + 50;
+        const controlY1 = startY;
+        const controlX2 = endX - 50;
+        const controlY2 = endY;
+
+        const d = `M ${startX},${startY} C ${controlX1},${controlY1} ${controlX2},${controlY2} ${endX},${endY}`;
+
+        path.setAttribute('d', d);
+        path.setAttribute('stroke', '#10b981');
+        path.setAttribute('stroke-width', '3');
+        path.setAttribute('fill', 'none');
+        path.setAttribute('stroke-linecap', 'round');
+        path.setAttribute('opacity', '0.8');
+
+        svg.appendChild(path);
+      }
+    }
+
+    // Dibuja al cargar y cuando la ventana cambia de tamaño
+    window.addEventListener('load', drawConnections);
+    window.addEventListener('resize', drawConnections);
+
+    function drawConnections() {
+  const container = document.getElementById('container');
+  const svg = document.getElementById('connectionLines');
+
+  // Limpia SVG antes de dibujar
+  while (svg.firstChild) {
+    svg.removeChild(svg.firstChild);
+  }
+
+  // Ajusta SVG al tamaño del container
+  const containerRect = container.getBoundingClientRect();
+  svg.style.width = containerRect.width + 'px';
+  svg.style.height = containerRect.height + 'px';
+  svg.setAttribute('viewBox', `0 0 ${containerRect.width} ${containerRect.height}`);
+
+  // Obtiene todas las filas de servicio
+  const rows = Array.from(container.querySelectorAll('.service-row'));
+
+  // Separa filas izquierda y derecha
+  const leftRows = rows.filter(r => r.classList.contains('left'));
+  const rightRows = rows.filter(r => r.classList.contains('right'));
+
+  // 1. Conectar tarjeta izquierda → tarjeta derecha de la misma fila
+  leftRows.forEach((leftRow, i) => {
+    const rightRow = rightRows[i];
+    if (!rightRow) return; // si no hay par
+
+    const leftCard = leftRow.querySelector('.card');
+    const rightCard = rightRow.querySelector('.card');
+
+    const leftRect = leftCard.getBoundingClientRect();
+    const rightRect = rightCard.getBoundingClientRect();
+
+    const startX = leftRect.right - containerRect.left;
+    const startY = leftRect.top + leftRect.height / 2 - containerRect.top;
+
+    const endX = rightRect.left - containerRect.left;
+    const endY = rightRect.top + rightRect.height / 2 - containerRect.top;
+
+    drawCurve(svg, startX, startY, endX, endY);
+  });
+
+  // 2. Conectar tarjeta derecha → tarjeta izquierda de la fila siguiente (en cadena)
+  for (let i = 0; i < rightRows.length - 1; i++) {
+    const rightCard = rightRows[i].querySelector('.card');
+    const nextLeftCard = leftRows[i + 1]?.querySelector('.card');
+    if (!rightCard || !nextLeftCard) continue;
+
+    const rightRect = rightCard.getBoundingClientRect();
+    const nextLeftRect = nextLeftCard.getBoundingClientRect();
+
+    const startX = rightRect.left - containerRect.left;
+    const startY = rightRect.top + rightRect.height / 2 - containerRect.top;
+
+    const endX = nextLeftRect.right - containerRect.left;
+    const endY = nextLeftRect.top + nextLeftRect.height / 2 - containerRect.top;
+
+    drawCurve(svg, startX, startY, endX, endY);
+  }
+}
+
+// Función para dibujar curva Bézier con estilo definido
+function drawCurve(svg, startX, startY, endX, endY) {
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+
+  // Control points para la curva (curva suave horizontal)
+  const controlX1 = startX + (endX > startX ? 50 : -50);
+  const controlY1 = startY;
+  const controlX2 = endX + (endX > startX ? -50 : 50);
+  const controlY2 = endY;
+
+  const d = `M ${startX},${startY} C ${controlX1},${controlY1} ${controlX2},${controlY2} ${endX},${endY}`;
+
+  path.setAttribute('d', d);
+  path.setAttribute('stroke', '#10b981');
+  path.setAttribute('stroke-width', '3');
+  path.setAttribute('fill', 'none');
+  path.setAttribute('stroke-linecap', 'round');
+  path.setAttribute('opacity', '0.8');
+
+  svg.appendChild(path);
+}
+
+window.addEventListener('load', drawConnections);
+window.addEventListener('resize', drawConnections);
+
+
+  </script>
+
+  <footer style="
+  background-color: #f5f5f5;
+  padding: 8px 10px;
+  text-align: center;
+  font-size: 14px;
+  border-top: 1px solid #ccc;
+  user-select: text;
+">
+  <a href="https://wa.me/573001112233" target="_blank" rel="noopener noreferrer"
+     style="
+       color: #333;
+       text-decoration: none;
+       display: inline-flex;
+       align-items: center;
+       gap: 6px;
+       transition: background-color 0.3s ease;
+       padding: 4px 10px;
+       border-radius: 4px;
+       user-select: text;
+     "
+     onmouseover="this.style.backgroundColor='#e0ffe0';"
+     onmouseout="this.style.backgroundColor='transparent';"
+  >
+    📸 Si quieres trabajar con nosotros, envíanos fotos de tus proyectos <strong>AQUÍ</strong> y cuéntanos en qué te especializas. ¡Seguro te llamaremos!
+    <img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" alt="WhatsApp" width="18" style="vertical-align: middle;">
+  </a>
+</footer>
+</body>
+</html>
