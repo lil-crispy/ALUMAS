@@ -1,77 +1,258 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"> 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
-    <title>CSS Simple Card Slider Example</title>
-	
-    <meta name="author" content="Codeconvey" />
-    
-    <!-- Card Slider CSS -->
-    <link rel="stylesheet" href="./css/placas.css">
-    
-    <!--Only for demo purpose - no need to add.-->
-    <link rel="stylesheet" type="text/css" href="css/demo.css" />
-	
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ALUMAS Placas</title>
+  <meta name="description" content="Catálogo interactivo de placas ALUMAS. Descubre y compra directamente.">
+  <meta name="author" content="ALUMAS">
+  <link href="https://fonts.googleapis.com/css2?family=Oxygen&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      background: url('./img/fondo_alumas.jpg') no-repeat center center fixed;
+      background-size: cover;
+      color: #fff;
+      font-family: 'Oxygen', sans-serif;
+      padding: 20px;
+      overflow-x: hidden;
+      box-sizing: border-box;
+      zoom: 100%;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 2.5em;
+      text-shadow: 2px 2px 6px #000;
+    }
+
+    .nombre-placa {
+      text-align: center;
+      font-size: 2.2em;
+      font-weight: bold;
+      margin: 20px 0 10px;
+      text-shadow: 2px 2px 6px #000;
+    }
+
+    .descripcion {
+      max-width: 800px;
+      margin: 30px auto 10px;
+      background: rgba(0,0,0,0.6);
+      padding: 20px;
+      border-radius: 15px;
+      font-size: 1.5em;
+      line-height: 1.6;
+      text-align: center;
+      text-shadow: 1px 1px 3px #000;
+    }
+
+    form {
+      margin: 20px auto;
+      text-align: center;
+      display: flex;
+      justify-content: center;
+      overflow: hidden; /* Quitamos scroll */
+      white-space: nowrap;
+      scroll-behavior: smooth;
+
+      width: 100vw;
+      max-width: 100vw;
+      padding: 0;
+      -webkit-overflow-scrolling: touch;
+      box-sizing: border-box;
+    }
+
+    label {
+      position: relative;
+      margin: 0 15px;
+      display: inline-block;
+      width: 120px;
+      height: 240px;
+      background-size: cover;
+      background-position: center;
+      border-radius: 12px;
+      box-shadow: 0 10px 6px -6px #000;
+      transform: skew(-20deg) rotate(-20deg);
+      transition: transform 0.3s, margin 0.3s, box-shadow 0.3s;
+      background-color: rgba(255, 255, 255, 0.7);
+      cursor: pointer;
+      flex-shrink: 0;
+      user-select: none;
+    }
+
+    input[type="radio"]:checked + label {
+      margin: 0 50px;
+      transform: none;
+      box-shadow: 0 0 20px 5px #25d366;
+      background-color: rgba(37, 211, 102, 0.8);
+      z-index: 10;
+    }
+
+    .comprar-contenedor {
+      text-align: center;
+      margin: 20px 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+
+    .comprar-btn {
+      padding: 14px 30px;
+      background-color: #25d366;
+      color: white;
+      border: none;
+      border-radius: 30px;
+      font-size: 1.2em;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      user-select: none;
+    }
+
+    .comprar-btn:hover {
+      background-color: #128c7e;
+    }
+
+    .flecha-btn {
+      background-color: rgba(37, 211, 102, 0.9);
+      border: none;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      font-size: 2em;
+      color: white;
+      cursor: pointer;
+      user-select: none;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: background-color 0.3s ease;
+    }
+
+    .flecha-btn:hover {
+      background-color: #128c7e;
+    }
+
+    @media (max-width: 600px) {
+      label {
+        width: 120px;
+        height: 200px;
+      }
+
+      .comprar-btn {
+        font-size: 1em;
+        padding: 10px 20px;
+      }
+
+      .nombre-placa {
+        font-size: 1.5em;
+      }
+
+      .descripcion {
+        font-size: 1.2em;
+      }
+
+      .flecha-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 1.5em;
+      }
+    }
+
+  </style>
 </head>
 <body>
-		
-<div class="ScriptTop">
-    <div class="rt-container">
-        <div class="col-rt-4" id="float-right">
- 
-            <!-- Ad Here -->
-            
-        </div>
-        <div class="col-rt-2">
-            <ul>
-                <li><a href="https://codeconvey.com/pure-css-simple-card-slider" title="Back to tutorial page">Back to Tutorial</a></li>
-            </ul>
-        </div>
-    </div>
-</div>
 
-<header class="ScriptHeader">
-    <div class="rt-container">
-    	<div class="col-rt-12">
-        	<div class="rt-heading">
-            	<h1>CSS Simple Card Slider Example</h1>
-                <p>A Pure CSS Simple Card Slider with 3D Effect</p>
-            </div>
-        </div>
-    </div>
-</header>
+  <h1>Catálogo de Placas ALUMAS</h1>
+  <div class="nombre-placa" id="nombrePlaca">SB20</div>
 
-<section>
-    <div class="rt-container">
-          <div class="col-rt-12">
-              <div class="Scriptcontent">
-              
-    <!-- Start Card Slider -->
-<form action="">
-  <input type="radio" id="1" name="sld"/>
-  <label for="1">1</label>
-  <input type="radio" id="2" name="sld"/>
-  <label for="2">2</label>
-  <input type="radio" id="3" name="sld" checked/>
-  <label for="3">3</label>
-  <input type="radio" id="4" name="sld"/>
-  <label for="4">4</label>
-  <input type="radio" id="5" name="sld"/>
-  <label for="5">5</label>
-</form>
-<!-- End Card Slider -->
-    		
-           
-    		</div>
-		</div>
-    </div>
-</section>
-     
+  <form id="formPlacas" tabindex="0" aria-label="Selector de placas">
+    <input type="radio" id="1" name="sld" />
+    <label for="1" data-nombre="Drywall" data-descripcion="Placa liviana ideal para interiores y cielorrasos." style="background-image: url('../img/PLACAS/drywall.png');"></label>
 
+    <input type="radio" id="2" name="sld" />
+    <label for="2" data-nombre="Teja Plástica" data-descripcion="Material plástico duradero, resistente al clima." style="background-image: url('../img/PLACAS/tejaplastica.png');"></label>
 
-    <!-- Analytics -->
+    <input type="radio" id="3" name="sld" />
+    <label for="3" data-nombre="Arquitectónica" data-descripcion="Diseño elegante para acabados modernos y decorativos." style="background-image: url('../img/PLACAS/arquitectonica.png');"></label>
 
-	</body>
+    <input type="radio" id="4" name="sld" />
+    <label for="4" data-nombre="RH" data-descripcion="Placa resistente a la humedad, ideal para baños y cocinas." style="background-image: url('../img/PLACAS/rh.png');"></label>
+
+    <input type="radio" id="5" name="sld" />
+    <label for="5" data-nombre="SB6" data-descripcion="Placa estándar de alta durabilidad y resistencia." style="background-image: url('../img/PLACAS/sb6.png');"></label>
+
+    <input type="radio" id="6" name="sld" />
+    <label for="6" data-nombre="SB8" data-descripcion="Versión reforzada para ambientes más exigentes." style="background-image: url('../img/PLACAS/sb8.png');"></label>
+
+    <input type="radio" id="7" name="sld" checked />
+    <label for="7" data-nombre="SB20" data-descripcion="Máxima resistencia y acabado profesional para uso industrial." style="background-image: url('../img/PLACAS/sb20.png');"></label>
+
+    <input type="radio" id="8" name="sld" />
+    <label for="8" data-nombre="Zinc" data-descripcion="Lámina metálica económica, ideal para cubiertas." style="background-image: url('../img/PLACAS/zinc.png');"></label>
+  </form>
+
+  <div class="comprar-contenedor" role="group" aria-label="Controles de navegación y compra">
+    <button type="button" class="flecha-btn" id="btnIzquierda" aria-label="Anterior placa">&#8592;</button>
+    <button type="button" class="comprar-btn" onclick="comprarPlaca()">Solicitar información por WhatsApp</button>
+    <button type="button" class="flecha-btn" id="btnDerecha" aria-label="Siguiente placa">&#8594;</button>
+  </div>
+
+  <div class="descripcion" id="descripcionPlaca">
+    Máxima resistencia y acabado profesional para uso industrial.
+  </div>
+
+  <script>
+    const nombrePlaca = document.getElementById("nombrePlaca");
+    const descripcionPlaca = document.getElementById("descripcionPlaca");
+    const radios = Array.from(document.querySelectorAll('input[type="radio"]'));
+    const labels = Array.from(document.querySelectorAll('label'));
+
+    function actualizarPlacaSeleccionada(radio) {
+      if (!radio) return;
+      radio.checked = true;
+      const label = document.querySelector(`label[for="${radio.id}"]`);
+      nombrePlaca.textContent = label.dataset.nombre;
+      descripcionPlaca.textContent = label.dataset.descripcion;
+
+      // Opcional: hacer foco en el radio para accesibilidad
+      radio.focus();
+    }
+
+    // Detectar cambios por click en radios para actualizar texto
+    radios.forEach(radio => {
+      radio.addEventListener("change", () => actualizarPlacaSeleccionada(radio));
+    });
+
+    // Inicializar con el radio checked al cargar la página
+    window.addEventListener("load", () => {
+      const checked = document.querySelector('input[type="radio"]:checked');
+      actualizarPlacaSeleccionada(checked);
+    });
+
+    // Funciones para cambiar placa con flechas
+    function cambiarPlaca(direccion) {
+      // direccion: +1 para derecha, -1 para izquierda
+      const actualIndex = radios.findIndex(r => r.checked);
+      let nuevoIndex = actualIndex + direccion;
+
+      if (nuevoIndex < 0) nuevoIndex = radios.length - 1; // loop al final
+      if (nuevoIndex >= radios.length) nuevoIndex = 0;    // loop al inicio
+
+      actualizarPlacaSeleccionada(radios[nuevoIndex]);
+    }
+
+    document.getElementById("btnIzquierda").addEventListener("click", () => cambiarPlaca(-1));
+    document.getElementById("btnDerecha").addEventListener("click", () => cambiarPlaca(1));
+
+    function comprarPlaca() {
+      const placa = nombrePlaca.textContent;
+      const texto = `Hola, quiero información sobre la placa ${placa} de ALUMAS. ¿Podrían ayudarme?`;
+      const numero = "573103346435"; // Número WhatsApp ALUMAS (ajustar según convenga)
+      const url = `https://wa.me/${numero}?text=${encodeURIComponent(texto)}`;
+      window.open(url, "_blank");
+    }
+  </script>
+
+</body>
 </html>

@@ -2,18 +2,27 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  font-family: 'Oxygen';
+  font-family: 'Oxygen', sans-serif;
 }
 
 form {
   margin: 60px auto;
   text-align: center;
+
+  display: flex;            /* para layout horizontal */
+  overflow-x: auto;         /* scroll horizontal */
+  overflow-y: hidden;       /* sin scroll vertical */
+  white-space: nowrap;      /* evitar salto de línea */
+  max-width: 100%;
+  padding-bottom: 15px;     /* espacio para barra scroll */
+  -webkit-overflow-scrolling: touch; /* scroll suave en móviles */
 }
 
 input[type="radio"] {
   display: none;
 }
 
+/* Cuando un radio está checked, aplicamos transform y margin en los labels */
 input[type="radio"]:checked ~ label {
   -webkit-transform: skew(20deg) rotate(20deg);
           transform: skew(20deg) rotate(20deg);
@@ -26,7 +35,7 @@ input[type="radio"]:checked + label {
 }
 
 label {
-  position: realtive;
+  position: relative;
   margin: 0 -35px;
   display: inline-block;
   width: 150px;
@@ -40,24 +49,55 @@ label {
           transform: skew(-20deg) rotate(-20deg);
   -webkit-transition: .3s;
   transition: .3s;
+  background-size: cover;
+  background-position: center;
+
+  flex-shrink: 0;           /* evitar que los labels se encojan */
 }
 
+/* Rutas de imágenes corregidas */
 label:nth-of-type(1) {
-  background: #1abc9c;
+  background-image: url("../img/PLACAS/drywall.png");
 }
 
 label:nth-of-type(2) {
-  background: #3498db;
+  background-image: url("../img/PLACAS/tejaplastica.png");
 }
 
 label:nth-of-type(3) {
-  background: #e67e22;
+  background-image: url("../img/PLACAS/arquitectonica.png");
 }
 
 label:nth-of-type(4) {
-  background: #9b59b6;
+  background-image: url("../img/PLACAS/rh.png");
 }
 
 label:nth-of-type(5) {
-  background: #f1c40f;
+  background-image: url("../img/PLACAS/sb6.png");
+}
+
+label:nth-of-type(6) {
+  background-image: url("../img/PLACAS/sb8.png");
+}
+
+label:nth-of-type(7) {
+  background-image: url("../img/PLACAS/sb20.png");
+}
+
+label:nth-of-type(8) {
+  background-image: url("../img/PLACAS/zinc.png");
+}
+
+/* Opcional: personalización barra de scroll horizontal para navegadores WebKit */
+form::-webkit-scrollbar {
+  height: 8px;
+}
+
+form::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+form::-webkit-scrollbar-track {
+  background: #eee;
 }

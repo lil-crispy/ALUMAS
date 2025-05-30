@@ -163,6 +163,8 @@ mensajes_por_dia = {
     ],
     "jueves": [
 
+        
+
     ("573124932864", "Señor Emeterio, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
     ("573108088152", "Señor Jose, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
     ("573172426430", "Señor Eduardo, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
