@@ -8,6 +8,89 @@
   <meta name="author" content="ALUMAS">
   <link href="https://fonts.googleapis.com/css2?family=Oxygen&display=swap" rel="stylesheet" />
   <style>
+    /* SLIDER GENERAL */
+/* SLIDER MINI ESTILO PEGADO, GRANDE Y CON BORDE */
+.slider-mini {
+  width: 100%;
+  overflow: hidden;
+  background-color: white;
+  margin: 20px auto 0;
+  padding: 0;
+}
+
+.slider-mini .slide-track {
+  display: flex;
+  width: max-content;
+  animation: scroll-mini 20s linear infinite;
+  /* transición para suavizar la pausa */
+  transition: animation-play-state 0.3s ease;
+}
+
+/* Pausar animación y cambiar cursor al pasar el ratón */
+.slider-mini:hover .slide-track {
+  animation-play-state: paused;
+  cursor: grab; /* cambia el cursor cuando está encima */
+}
+
+.slider-mini .slide {
+  flex: 0 0 auto;
+  width: 160px;
+  height: 160px;
+  margin: 0; /* sin espacios */
+}
+
+.slider-mini .slide img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border: 4px solid #002142; /* azul claro */
+  border-radius: 12px;
+  background-color: white;
+  display: block;
+  box-sizing: border-box;
+}
+
+/* ANIMACIÓN */
+@keyframes scroll-mini {
+  0% {
+    transform: translateX(0); /* desde la izquierda */
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .slider-mini .slide {
+    width: 120px;
+    height: 120px;
+  }
+}
+
+@media (max-width: 480px) {
+  .slider-mini .slide {
+    width: 100px;
+    height: 100px;
+  }
+}
+.slider-mini .slide {
+  flex: 0 0 auto;
+  width: 160px;
+  height: 160px;
+  margin: 0;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  cursor: default; /* cursor normal en las tarjetas */
+}
+
+/* Cuando el cursor está encima de cada tarjeta */
+.slider-mini .slide:hover {
+  transform: scale(1.02); /* aumenta un 5% el tamaño */
+  box-shadow: 0 8px 16px rgba(0, 33, 71, 0.3); /* sombra azul suave */
+  cursor: pointer; /* cambia cursor para indicar que es interactivo */
+}
+
+
     body {
       background: url('./img/fondo_alumas.jpg') no-repeat center center fixed;
       background-size: cover;
@@ -16,57 +99,137 @@
       padding: 20px;
       overflow-x: hidden;
       box-sizing: border-box;
-      zoom: 100%;
+      zoom: 110%;
     }
 
-    h1 {
-      text-align: center;
-      font-size: 2.5em;
-      text-shadow: 2px 2px 6px #000;
-    }
+h1 {
+  text-align: left;           /* Alinea el texto a la izquierda */
+  font-size: 2.5em;
+  color: #fff;
+  text-shadow: 2px 2px 6px #000;
+  background: repeating-linear-gradient(
+    to right,
+    #002147, /* azul oscuro */
+    #002147 40px,
+    #003366 40px, /* azul un poco más claro */
+    #003366 80px
+  );
+  padding: 20px 20px 20px 650px; /* Más espacio a la izquierda */
+  margin: 0;
+  width: 100vw;
+  box-sizing: border-box;
+}
 
-    .nombre-placa {
-      text-align: center;
-      font-size: 2.2em;
-      font-weight: bold;
-      margin: 20px 0 10px;
-      text-shadow: 2px 2px 6px #000;
-    }
+@media (max-width: 600px) {
+  h1 {
+    text-align: center;   /* Cambia a centrado en pantallas pequeñas */
+    padding: 20px 0;      /* Elimina padding lateral, mantiene arriba y abajo */
+  }
+}
 
-    .descripcion {
-      max-width: 800px;
-      margin: 30px auto 10px;
-      background: rgba(0,0,0,0.6);
-      padding: 20px;
-      border-radius: 15px;
-      font-size: 1.5em;
-      line-height: 1.6;
-      text-align: center;
-      text-shadow: 1px 1px 3px #000;
-    }
+.nombre-placa {
+  position: relative;
+  text-align: center;
+  font-size: 2.2em;
+  font-weight: bold;
+  margin: 20px 0 10px;
+  padding: 10px 0; /* espacio para las líneas */
+  
+  /* Texto blanco con contorno azul más grueso */
+  color: white;
+  -webkit-text-stroke: 2px #0a3a70; /* contorno azul */
+ 
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* fuente */
+}
 
-    form {
-      margin: 20px auto;
-      text-align: center;
-      display: flex;
-      justify-content: center;
-      overflow: hidden; /* Quitamos scroll */
-      white-space: nowrap;
-      scroll-behavior: smooth;
+/* Línea azul arriba */
+.nombre-placa::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background-color: #0a3a70; /* azul */
+  border-radius: 2px;
+}
 
-      width: 100vw;
-      max-width: 100vw;
-      padding: 0;
-      -webkit-overflow-scrolling: touch;
-      box-sizing: border-box;
-    }
+/* Línea azul abajo */
+.nombre-placa::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background-color: #0a3a70; /* azul */
+  border-radius: 2px;
+}
+
+
+/* Responsive para tamaños menores */
+@media (max-width: 768px) {
+  .nombre-placa {
+    font-size: 1.6em;
+    padding: 8px 0;
+  }
+  .nombre-placa::before,
+  .nombre-placa::after {
+    height: 3px;
+  }
+}
+
+@media (max-width: 480px) {
+  .nombre-placa {
+    font-size: 1.2em;
+    padding: 6px 0;
+  }
+  .nombre-placa::before,
+  .nombre-placa::after {
+    height: 2px;
+  }
+}
+
+
+.descripcion {
+  max-width: 800px;
+  margin: 30px auto 10px;
+  background: rgba(0, 0, 0, 0.5); /* fondo gris oscuro semitransparente */
+  padding: 20px;
+  border-radius: 15px;
+  font-size: 1.5em;
+  line-height: 1.6;
+  text-align: center;
+  color: #ffffff; /* texto azul claro para buen contraste */
+  border: 3px solid #0a3a70; /* borde azul sólido */
+  box-shadow: 0 0 15px 3px rgba(10, 58, 112, 0.4); /* sombra azul suave */
+}
+
+form {
+  margin: 20px auto;
+  text-align: left;
+  display: flex;
+  justify-content: left;
+  overflow: hidden; /* Quitamos scroll */
+  white-space: nowrap;
+  scroll-behavior: smooth;
+
+  width: 100vw;
+  max-width: 100vw;
+  padding: 0;
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
+
+  border-bottom: 2px dashed rgba(10, 58, 112, 0.3); /* Línea azul discontinua */
+}
+
 
     label {
       position: relative;
       margin: 0 15px;
       display: inline-block;
-      width: 120px;
-      height: 240px;
+      width: 160px;
+      height: 320px;
       background-size: cover;
       background-position: center;
       border-radius: 12px;
@@ -82,8 +245,8 @@
     input[type="radio"]:checked + label {
       margin: 0 50px;
       transform: none;
-      box-shadow: 0 0 20px 5px #25d366;
-      background-color: rgba(37, 211, 102, 0.8);
+      box-shadow: 0 0 20px 5px #6da5dd;
+      background-color:#6da5dd;
       z-index: 10;
     }
 
@@ -99,7 +262,7 @@
 
     .comprar-btn {
       padding: 14px 30px;
-      background-color: #25d366;
+      background-color: #0b6ccc;
       color: white;
       border: none;
       border-radius: 30px;
@@ -114,7 +277,7 @@
     }
 
     .flecha-btn {
-      background-color: rgba(37, 211, 102, 0.9);
+      background-color: #0b6ccc;
       border: none;
       border-radius: 50%;
       width: 50px;
@@ -159,48 +322,281 @@
       }
     }
 
+    label[for="6"] {
+  position: relative;
+  margin: 0 15px;
+  display: inline-block;
+  width: 160px;
+  height: 320px;
+  background-image: url('../img/PLACAS/sb8.png');
+  background-size: cover;
+  background-position: center;
+  border-radius: 8px;
+  transform: skew(-20deg) rotate(-20deg);
+  transition: transform 0.3s, box-shadow 0.3s;
+  background-color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  z-index: 1;
+  box-shadow: 0 10px 6px -6px #00000033;
+}
+
+/* Línea izquierda */
+label[for="6"]::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -6px;
+  width: 6px;
+  height: 100%;
+  background-color: #444;
+  border-radius: 6px 0 0 6px;
+  z-index: -1;
+}
+
+label[for="6"]::before {
+  content: "";
+  position: absolute;
+  top: -3px;
+  left: 0;
+  width: 100%;
+  height: 2px; /* reducida de 6px a 4px */
+  background-color: #444;
+  border-radius: 6px 6px 0 0;
+  z-index: -1;
+}
+label[for="5"] {
+  position: relative;
+  margin: 0 15px;
+  display: inline-block;
+  width: 160px;
+  height: 320px;
+  background-image: url('../img/PLACAS/sb6.png');
+  background-size: cover;
+  background-position: center;
+  border-radius: 12px;
+  transform: skew(-20deg) rotate(-20deg);
+  transition: transform 0.3s, box-shadow 0.3s;
+  background-color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  z-index: 1;
+  box-shadow: 0 10px 6px -6px #000;
+}
+
+/* Línea izquierda delgada */
+label[for="5"]::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -2px;
+  width: 2px;
+  height: 100%;
+  background-color: #444;
+  border-radius: 2px 0 0 2px;
+  z-index: -1;
+}
+
+/* Línea superior delgada */
+label[for="5"]::before {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: #444;
+  border-radius: 2px 2px 0 0;
+  z-index: -1;
+}
+label[for="7"]::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -12px;
+  width: 12px;
+  height: 100%;
+  background: transparent;
+  border-radius: 12px 0 0 12px;
+  z-index: -1;
+
+  box-shadow: 
+    12px 0 15px rgba(0, 0, 0, 0.5),      /* sombra externa difusa */
+    inset -4px 0 2px rgba(0, 0, 0, 0.9);  /* sombra interna más marcada */
+}
+
+label[for="7"]::before {
+  content: "";
+  position: absolute;
+  top: -12px;
+  left: 0;
+  width: 100%;
+  height: 12px;
+  background: transparent;
+  border-radius: 12px 12px 0 0;
+  z-index: -1;
+
+  box-shadow: 
+    0 12px 15px rgba(0, 0, 0, 0.5),       /* sombra externa difusa */
+    inset 0 -4px 2px rgba(0, 0, 0, 0.9);   /* sombra interna más marcada */
+}
+@media (max-width: 600px) {
+  label {
+    width: 120px !important;   /* Ajusta el ancho fijo */
+    height: 240px !important;  /* Ajusta la altura fija */
+    /* Opcional: para que no se deformen */
+    background-size: cover !important;
+    background-position: center !important;
+  }
+}
+@media (max-width: 600px) {
+  body {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+}
+.logo-container {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 1000;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: box-shadow 0.3s ease;
+  background-color: white; /* fondo blanco */
+  box-shadow: 0 0 10px rgba(0,0,0,0.1); /* sombra sutil para que se vea mejor */
+  margin: 10px; /* un poco de margen para que no quede pegado totalmente */
+}
+
+
+/* Estilo del logo */
+.logo {
+  width: 100%; /* Hace que la imagen ocupe todo el contenedor */
+  height: 100%; /* Asegura que la imagen cubra todo el contenedor */
+  object-fit: cover; /* Asegura que la imagen se recorte si es necesario */
+  transition: transform 0.3s ease;
+}
+
+/* Efecto de iluminación al pasar el mouse por encima */
+.logo-container:hover {
+  box-shadow: 0 0 20px 8px rgba(255, 255, 255, 0.7); /* Luz redonda al pasar el mouse */
+}
+
+.logo-container:hover .logo {
+  transform: scale(1.3); /* Aumenta el tamaño de la imagen ligeramente */
+}
+
+@media (max-width: 768px) {
+  .left-column {
+    display: none;
+  }
+}
+
+@media (max-width: 708px) {
+  .logo-container {
+    display: none;
+  }
+}
+
+
   </style>
 </head>
+<header>
+          <div class="logo-container">
+            <img src="./img/LOG1.png" alt="Logo" class="logo" onclick="window.location.href='index.html';">
+        </div>
+</header>
 <body>
 
-  <h1>Catálogo de Placas ALUMAS</h1>
-  <div class="nombre-placa" id="nombrePlaca">SB20</div>
+  <h1>PLACAS - TEJAS - ESTRUCTURA</h1>
+  <div class="nombre-placa" id="nombrePlaca">SUPERBOARD 20mm</div>
 
-  <form id="formPlacas" tabindex="0" aria-label="Selector de placas">
-    <input type="radio" id="1" name="sld" />
-    <label for="1" data-nombre="Drywall" data-descripcion="Placa liviana ideal para interiores y cielorrasos." style="background-image: url('../img/PLACAS/drywall.png');"></label>
+ <form id="formPlacas" tabindex="0" aria-label="Selector de placas">
+  <input type="radio" id="1" name="sld" />
+  <label for="1" data-nombre="Drywall" 
+         data-descripcion="Placa de yeso para interiores y cielorrasos. Espesor: 12.7 mm (1/2''). Medidas comunes: 1.22 x 2.44 m. Usos: muros divisorios, cielos rasos, interiores secos."
+         style="background-image: url('../img/PLACAS/drywall.png');"></label>
 
-    <input type="radio" id="2" name="sld" />
-    <label for="2" data-nombre="Teja Plástica" data-descripcion="Material plástico duradero, resistente al clima." style="background-image: url('../img/PLACAS/tejaplastica.png');"></label>
+  <input type="radio" id="2" name="sld" />
+  <label for="2" data-nombre="Teja Plástica" 
+         data-descripcion="Teja de PVC o polipropileno. Medidas: 2.00 m, 2.50 m, 3.00 m, 3.66 m (12 ft). Ancho útil: 0.90 a 1.00 m. Espesor: 1.5 a 2 mm. Ligera, resistente a la intemperie."
+         style="background-image: url('../img/PLACAS/tejaplastica.png');"></label>
 
-    <input type="radio" id="3" name="sld" />
-    <label for="3" data-nombre="Arquitectónica" data-descripcion="Diseño elegante para acabados modernos y decorativos." style="background-image: url('../img/PLACAS/arquitectonica.png');"></label>
+  <input type="radio" id="3" name="sld" />
+  <label for="3" data-nombre="Teja Arquitectónica" 
+         data-descripcion="Teja decorativa tipo termoacústica. Medidas: 2.44 m (8 ft), 3.05 m (10 ft). Ancho: 1.00 m. Espesor: 25 mm aprox. Ideal para cubiertas con diseño moderno."
+         style="background-image: url('../img/PLACAS/arquitectonica.png');"></label>
 
-    <input type="radio" id="4" name="sld" />
-    <label for="4" data-nombre="RH" data-descripcion="Placa resistente a la humedad, ideal para baños y cocinas." style="background-image: url('../img/PLACAS/rh.png');"></label>
+  <input type="radio" id="4" name="sld" />
+  <label for="4" data-nombre="RH" 
+         data-descripcion="Placa Drywall resistente a la humedad. Espesor: 12.7 mm (1/2''). Medida estándar: 1.22 x 2.44 m. Uso: baños, cocinas y zonas húmedas."
+         style="background-image: url('../img/PLACAS/rh.png');"></label>
 
-    <input type="radio" id="5" name="sld" />
-    <label for="5" data-nombre="SB6" data-descripcion="Placa estándar de alta durabilidad y resistencia." style="background-image: url('../img/PLACAS/sb6.png');"></label>
+  <input type="radio" id="5" name="sld" />
+  <label for="5" data-nombre="SUPERBOARD 6mm" 
+         data-descripcion="Placa de fibrocemento. Espesor: 6 mm. Medidas: 1.22 x 2.44 m. Aplicaciones: cielos rasos, fachadas, muros divisorios exteriores."
+         style="background-image: url('../img/PLACAS/sb6.png');"></label>
 
-    <input type="radio" id="6" name="sld" />
-    <label for="6" data-nombre="SB8" data-descripcion="Versión reforzada para ambientes más exigentes." style="background-image: url('../img/PLACAS/sb8.png');"></label>
+  <input type="radio" id="6" name="sld" />
+  <label for="6" data-nombre="SUPERBOARD 8mm" 
+         data-descripcion="Fibrocemento reforzado. Espesor: 8 mm. Medidas: 1.22 x 2.44 m. Uso: fachadas ventiladas, muros exteriores e interiores resistentes."
+         style="background-image: url('../img/PLACAS/sb8.png');"></label>
 
-    <input type="radio" id="7" name="sld" checked />
-    <label for="7" data-nombre="SB20" data-descripcion="Máxima resistencia y acabado profesional para uso industrial." style="background-image: url('../img/PLACAS/sb20.png');"></label>
+  <input type="radio" id="7" name="sld" checked />
+  <label for="7" data-nombre="SUPERBOARD 20mm" 
+         data-descripcion="Placa pesada para uso industrial. Espesor: 20 mm. Medida: 1.22 x 2.44 m. Alta resistencia a impactos, humedad y fuego. Uso estructural."
+         style="background-image: url('../img/PLACAS/sb20.png');"></label>
 
-    <input type="radio" id="8" name="sld" />
-    <label for="8" data-nombre="Zinc" data-descripcion="Lámina metálica económica, ideal para cubiertas." style="background-image: url('../img/PLACAS/zinc.png');"></label>
-  </form>
+  <input type="radio" id="8" name="sld" />
+  <label for="8" data-nombre="Teja Zinc" 
+         data-descripcion="Teja metálica galvanizada. Espesores: 0.4 - 0.5 mm. Largo: 2.40 m a 6.00 m. Ancho útil: 0.90 m. Ideal para cubiertas económicas y resistentes."
+         style="background-image: url('../img/PLACAS/zinc.png');"></label>
+</form>
+
 
   <div class="comprar-contenedor" role="group" aria-label="Controles de navegación y compra">
     <button type="button" class="flecha-btn" id="btnIzquierda" aria-label="Anterior placa">&#8592;</button>
-    <button type="button" class="comprar-btn" onclick="comprarPlaca()">Solicitar información por WhatsApp</button>
+    <button type="button" class="comprar-btn" onclick="comprarPlaca()">COTIZAR</button>
     <button type="button" class="flecha-btn" id="btnDerecha" aria-label="Siguiente placa">&#8594;</button>
   </div>
 
   <div class="descripcion" id="descripcionPlaca">
     Máxima resistencia y acabado profesional para uso industrial.
   </div>
+
+<div class="slider slider-mini">
+  <div class="slide-track">
+    <div class="slide"><img src="./img/PLACAS/omega.png" alt="icono 1"></div>
+    <div class="slide"><img src="./img/PLACAS/vigueta.png" alt="icono 2"></div>
+    <div class="slide"><img src="./img/PLACAS/paralbase6.png" alt="icono 3"></div>
+    <div class="slide"><img src="./img/PLACAS/canalbase6.png" alt="icono 4"></div>
+    <div class="slide"><img src="./img/PLACAS/angulo.png" alt="icono 5"></div>
+
+    <div class="slide"><img src="./img/PLACAS/canalbase9.png" alt="icono 6"></div>
+    <div class="slide"><img src="./img/PLACAS/paralbase9.png" alt="icono 7"></div>
+    <div class="slide"><img src="./img/PLACAS/tornillo1.jfif" alt="icono 8"></div>
+    <div class="slide"><img src="./img/PLACAS/tornillo2.jfif" alt="icono 9"></div>
+    <div class="slide"><img src="./img/PLACAS/tornillo3.jfif" alt="icono 10"></div>
+
+    <div class="slide"><img src="./img/PLACAS/tornillo4.jfif" alt="icono 11"></div>
+    <div class="slide"><img src="./img/PLACAS/tornillo5.jfif" alt="icono 12"></div>
+    <div class="slide"><img src="./img/PLACAS/tornillo6.jfif" alt="icono 13"></div>
+    <div class="slide"><img src="./img/PLACAS/ip.png" alt="icono 14"></div>
+    <div class="slide"><img src="./img/PLACAS/perfil.jfif" alt="icono 15"></div>
+
+    <!-- Repetición para que sea infinito -->
+    <div class="slide"><img src="./img/PLACAS/omega.png" alt="icono 1"></div>
+    <div class="slide"><img src="./img/PLACAS/vigueta.png" alt="icono 2"></div>
+    <div class="slide"><img src="./img/PLACAS/paralbase6.png" alt="icono 3"></div>
+    <div class="slide"><img src="./img/PLACAS/canalbase6.png" alt="icono 4"></div>
+    <div class="slide"><img src="./img/PLACAS/angulo.png" alt="icono 5"></div>
+  </div>
+</div>
+
+
 
   <script>
     const nombrePlaca = document.getElementById("nombrePlaca");
@@ -248,10 +644,12 @@
     function comprarPlaca() {
       const placa = nombrePlaca.textContent;
       const texto = `Hola, quiero información sobre la placa ${placa} de ALUMAS. ¿Podrían ayudarme?`;
-      const numero = "573103346435"; // Número WhatsApp ALUMAS (ajustar según convenga)
+      const numero = "573197245235"; // Número WhatsApp ALUMAS (ajustar según convenga)
       const url = `https://wa.me/${numero}?text=${encodeURIComponent(texto)}`;
       window.open(url, "_blank");
     }
+
+
   </script>
 
 </body>
