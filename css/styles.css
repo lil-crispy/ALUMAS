@@ -12,121 +12,28 @@ body {
   margin: 0; /* para evitar márgenes por defecto */
   min-height: 100vh; /* que cubra toda la altura de la ventana */
 }
- /* Contenedor de los íconos */
- .iconos {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-/* Estilo básico de cada ícono */
-.iconos a {
-    position: relative;
+ /* Estructura principal del header */
+header {
+    background: linear-gradient(to bottom, #d9e8ff, #fafafa);
+    border: 3px solid #a3c4ff;
+    padding: 2rem 1.5rem; /* Aumenté el padding para más espacio */
+    color: #065a82;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
     display: flex;
     align-items: center;
-    width: 40px; /* Ancho inicial */
-    height: 40px;
-    background-color: #f0f0f0;
-    border-radius: 12px; /* Esquinas redondeadas */
-    overflow: hidden;
-    transition: width 0.7s ease; /* Animación de expansión más lenta */
-}
-
-/* Ícono dentro del cuadrado */
-.iconos img {
-    width: 24px;
-    height: 24px;
-    margin-left: 8px; /* Posiciona el ícono hacia la izquierda */
-    transition: transform 0.3s ease; /* Suaviza el efecto del ícono */
-}
-
-/* Texto oculto inicialmente */
-.iconos span {
-    position: absolute;
-    left: 50px; /* Comienza fuera del contenedor */
-    opacity: 0; /* Oculto inicialmente */
-    white-space: nowrap;
-    color: black;
-    font-size: 14px;
-    transition: opacity 0.3s ease, transform 0.3s ease; /* Suaviza la aparición */
-    transform: translateX(-10px); /* Texto desplazado hacia la izquierda */
-}
-
-/* Efecto al pasar el mouse */
-.iconos a:hover {
-    width: 240px; /* Se expande más para dar espacio al texto */
-    background-color: #e0e0e0; /* Cambia ligeramente el fondo */
-}
-
-.iconos a:hover span {
-    opacity: 1; /* Muestra el texto */
-    transform: translateX(0); /* Mueve el texto a su posición */
-}
-
-.iconos a:hover img {
-    transform: scale(1.1); /* El ícono crece ligeramente */
-}
-
-header {
-  text-align: center;
-  background: linear-gradient(to bottom, #d9e8ff, #fafafa); /* degradado azul suave a blanco */
-  border: 3px solid #a3c4ff; /* borde azul claro */
-  padding: 1.5rem;
-  color: #065a82; /* texto azul moderado */
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* sombra muy ligera */
-  display: flex;
-  align-items: center;
-  flex-direction: column;
-}
-
-
-/* Definimos la animación de palpito */
-@keyframes heartbeat {
-    0%, 100% {
-        transform: scale(1); /* Tamaño normal */
-    }
-    50% {
-        transform: scale(1.1); /* Aumenta ligeramente */
-    }
-}
-
-/* Animación de zoom de grande a pequeño */
-@keyframes zoomLogo {
-    0% {
-        width: 100vw;
-    }
-    100% {
-        width: 250px;
-    }
-}
-
-/* Aplicamos la animación al título */
-header h1 {
-    color: rgb(13, 82, 122);
-    font-size: 1.8rem;
-    margin-bottom: 0.5rem;
-    animation: heartbeat 1s infinite ease-in-out;
-}
-
-/* Aplicamos la animación a los enlaces */
-header a {
-    text-decoration: none;
-    color: #0815c7;
-    font-weight: bold;
-    animation: heartbeat 1s infinite ease-in-out;
-}
-
-/* Animación de zoom para el logo */
-header img {
-    display: block;
-    margin: 0 auto;
-    width: 100vw; /* Comienza ocupando toda la pantalla */
-    height: auto;
+    justify-content: flex-start;
+    flex-direction: column; /* Asegura que el contenido se apile verticalmente */
+    gap: 1rem;
     position: relative;
-    animation: zoomLogo 1.5s ease-out forwards; /* Efecto de zoom */
+    min-height: 400px; /* <<-- Aquí defines el alto mínimo */
+}
+
+
+/* LOGO: animación de zoom */
+header img {
+    width: 400px;
+    height: 400px;
+    animation: zoomLogo 1.5s ease-out forwards;
 }
 
 /* Efecto de reflexión en el logo */
@@ -136,12 +43,102 @@ header img::after {
     top: 100%;
     left: 0;
     width: 100%;
-    height: 50%; /* Ajusta la altura de la reflexión */
-    background: rgba(255, 255, 255, 0.5); /* Reflexión blanca semitransparente */
-    transform: scaleY(-1); /* Voltear la imagen para crear la reflexión */
-    filter: blur(5px); /* Desenfoque para efecto de reflexión más realista */
-    opacity: 0.5; /* Opacidad para darle el efecto reflectante */
+    height: 50%;
+    background: rgba(255, 255, 255, 0.5);
+    transform: scaleY(-1);
+    filter: blur(5px);
+    opacity: 0.5;
 }
+
+/* TÍTULO */
+header h1 {
+    position: absolute;       /* Posicionamiento absoluto */
+    bottom: 10px;             /* A 10px del borde inferior */
+    left: 33%;                /* Centro horizontal */
+    transform: translateX(-50%); /* Ajuste para centrar exactamente */
+    color: rgb(13, 82, 122);
+    font-size: 1.6rem;
+    margin: 0;                /* Elimina margin para evitar saltos */
+    animation: heartbeat 1s infinite ease-in-out;
+}
+/* Enlaces en el header */
+header a {
+    text-decoration: none;
+    color: #0815c7;
+    font-weight: bold;
+    animation: heartbeat 1s infinite ease-in-out;
+}
+
+/* ANIMACIONES */
+@keyframes heartbeat {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+@keyframes zoomLogo {
+    0% { width: 100vw; }
+    100% { width: 250px; }
+}
+
+/* ICONOS */
+.iconos {
+    position: absolute;
+    top: 20px;
+    right: 10px; /* Antes era left */
+    display: flex;
+    flex-direction: row;
+    gap: 15px;
+}
+
+
+/* Contenedor individual */
+.iconos a {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 40px;
+    height: 40px;
+    background-color: #f0f0f0;
+    border-radius: 12px;
+    overflow: hidden;
+    transition: width 0.7s ease;
+}
+
+/* Imagen del ícono */
+.iconos img {
+    width: 24px;
+    height: 24px;
+    margin-left: 8px;
+    transition: transform 0.3s ease;
+}
+
+/* Texto del ícono (oculto inicialmente) */
+.iconos span {
+    position: absolute;
+    left: 50px;
+    opacity: 0;
+    white-space: nowrap;
+    color: black;
+    font-size: 14px;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    transform: translateX(-10px);
+}
+
+/* Hover: expansión y animación */
+.iconos a:hover {
+    width: 240px;
+    background-color: #e0e0e0;
+}
+
+.iconos a:hover span {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.iconos a:hover img {
+    transform: scale(1.1);
+}
+
 
 
 .catalogo {
@@ -235,12 +232,102 @@ header img::after {
 /* Estilos para el contenedor de pestañas */
 .tab-container {
     position: absolute;
-    top: 20px;
-    right: 10px;  /* Ahora está en la parte superior izquierda */
+    top: -10px;    /* pega al borde superior */
+    left: -10px;   /* pega al borde izquierdo */
     display: flex;
+    align-items: center;
     gap: 15px;
     font-family: Georgia, serif;
+    z-index: 10;
+    padding: -2px; /* opcional, para un poco de espacio interno */
 }
+
+.logo {
+    width: 200px;
+    height: auto;
+    border-radius: 50%;
+    overflow: hidden;
+    cursor: pointer;
+    animation: zoomLogo 1.5s ease-out forwards;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;      /* sin margen */
+    padding: 0;     /* sin padding */
+
+}
+
+/* Efecto reflexión en logo */
+.logo::after {
+    content: "";
+    position: absolute;
+    top: 30%;
+    left: 0;
+    width: 100%;
+    height: 50%;
+    background: rgba(255, 255, 255, 0.5);
+    transform: scaleY(-1);
+    filter: blur(5px);
+    opacity: 0.5;
+}
+
+/* Animación zoomLogo */
+@keyframes zoomLogo {
+    0% {
+        width: 100vw;
+    }
+    100% {
+        width: 260px; /* coincide con el nuevo tamaño */
+    }
+}
+
+/* Ajustes responsivos */
+@media (max-width: 600px) {
+    .logo {
+        width: 80px;  /* también más grande en móvil */
+    }
+}
+
+
+    .tab-container {
+        gap: 8px;
+        top: 5px;
+        left: 5px;
+    }
+    .tab-container .tab {
+        font-size: 0.9rem;
+    }
+
+
+.tab-container > *:not(.logo) {
+    opacity: 0;
+    transform: translateY(10px); /* le das un pequeño desplazamiento hacia abajo */
+    transition: opacity 0.8s ease, transform 0.8s ease;
+    pointer-events: none; /* opcional para evitar interacción cuando están ocultos */
+}
+
+/* Clase para activar la visibilidad */
+.tab-container.show-tabs > *:not(.logo) {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.tab-container > *:not(.logo) {
+    opacity: 0;
+    transform: translateY(10px); /* le das un pequeño desplazamiento hacia abajo */
+    transition: opacity 0.8s ease, transform 0.8s ease;
+    pointer-events: none; /* opcional para evitar interacción cuando están ocultos */
+}
+
+/* Clase para activar la visibilidad */
+.tab-container.show-tabs > *:not(.logo) {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
 
 /* Estilos para cada pestaña */
 .tab {

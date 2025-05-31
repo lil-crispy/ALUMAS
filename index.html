@@ -7,33 +7,33 @@
     <link rel="icon" type="image/svg+xml" href="./img/LOGO3.png" />
     <link rel="stylesheet" href="./css/styles.css">
 </head>
-<body>
-    <nav class="tab-container">
-        <img src="./img/vendedor.png" alt="Usuario" class="icono-usuario" id="logo-usuario">
-        <a href="#inicio" class="tab">Sobre Nosotros</a>
-        <a href="./PROYECTOS.html" class="tab">Proyectos</a>
-        <a href="./servicios.html" class="tab">Servicios</a>
-        <div class="dropdown">
-  <a href="#contacto" class="tab">Cotizar</a>
-  <div class="dropdown-content">
-    <a href="./techo_pvc.html">Techo</a>
-    <a href="./piso_spc.html">Piso</a>
-    <a href="./uv.html">Paredes</a>
-    <a href="#" onclick="mostrarModal()">Otros productos</a>
-  </div>
-</div>
+    <!-- Encabezado -->
+    <header>
+      
+        <h1>📲 Nuestro servicio al cliente y ventas <a href="tel:+3197245235">3197245235</a></h1>
+    </header>
 
-    </nav>
-<!-- Modal -->
-<div id="modalOtros" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content:center; align-items:center;">
-  <div style="background:white; padding:30px 25px; border-radius:15px; max-width:400px; text-align:center; box-shadow:0 0 25px rgba(0,0,0,0.3); position:relative; animation: fadeIn 0.4s ease;">
-    <img src="https://cdn-icons-png.flaticon.com/512/1170/1170627.png" alt="productos" style="width:60px; margin-bottom:15px;">
-    <h2 style="margin-bottom: 10px; color: #333;">¿No encontraste lo que necesitabas?</h2>
-    <p style="color:#555;">Escríbenos el producto que necesitas y te ayudamos con gusto. Seguro lo tenemos. ¡Estamos para ayudarte!</p>
-    <a href="https://wa.me/573197245235" target="_blank" style="display:inline-block; margin-top:15px; padding:12px 20px; background:#25D366; color:white; border-radius:30px; text-decoration:none; font-weight:600;">Chatear por WhatsApp</a>
-    <button onclick="cerrarModal()" style="position:absolute; top:10px; right:10px; background:none; border:none; font-size:20px; cursor:pointer;">&times;</button>
-  </div>
-</div>
+<body>
+<nav class="tab-container">
+    <img src="./img/LOG1.png" alt="Logo" class="logo">
+    
+    <a href="#inicio" class="tab">Sobre Nosotros</a>
+    <a href="./PROYECTOS.html" class="tab">Proyectos</a>
+    <a href="./servicios.html" class="tab">Servicios</a>
+    <div class="dropdown">
+      <a href="#contacto" class="tab">Cotizar</a>
+      <div class="dropdown-content">
+        <a href="./techo_pvc.html">Techo</a>
+        <a href="./piso_spc.html">Piso</a>
+        <a href="./uv.html">Paredes</a>
+        <a href="#" onclick="mostrarModal()">Otros productos</a>
+      </div>
+      <img src="./img/vendedor.png" alt="Usuario" class="icono-usuario" id="logo-usuario">
+    </div>
+</nav>
+
+
+
 
 <style>
 @keyframes fadeIn {
@@ -56,6 +56,12 @@
   function cerrarModal() {
     document.getElementById('modalOtros').style.display = 'none';
   }
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+        document.querySelector('.tab-container').classList.add('show-tabs');
+    }, 2000); // 2 segundos total
+});
+
 </script>
 
       <!-- Contenedor de íconos -->
@@ -83,21 +89,6 @@
         
     </div>
 
-    <!-- Encabezado -->
-    <header>
-        <img src="./img/LOG1.png" width="300px" height="300px" >
-        <h1>📲 Nuestro servicio al cliente y ventas <a href="tel:+3197245235">3197245235</a></h1>
-        <style>
-            .parent-container {
-    display: flex;
-    align-items: center; /* (Opcional) Centrar verticalmente */
-    flex-direction: column; /* Asegurar alineación vertical */
-}
-
-            
-        </style>
-
-    </header>
 
    <!-- Catálogo de productos -->
 <div class="catalogo">
