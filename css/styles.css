@@ -10,74 +10,223 @@ body {
   color: #333;
   line-height: 1.6;
   margin: 0; /* para evitar márgenes por defecto */
-  min-height: 100vh; /* que cubra toda la altura de la ventana */
+  min-height: 100vh;
+  zoom: 108%; 
+  overflow-y: hidden;/* que cubra toda la altura de la ventana */
 }
  /* Estructura principal del header */
-header {
-    background: linear-gradient(to bottom, #d9e8ff, #fafafa);
-    border: 3px solid #a3c4ff;
-    padding: 2rem 1.5rem; /* Aumenté el padding para más espacio */
-    color: #065a82;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    flex-direction: column; /* Asegura que el contenido se apile verticalmente */
-    gap: 1rem;
-    position: relative;
-    min-height: 400px; /* <<-- Aquí defines el alto mínimo */
+/* ==== MAIN HEADER ==== */
+.main-header {
+  background: linear-gradient(to bottom, #ffffff, #002147);
+  color: #ffffff;
+  padding: 3rem 2rem 1rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start; /* cambiado */
+  align-items: center;
+  gap: -4rem;
+  border-bottom: 4px solid #a3c4ff;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  /* min-height: 500px; ⛔ Eliminar esto */
+  position: relative;
+  overflow: hidden;
 }
 
 
-/* LOGO: animación de zoom */
-header img {
-    width: 400px;
-    height: 400px;
+.main-header h1 {
+  font-size: 1.3rem;
+  margin: 0;
+  color: #ffffff;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.6);
+  font-weight: 600;
+
+  border-radius: 8px;
+  max-width: fit-content;
+}
+
+.main-header p {
+  font-size: 1.2rem;
+  margin: 0;
+  color: #7eabdd;
+  opacity: 0.85;
+}
+
+/* ==== LOGOS ==== */
+.logo-container {
+  position: fixed;
+  top: 1px;  /* menos margen */
+  left: -50px;
+  display: flex;
+  align-items: center;
+  gap: 0; /* sin espacio */
+  z-index: 1000;
+  cursor: pointer;
+}
+
+/* Logo 1 más pequeño y animado */
+/* Animación zoom solo para el logo con clase logo1 */
+.logo1 {
+    width: 200px;
+    top: -5px;
+    height: 15;
+    border-radius: 30%;
+    cursor: pointer;
     animation: zoomLogo 1.5s ease-out forwards;
+    position: relative;
+    display: flex
+;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 0;
+    left: -8px;
 }
-
-/* Efecto de reflexión en el logo */
-header img::after {
+/* Efecto reflexión en logo */
+.logo1::after {
     content: "";
     position: absolute;
-    top: 100%;
+    top: 30%;
     left: 0;
     width: 100%;
     height: 50%;
-    background: rgba(255, 255, 255, 0.5);
     transform: scaleY(-1);
     filter: blur(5px);
     opacity: 0.5;
 }
 
-/* TÍTULO */
-header h1 {
-    position: absolute;       /* Posicionamiento absoluto */
-    bottom: 10px;             /* A 10px del borde inferior */
-    left: 33%;                /* Centro horizontal */
-    transform: translateX(-50%); /* Ajuste para centrar exactamente */
-    color: rgb(13, 82, 122);
-    font-size: 1.6rem;
-    margin: 0;                /* Elimina margin para evitar saltos */
-    animation: heartbeat 1s infinite ease-in-out;
-}
-/* Enlaces en el header */
-header a {
-    text-decoration: none;
-    color: #0815c7;
-    font-weight: bold;
-    animation: heartbeat 1s infinite ease-in-out;
-}
-
-/* ANIMACIONES */
-@keyframes heartbeat {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.1); }
-}
-
+/* Animación zoomLogo */
+/* Animación zoomLogo */
 @keyframes zoomLogo {
-    0% { width: 100vw; }
-    100% { width: 250px; }
+    0% {
+        width: 100vw;
+    }
+    100% {
+        width: 260px; /* coincide con el nuevo tamaño */
+    }
+}
+
+/* Ajustes responsivos */
+@media (max-width: 600px) {
+    .logo {
+        width: 80px;  /* también más grande en móvil */
+    }
+}
+
+
+
+
+/* Logo 2 superpuesto parcialmente encima del logo 1 */
+.logo2 {
+  width: 500px;
+  height: 60px;
+  opacity: 0;
+  animation: fadeInLogo 1s ease-in forwards;
+  animation-delay: 2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 20%;
+  cursor: pointer;
+  position: relative;
+  margin-left: -255px;
+  z-index: 9999; 
+  margin-top: 10px;
+}
+
+/* Imagen interna logos */
+.logo img {
+  max-width: 50%;
+  height: auto;
+}
+/* Animaciones */
+
+
+@keyframes fadeInLogo {
+  0% {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ==== SLIDER ==== */
+.slider {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  margin-top: 110px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.slides {
+  display: flex;
+  transition: transform 0.5s ease-in-out;
+  width: 100%; /* Ocupa todo el contenedor .slider */
+}
+
+.slide {
+  width: 100%; /* Cada slide ocupa 100% del .slider */
+  flex-shrink: 0;
+  position: relative;
+  /* Se muestra bloque para que no se oculten (no usar display:none) */
+  display: block;
+}
+
+.slide img {
+  width: 90%;
+  margin-top: 50px;
+
+  max-height: 300px; /* Limita la altura para evitar que crezca demasiado */
+ /* Ajusta la imagen sin recortar */
+
+}
+
+
+/* Flechas de navegación */
+.prev, .next {
+  position: absolute;
+  top: 50%;
+  background-color: rgba(0,0,0,0.5);
+  color: #ffffff;
+  border: none;
+  padding: 10px;
+  cursor: pointer;
+  transform: translateY(-50%);
+  font-size: 18px;
+  border-radius: 50%;
+}
+
+.prev { left: 10px; }
+.next { right: 10px; }
+
+
+/* ==== RESPONSIVE ==== */
+@media (max-width: 600px) {
+  .main-header h1 {
+    font-size: 1.2rem;
+  }
+
+  .main-header p {
+    font-size: 1rem;
+  }
+
+
+
+  .logo2 {
+    width: 90px;
+    height: 40px;
+    margin-left: -30px;
+  }
+
+  .slider {
+    margin-top: 80px;
+  }
+
 }
 
 /* ICONOS */
@@ -141,44 +290,69 @@ header a {
 
 
 
-.catalogo {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr); /* 3 columnas */
-    column-gap: 0.2rem; /* Espacio reducido entre columnas */
-    row-gap: 1rem; /* Espacio entre filas */
-    padding: 2rem;
-    justify-items: center;
+/* Contenedor externo que permite scroll horizontal */
+.catalogo-container {
+    width: 100%;        /* O el ancho que quieras */
+    overflow-x: auto;   /* Scroll horizontal si el contenido desborda */
+    -webkit-overflow-scrolling: touch; /* Mejor scroll en móviles */
+    border: 1px solid #ccc; /* Opcional, para visualizar */
+    padding: 0.5rem 0;    /* Opcional, para separar un poco */
 }
+
+/* Catalogo usa flex row para filas horizontales */
+.catalogo {
+    display: flex;
+    flex-direction: row;
+    gap: 0.5rem; /* Espacio entre tarjetas */
+    padding: 0 1rem;
+    /* No uses grid-template-columns si usas flex */
+}
+
+/* Responsive para móviles: apilar vertical */
 @media (max-width: 576px) {
     .catalogo {
-        row-gap: 2rem;
         flex-direction: column;
-        display: flex;
-        justify-items: center;
         align-items: center;
+        gap: 1rem;
+        padding: 0;
     }
 }
 
+
 .tarjeta {
-    background-color: #ffffff; /* Fondo blanco para contraste */
+    background-color: #ffffff;
     border-radius: 8px;
     overflow: hidden;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
     text-align: center;
     width: 240px;
+    height: 280px; /* Altura fija */
+    display: flex;
+    flex-direction: column;
     transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .tarjeta:hover {
     transform: scale(1.05);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); /* Sombra más marcada al pasar el mouse */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
 }
 
 .tarjeta img {
     width: 100%;
     height: 150px;
     object-fit: cover;
+    flex-shrink: 0; /* Para que la imagen no se reduzca */
 }
+
+/* Si tienes texto o contenido, asegúrate que no aumente la tarjeta */
+
+.tarjeta .contenido {
+    padding: 10px;
+    flex-grow: 1; /* Para que el contenido ocupe el resto */
+    overflow: hidden; /* Evita que el texto expanda la tarjeta */
+    text-overflow: ellipsis; /* Opcional: añade "..." si el texto es muy largo */
+}
+
 
 
 .info {
@@ -231,120 +405,48 @@ header a {
 /* Estilos para el contenedor de pestañas */
 /* Estilos para el contenedor de pestañas */
 .tab-container {
-    position: absolute;
-    top: -10px;    /* pega al borde superior */
-    left: -10px;   /* pega al borde izquierdo */
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    font-family: Georgia, serif;
-    z-index: 10;
-    padding: -2px; /* opcional, para un poco de espacio interno */
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 20px;
+  background-color: #ffffff;
+  font-family: 'Segoe UI', sans-serif;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  position: relative;
+  z-index: 10;
 }
 
-.logo {
-    width: 200px;
-    height: auto;
-    border-radius: 50%;
-    overflow: hidden;
-    cursor: pointer;
-    animation: zoomLogo 1.5s ease-out forwards;
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0;      /* sin margen */
-    padding: 0;     /* sin padding */
-
-}
-
-/* Efecto reflexión en logo */
-.logo::after {
-    content: "";
-    position: absolute;
-    top: 30%;
-    left: 0;
-    width: 100%;
-    height: 50%;
-    background: rgba(255, 255, 255, 0.5);
-    transform: scaleY(-1);
-    filter: blur(5px);
-    opacity: 0.5;
-}
-
-/* Animación zoomLogo */
-@keyframes zoomLogo {
-    0% {
-        width: 100vw;
-    }
-    100% {
-        width: 260px; /* coincide con el nuevo tamaño */
-    }
-}
-
-/* Ajustes responsivos */
-@media (max-width: 600px) {
-    .logo {
-        width: 80px;  /* también más grande en móvil */
-    }
-}
-
-
-    .tab-container {
-        gap: 8px;
-        top: 5px;
-        left: 5px;
-    }
-    .tab-container .tab {
-        font-size: 0.9rem;
-    }
-
-
-.tab-container > *:not(.logo) {
-    opacity: 0;
-    transform: translateY(10px); /* le das un pequeño desplazamiento hacia abajo */
-    transition: opacity 0.8s ease, transform 0.8s ease;
-    pointer-events: none; /* opcional para evitar interacción cuando están ocultos */
-}
-
-/* Clase para activar la visibilidad */
-.tab-container.show-tabs > *:not(.logo) {
-    opacity: 1;
-    transform: translateY(0);
-    pointer-events: auto;
-}
-
-.tab-container > *:not(.logo) {
-    opacity: 0;
-    transform: translateY(10px); /* le das un pequeño desplazamiento hacia abajo */
-    transition: opacity 0.8s ease, transform 0.8s ease;
-    pointer-events: none; /* opcional para evitar interacción cuando están ocultos */
-}
-
-/* Clase para activar la visibilidad */
-.tab-container.show-tabs > *:not(.logo) {
-    opacity: 1;
-    transform: translateY(0);
-    pointer-events: auto;
-}
-
-
-/* Estilos para cada pestaña */
 .tab {
-    text-decoration: none;
-    color: #721c1c;  /* Color más suave */
-    background: #f0f0f0; /* Fondo gris claro */
-    padding: 8px 12px;
-    border-radius: 5px;
-    font-size: 14px; /* Tamaño de fuente más sutil */
-    transition: background 0.3s, color 0.3s;
+  text-decoration: none;
+  color: #333;
+  background: #f2f2f2;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 15px;
+  transition: background 0.3s ease, color 0.3s ease;
 }
 
 .tab:hover {
-    background: #dcdcdc;
-    color: #007BFF;
-
+  background: #e0e0e0;
+  color: #007BFF;
 }
+
+/* Responsivo */
+@media (max-width: 600px) {
+  .tab-container {
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .tab {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+
 .icono-usuario {
     width: 24px;
     height: 24px;

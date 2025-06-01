@@ -8,14 +8,42 @@
     <link rel="stylesheet" href="./css/styles.css">
 </head>
     <!-- Encabezado -->
-    <header>
-      
-        <h1>📲 Nuestro servicio al cliente y ventas <a href="tel:+3197245235">3197245235</a></h1>
-    </header>
+<!-- Header principal con slider y logos -->
+<header class="main-header">
+  <!-- Contenedor de los dos logos a la derecha -->
+  <div class="logo-container">
+    <div class="logo logo1" >
+      <img src="./img/LOG1.png" alt="Logo 1" class="logo1" />
+    </div>
+    <div class="logo logo2">
+      <img src="./img/LOGO4.png" alt="Logo 2" />
+    </div>
+  </div>
+
+<div class="carousel">
+  <div class="slides">
+    <div class="slide active">
+      <img src="./img/friday.png" alt="Promoción 1" />
+    </div>
+    <div class="slide">
+      <img src="./img/friday.png" alt="Promoción 2" />
+    </div>
+    <div class="slide">
+      <img src="./img/friday.png" alt="Promoción 3" />
+    </div>
+  </div>
+
+  <!-- Botones de navegación -->
+  <button class="prev">&#10094;</button>
+  <button class="next">&#10095;</button>
+</div>
+
+  <!-- Título de contacto -->
+  <h1>📲 Nuestro servicio al cliente y ventas <a href="tel:+3197245235">3197245235</a></h1>
+</header>
 
 <body>
 <nav class="tab-container">
-    <img src="./img/LOG1.png" alt="Logo" class="logo">
     
     <a href="#inicio" class="tab">Sobre Nosotros</a>
     <a href="./PROYECTOS.html" class="tab">Proyectos</a>
@@ -50,19 +78,87 @@
 
 
 <script>
-  function mostrarModal() {
-    document.getElementById('modalOtros').style.display = 'flex';
-  }
-  function cerrarModal() {
-    document.getElementById('modalOtros').style.display = 'none';
-  }
-  window.addEventListener('load', () => {
-    setTimeout(() => {
-        document.querySelector('.tab-container').classList.add('show-tabs');
-    }, 2000); // 2 segundos total
-});
+  
+  document.addEventListener('DOMContentLoaded', () => {
+    // Variables
+    const slides = document.querySelectorAll('.slide');
+    const slidesContainer = document.querySelector('.slides');
+    const btnNext = document.querySelector('.next');
+    const btnPrev = document.querySelector('.prev');
+    let currentIndex = 0;
+    let slideInterval;
 
+    // Mostrar slide activa
+    function showSlide(index) {
+      slides.forEach((slide, i) => {
+        slide.classList.toggle('active', i === index);
+      });
+      slidesContainer.style.transform = `translateX(-${index * 100}%)`;
+    }
+
+    // Cambiar slide con control de índice
+    function changeSlide(index) {
+      const totalSlides = slides.length;
+      currentIndex = (index + totalSlides) % totalSlides; // ciclo circular
+      showSlide(currentIndex);
+    }
+
+    // Iniciar auto-slide
+    function startSlideShow() {
+      slideInterval = setInterval(() => {
+        changeSlide(currentIndex + 1);
+      }, 5000);
+    }
+
+    // Pausar auto-slide
+    function pauseSlideShow() {
+      clearInterval(slideInterval);
+    }
+
+    // Eventos botones
+    if (btnNext) {
+      btnNext.addEventListener('click', () => {
+        changeSlide(currentIndex + 1);
+      });
+    }
+
+    if (btnPrev) {
+      btnPrev.addEventListener('click', () => {
+        changeSlide(currentIndex - 1);
+      });
+    }
+
+    // Pausar y reanudar con mouse
+    if (slidesContainer) {
+      slidesContainer.addEventListener('mouseenter', pauseSlideShow);
+      slidesContainer.addEventListener('mouseleave', startSlideShow);
+    }
+
+    // Inicializar
+    showSlide(currentIndex);
+    startSlideShow();
+
+    // -- Código modal y pestañas (si lo necesitas) --
+    // Modal
+    window.mostrarModal = () => {
+      const modal = document.getElementById('modalOtros');
+      if (modal) modal.style.display = 'flex';
+    };
+
+    window.cerrarModal = () => {
+      const modal = document.getElementById('modalOtros');
+      if (modal) modal.style.display = 'none';
+    };
+
+    // Mostrar pestañas con retraso
+    setTimeout(() => {
+      const tabContainer = document.querySelector('.tab-container');
+      if (tabContainer) tabContainer.classList.add('show-tabs');
+    }, 2000);
+
+  });
 </script>
+
 
       <!-- Contenedor de íconos -->
       <div class="iconos">
@@ -89,7 +185,7 @@
         
     </div>
 
-
+<div class="catalogo-container">
    <!-- Catálogo de productos -->
 <div class="catalogo">
     <!-- Sección 1 -->
@@ -199,6 +295,7 @@
             </div>
         </div>
     </a>
+</div>
 </div>
 
 <!-- Testimonios -->
