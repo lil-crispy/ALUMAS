@@ -44,22 +44,21 @@
 
 <body>
 <nav class="tab-container">
-    
-    <a href="#inicio" class="tab">Sobre Nosotros</a>
-    <a href="./PROYECTOS.html" class="tab">Proyectos</a>
-    <a href="./servicios.html" class="tab">Servicios</a>
-    <div class="dropdown">
-      <a href="#contacto" class="tab">Cotizar</a>
-      <div class="dropdown-content">
-        <a href="./techo_pvc.html">Techo</a>
-        <a href="./piso_spc.html">Piso</a>
-        <a href="./uv.html">Paredes</a>
-        <a href="#" onclick="mostrarModal()">Otros productos</a>
-      </div>
-      <img src="./img/vendedor.png" alt="Usuario" class="icono-usuario" id="logo-usuario">
-    </div>
-</nav>
+  <a href="#inicio" class="tab">Sobre Nosotros</a>
+  <a href="./PROYECTOS.html" class="tab">Proyectos</a>
+  <a href="./servicios.html" class="tab">Servicios</a>
 
+  <div class="dropdown tab" id="cotizarDropdown"> <!-- Aquí agregamos el ID -->
+    <a href="#contacto" class="tab dropdown-button" onclick="toggleDropdown(event)">Cotizar</a>
+    <div class="dropdown-content">
+      <a href="./techo_pvc.html">Techo</a>
+      <a href="./piso_spc.html">Piso</a>
+      <a href="./uv.html">Paredes</a>
+      <a href="./remision.html">Hacer Remisión</a>
+      <a href="#" onclick="mostrarModal()">Otros productos</a>
+    </div>
+  </div>
+</nav>
 
 
 
@@ -78,7 +77,18 @@
 
 
 <script>
-  
+  function toggleDropdown(event) {
+    event.preventDefault();
+    const dropdown = document.getElementById('cotizarDropdown');
+    dropdown.classList.toggle('open');
+  }
+
+  document.addEventListener('click', function (e) {
+    const dropdown = document.getElementById('cotizarDropdown');
+    if (dropdown && !dropdown.contains(e.target)) {
+      dropdown.classList.remove('open');
+    }
+  });
   document.addEventListener('DOMContentLoaded', () => {
     // Variables
     const slides = document.querySelectorAll('.slide');
@@ -126,6 +136,31 @@
       btnPrev.addEventListener('click', () => {
         changeSlide(currentIndex - 1);
       });
+    }
+
+     let touchStartX = 0;
+    let touchEndX = 0;
+
+    slidesContainer.addEventListener('touchstart', (e) => {
+      touchStartX = e.changedTouches[0].screenX;
+    });
+
+    slidesContainer.addEventListener('touchend', (e) => {
+      touchEndX = e.changedTouches[0].screenX;
+      handleSwipe();
+    });
+
+    function handleSwipe() {
+      const swipeDistance = touchEndX - touchStartX;
+      const minSwipeDistance = 50; // Umbral para detectar swipe
+
+      if (swipeDistance > minSwipeDistance) {
+        // Deslizó hacia la derecha
+        changeSlide(currentIndex - 1);
+      } else if (swipeDistance < -minSwipeDistance) {
+        // Deslizó hacia la izquierda
+        changeSlide(currentIndex + 1);
+      }
     }
 
     // Pausar y reanudar con mouse

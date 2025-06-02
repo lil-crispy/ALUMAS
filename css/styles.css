@@ -9,11 +9,13 @@ body {
   background: linear-gradient(to bottom, #002147, #e6f0ff);
   color: #333;
   line-height: 1.6;
-  margin: 0; /* para evitar márgenes por defecto */
+  margin: 0;
+  padding: 0;
   min-height: 100vh;
-  zoom: 108%; 
-  overflow-y: hidden;/* que cubra toda la altura de la ventana */
+  zoom: 106%; 
+  overflow-x: hidden; /* ✅ Solo oculta desbordes horizontales */
 }
+
  /* Estructura principal del header */
 /* ==== MAIN HEADER ==== */
 .main-header {
@@ -25,12 +27,10 @@ body {
   flex-direction: column;
   justify-content: flex-start; /* cambiado */
   align-items: center;
-  gap: -4rem;
-  border-bottom: 4px solid #a3c4ff;
+  margin-bottom: -1rem;  border-bottom: 4px solid #a3c4ff;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
   /* min-height: 500px; ⛔ Eliminar esto */
   position: relative;
-  overflow: hidden;
 }
 
 
@@ -39,7 +39,7 @@ body {
   margin: 0;
   color: #ffffff;
   text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.6);
-  font-weight: 600;
+  font-weight: 60;
 
   border-radius: 8px;
   max-width: fit-content;
@@ -51,6 +51,18 @@ body {
   color: #7eabdd;
   opacity: 0.85;
 }
+@media (max-width: 600px) {
+  .main-header {
+    padding: 4rem 2rem 2rem; /* ⬅️ Más espacio arriba y abajo */
+    min-height: 199px;       /* ⬅️ Asegura que tenga una altura mínima mayor */
+  }
+
+
+  .main-header p {
+    font-size: 1.3rem;
+  }
+}
+
 
 /* ==== LOGOS ==== */
 .logo-container {
@@ -80,14 +92,14 @@ body {
     justify-content: center;
     margin: 0;
     padding: 0;
-    left: -8px;
+    left: 22px;
 }
 /* Efecto reflexión en logo */
 .logo1::after {
     content: "";
-    position: absolute;
+    position: relative;
     top: 30%;
-    left: 0;
+    right: 100px;
     width: 100%;
     height: 50%;
     transform: scaleY(-1);
@@ -116,6 +128,7 @@ body {
 
 
 
+
 /* Logo 2 superpuesto parcialmente encima del logo 1 */
 .logo2 {
   width: 500px;
@@ -139,7 +152,22 @@ body {
   max-width: 50%;
   height: auto;
 }
-/* Animaciones */
+
+@media (max-width: 600px) {
+  .logo1 img {
+    max-width: 90px; /* o 100%, si quieres que se ajuste al contenedor */
+    height: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .logo2 img {
+    max-width: 120px; /* o 100%, si quieres que se ajuste al contenedor */
+    height: auto;
+    margin-right: 218px;
+
+  }
+}
 
 
 @keyframes fadeInLogo {
@@ -161,6 +189,7 @@ body {
   margin-top: 110px;
   margin-left: auto;
   margin-right: auto;
+  z-index: 1;
 }
 
 .slides {
@@ -173,18 +202,70 @@ body {
   width: 100%; /* Cada slide ocupa 100% del .slider */
   flex-shrink: 0;
   position: relative;
-  /* Se muestra bloque para que no se oculten (no usar display:none) */
   display: block;
 }
 
 .slide img {
   width: 90%;
   margin-top: 50px;
+  max-height: 400px;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
 
-  max-height: 300px; /* Limita la altura para evitar que crezca demasiado */
- /* Ajusta la imagen sin recortar */
-
+  /* Máscara con desvanecimiento más amplio */
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 30%, black 70%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0%, black 30%, black 70%, transparent 100%);
+  
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
 }
+/* === GENERAL === */
+html, body {
+
+  overflow-x: hidden; /* ✅ evita desbordamientos horizontales */
+}
+
+/* === CELULAR === */
+@media (max-width: 600px) {
+  .slider {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    max-height: 100vh;
+    margin-top: 0;
+    overflow: hidden;
+  }
+
+  .slides {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    height: 100%;
+  }
+
+  .slide {
+    flex: 0 0 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+  }
+
+  .slide img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    margin: 0;
+    padding: 0;
+
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%);
+    mask-image: linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%);
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+  }
+}
+
 
 
 /* Flechas de navegación */
@@ -208,7 +289,10 @@ body {
 /* ==== RESPONSIVE ==== */
 @media (max-width: 600px) {
   .main-header h1 {
-    font-size: 1.2rem;
+    font-size: 0.6rem;
+    margin-top:10px; /* ≈ 9.6px */
+
+  
   }
 
   .main-header p {
@@ -239,27 +323,28 @@ body {
     gap: 15px;
 }
 
-
 /* Contenedor individual */
 .iconos a {
     position: relative;
     display: flex;
     align-items: center;
-    width: 40px;
-    height: 40px;
+    width: 60px; /* ancho inicial más grande */
+    height: 60px; /* alto más grande */
     background-color: #f0f0f0;
-    border-radius: 12px;
+    border-radius: 16px;
     overflow: hidden;
     transition: width 0.7s ease;
+    padding-left: 5px; /* espacio para el ícono */
 }
 
 /* Imagen del ícono */
 .iconos img {
-    width: 24px;
-    height: 24px;
-    margin-left: 8px;
+    width: 32px; /* ícono más grande */
+    height: 32px;
+    margin-left: 8px; /* mantiene desplazamiento hacia la derecha */
     transition: transform 0.3s ease;
 }
+
 
 /* Texto del ícono (oculto inicialmente) */
 .iconos span {
@@ -276,7 +361,7 @@ body {
 /* Hover: expansión y animación */
 .iconos a:hover {
     width: 240px;
-    background-color: #e0e0e0;
+ 
 }
 
 .iconos a:hover span {
@@ -286,6 +371,35 @@ body {
 
 .iconos a:hover img {
     transform: scale(1.1);
+}
+@media (max-width: 600px) {
+  .iconos {
+    top: 10px;
+    right: 5px;
+    gap: 8px;
+  }
+
+  .iconos a {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%; /* Más redondeado */
+    padding: 0;
+  }
+
+  .iconos img {
+    width: 18px;
+    height: 18px;
+    margin-left: 8px;
+  }
+
+  .iconos span {
+    display: none; /* Oculta el texto en móvil */
+  }
+
+  .iconos a:hover {
+    width: 34px; /* No expandirse en móvil */
+
+  }
 }
 
 
@@ -409,7 +523,7 @@ body {
   flex-wrap: wrap;
   justify-content: center;
   gap: 10px;
-  padding: 10px 20px;
+  padding: 5px 5px;
   background-color: #ffffff;
   font-family: 'Segoe UI', sans-serif;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
@@ -423,7 +537,7 @@ body {
   background: #f2f2f2;
   padding: 8px 16px;
   border-radius: 6px;
-  font-size: 15px;
+  font-size: 12px;
   transition: background 0.3s ease, color 0.3s ease;
 }
 
@@ -447,12 +561,6 @@ body {
 }
 
 
-.icono-usuario {
-    width: 24px;
-    height: 24px;
-    margin-right: 10px;
-    vertical-align: middle;
-}
 
 /* Testimonios */
 .testimonial-container {
@@ -581,10 +689,11 @@ body {
   z-index: 1001;
 }
 
+/* Estilos base (como los tuyos) */
 .dropdown {
   position: relative;
   display: inline-block;
-  vertical-align: middle; /* Alinea con el resto */
+  vertical-align: middle;
   top: 5px;
 }
 
@@ -595,7 +704,7 @@ body {
   min-width: 160px;
   box-shadow: 0 8px 16px rgba(0,0,0,0.2);
   z-index: 1;
-  right: 0; /* Alinea hacia la derecha */
+  right: 0;
   border-radius: 8px;
   overflow: hidden;
 }
@@ -626,4 +735,45 @@ body {
 
 .dropdown-content a:hover {
   background-color: #f0f0f0;
+}
+
+/* === Responsivo para móviles === */
+@media (max-width: 600px) {
+  .dropdown {
+    display: block; /* Ocupa todo el ancho disponible */
+    width: 100%;
+    top: 0;
+    margin-bottom: 10px;
+  }
+
+  .dropdown-content {
+    position: static; /* Para que el contenido se inserte en el flujo normal */
+    box-shadow: none;
+    border-radius: 0;
+    min-width: 100%;
+    max-height: 200px; /* Limita alto para scroll */
+    overflow-y: auto;
+    display: none; /* Se controla con una clase JS o :focus, porque hover no es confiable en móvil */
+  }
+
+  /* Mostrar contenido al hacer foco en dropdown (por ejemplo, con tab o click) */
+  .dropdown:focus-within .dropdown-content,
+  .dropdown.open .dropdown-content {
+    display: block;
+  }
+
+  /* Ajustar enlaces */
+  .dropdown-content a {
+    padding: 14px 20px;
+    font-size: 16px;
+  }
+}
+@media (max-width: 600px) {
+  .dropdown-content {
+    display: none;
+  }
+
+  .dropdown.open .dropdown-content {
+    display: block;
+  }
 }
