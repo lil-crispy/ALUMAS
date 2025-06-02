@@ -14,6 +14,7 @@ body {
   min-height: 100vh;
   zoom: 106%; 
   overflow-x: hidden; /* ✅ Solo oculta desbordes horizontales */
+  height: 100%;
 }
 
  /* Estructura principal del header */
@@ -35,15 +36,62 @@ body {
 
 
 .main-header h1 {
-  font-size: 1.3rem;
+  
   margin: 0;
   color: #ffffff;
   text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.6);
-  font-weight: 60;
-
+  font-weight: 600;
   border-radius: 8px;
   max-width: fit-content;
+  animation: pulse 1.8s infinite ease-in-out;
+  margin-bottom: -10px;
+  font-size: 2rem;
 }
+
+/* Solo cambia la fuente del enlace dentro del h1 */
+.main-header h1 a {
+
+  color: #ff0000d7; /* Azul fuerte para el texto */
+  text-decoration: none;
+  font-weight: bold;
+  font-size: 2rem; /* Tamaño más grande */
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+
+  /* Contorno oscuro para resaltar contra fondo claro */
+  text-shadow:
+    -1px -1px 0 #ffffff,
+     1px -1px 0 #fffefe,
+    -1px  1px 0 #ffffff,
+     1px  1px 0 #ffffff;
+}
+@media (max-width: 600px) {
+  .main-header h1 {
+    font-size: 0.6rem; /* más pequeño que 1.3rem */
+    animation-duration: 1.5s;
+    margin-bottom: -15px; /* un poco más rápido si quieres */
+  }
+
+  .main-header h1 a {
+    font-size: 0.7rem; /* más pequeño que 0.8rem */
+    text-shadow:
+      -0.8px -0.8px 0 #ffffff,
+       0.8px -0.8px 0 #fffefe,
+      -0.8px  0.8px 0 #ffffff,
+       0.8px  0.8px 0 #ffffff;
+  }
+}
+
+
+/* Animación de palpitación */
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
 
 .main-header p {
   font-size: 1.2rem;
@@ -64,24 +112,26 @@ body {
 }
 
 
+
 /* ==== LOGOS ==== */
 .logo-container {
-  position: fixed;
-  top: 1px;  /* menos margen */
-  left: -50px;
+  position: relative;
+  top: -42px;  /* menos margen */
+  right: 680px;
   display: flex;
   align-items: center;
   gap: 0; /* sin espacio */
   z-index: 1000;
   cursor: pointer;
+  margin-bottom: -80px;
 }
 
 /* Logo 1 más pequeño y animado */
 /* Animación zoom solo para el logo con clase logo1 */
 .logo1 {
     width: 200px;
-    top: -5px;
-    height: 15;
+    top: 5px;
+    height: 15px;
     border-radius: 30%;
     cursor: pointer;
     animation: zoomLogo 1.5s ease-out forwards;
@@ -107,8 +157,7 @@ body {
     opacity: 0.5;
 }
 
-/* Animación zoomLogo */
-/* Animación zoomLogo */
+
 @keyframes zoomLogo {
     0% {
         width: 100vw;
@@ -117,14 +166,6 @@ body {
         width: 260px; /* coincide con el nuevo tamaño */
     }
 }
-
-/* Ajustes responsivos */
-@media (max-width: 600px) {
-    .logo {
-        width: 80px;  /* también más grande en móvil */
-    }
-}
-
 
 
 
@@ -156,15 +197,30 @@ body {
 @media (max-width: 600px) {
   .logo1 img {
     max-width: 90px; /* o 100%, si quieres que se ajuste al contenedor */
-    height: auto;
+    animation: zoomLogoSmall 1.5s ease-out forwards;
+    
   }
+  
 }
+@media (max-width: 600px) {
+.logo-container {
+  position: relative;
+  top: -68px;  /* menos margen */
+  right: 80px;
+  display: flex;
+  align-items: center;
+  gap: 0; /* sin espacio */
+  z-index: 1000;
+  cursor: pointer;
+  margin-bottom: -50px;
+}
+ }
 
 @media (max-width: 600px) {
   .logo2 img {
-    max-width: 120px; /* o 100%, si quieres que se ajuste al contenedor */
+    max-width: 160px; /* o 100%, si quieres que se ajuste al contenedor */
     height: auto;
-    margin-right: 218px;
+    margin-right: 190px;
 
   }
 }
@@ -222,7 +278,8 @@ body {
 }
 /* === GENERAL === */
 html, body {
-
+  margin: 0;
+  padding: 0;
   overflow-x: hidden; /* ✅ evita desbordamientos horizontales */
 }
 
@@ -253,7 +310,7 @@ html, body {
   }
 
   .slide img {
-    width: 100%;
+    width: 140%;
     height: 100%;
     object-fit: cover;
     margin: 0;
@@ -284,6 +341,13 @@ html, body {
 
 .prev { left: 10px; }
 .next { right: 10px; }
+
+@media (max-width: 600px) {
+  .prev,
+  .next {
+    display: none !important;
+  }
+}
 
 
 /* ==== RESPONSIVE ==== */
@@ -688,13 +752,47 @@ html, body {
   cursor: pointer;
   z-index: 1001;
 }
+@media (max-width: 480px) {
+  .testimonial-container {
+    width: 220px;
+    left: 10px;
+    bottom: 10px;
+    padding: 10px;
+    border-radius: 10px;
+  }
+
+  .avatar {
+    width: 50px;
+    height: 50px;
+    margin-right: 8px;
+  }
+
+  .comment {
+    font-size: 0.75em;
+  }
+
+  .testimonial h4 {
+    font-size: 0.75em;
+  }
+
+  .comment-btn {
+    font-size: 0.75em;
+    padding: 5px 8px;
+  }
+
+  .modal-inner {
+    width: 85%;
+    padding: 15px;
+  }
+}
+
 
 /* Estilos base (como los tuyos) */
 .dropdown {
   position: relative;
   display: inline-block;
   vertical-align: middle;
-  top: 5px;
+ 
 }
 
 .dropdown-content {

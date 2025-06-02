@@ -11,7 +11,7 @@
 <!-- Header principal con slider y logos -->
 <header class="main-header">
   <!-- Contenedor de los dos logos a la derecha -->
-  <div class="logo-container">
+  <div class="logo-container" >
     <div class="logo logo1" >
       <img src="./img/LOG1.png" alt="Logo 1" class="logo1" />
     </div>
@@ -54,7 +54,7 @@
       <a href="./techo_pvc.html">Techo</a>
       <a href="./piso_spc.html">Piso</a>
       <a href="./uv.html">Paredes</a>
-      <a href="./remision.html">Hacer Remisión</a>
+      <a href="#" id="remision">Hacer Remisión</a>
       <a href="#" onclick="mostrarModal()">Otros productos</a>
     </div>
   </div>
@@ -77,6 +77,22 @@
 
 
 <script>
+  function updateNavButtonsVisibility() {
+  const btnPrev = document.querySelector('.prev');
+  const btnNext = document.querySelector('.next');
+  if (window.innerWidth <= 600) {
+    if (btnPrev) btnPrev.style.display = 'none';
+    if (btnNext) btnNext.style.display = 'none';
+  } else {
+    if (btnPrev) btnPrev.style.display = '';
+    if (btnNext) btnNext.style.display = '';
+  }
+}
+
+// Ejecutar al cargar y al redimensionar ventana
+window.addEventListener('load', updateNavButtonsVisibility);
+window.addEventListener('resize', updateNavButtonsVisibility);
+
   function toggleDropdown(event) {
     event.preventDefault();
     const dropdown = document.getElementById('cotizarDropdown');
@@ -422,7 +438,7 @@
   }
 
   // Validación de contraseña para acceso a remisión
-  document.getElementById('logo-usuario').addEventListener('click', function () {
+  document.getElementById('remision').addEventListener('click', function () {
     const claveCorrecta = '79333587';
     const claveUsuario = prompt('Por favor, ingresa la clave de acceso:');
     if (claveUsuario === claveCorrecta) {
