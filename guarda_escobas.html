@@ -27,17 +27,28 @@
         <br>
         <br>
         <br>
-        <div class="navigation-controls">
-            <button class="nav-button" id="prev-btn">← Anterior</button>
-            <button class="nav-button" id="next-btn">Siguiente →</button>
-        </div>
-        
-        <div class="current-section-indicator" id="section-indicator">
-            COMPRAR
-        </div>
-    </div>
+<div class="navigation-controls">
+    <button class="nav-button" id="prev-btn">← Anterior</button>
+    <button class="nav-button" id="next-btn">Siguiente →</button>
+</div>
+
+<!-- Botón WhatsApp: lo movemos aquí -->
+<div class="whatsapp-button" id="section-indicator" onclick="enviarWhatsApp()">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp" class="whatsapp-logo">
+    COMPRAR
+</div>
 
     <script>
+function enviarWhatsApp() {
+    const texto = document.getElementById("section-indicator").textContent;
+    const referencia = texto.replace("COMPRAR: ", "").trim();
+    const mensaje = encodeURIComponent(`Hola, quiero más información sobre la referencia ${referencia}`);
+    const url = `https://wa.me/573197245235?text=${mensaje}`;
+    window.open(url, '_blank');
+}
+const numero = document.getElementById("section-indicator").textContent.trim();
+const mensaje = encodeURIComponent("Hola, quiero más información sobre la referencia " );
+
 const sections = [
     { name: "1", fragmentImage: "./img/guardaescoba/grecia.jpg", backgroundImage: "./img/guardaescoba/fondo-grecia.png" },
     { name: "2", fragmentImage: "./img/guardaescoba/esmeralda.png", backgroundImage: "./img/guardaescoba/fondo-esmeralda.png" },
@@ -48,20 +59,21 @@ const sections = [
     { name: "7", fragmentImage: "./img/guardaescoba/amarillo.png", backgroundImage: "./img/guardaescoba/fondo-amarillo.png" },  
     { name: "8", fragmentImage: "./img/guardaescoba/pino.jpg", backgroundImage: "./img/guardaescoba/fondo-pino.jpg" },  
     { name: "9", fragmentImage: "./img/guardaescoba/cedrorojo.jpg", backgroundImage: "./img/guardaescoba/fondo-cedrorojo.jpg" },
-    { name: "10", fragmentImage: "./img/modelo-moderno.jpg", backgroundImage: "./img/fondo-moderno.jpg" },
-    { name: "Modelo Rústico", fragmentImage: "./img/modelo-rustico.jpg", backgroundImage: "./img/fondo-rustico.jpg" },
-    { name: "Modelo Elegante", fragmentImage: "./img/modelo-elegante.jpg", backgroundImage: "./img/fondo-elegante.jpg" },
-    { name: "Modelo Industrial", fragmentImage: "./img/modelo-industrial.jpg", backgroundImage: "./img/fondo-industrial.jpg" },
-    { name: "Modelo Vintage", fragmentImage: "./img/modelo-vintage.jpg", backgroundImage: "./img/fondo-vintage.jpg" },
-    { name: "Modelo Vintage", fragmentImage: "./img/modelo-vintage.jpg", backgroundImage: "./img/fondo-vintage.jpg" },
-    { name: "Modelo Vintage", fragmentImage: "./img/modelo-vintage.jpg", backgroundImage: "./img/fondo-vintage.jpg" },
-    { name: "Modelo Vintage", fragmentImage: "./img/modelo-vintage.jpg", backgroundImage: "./img/fondo-vintage.jpg" },
-    { name: "GRECIA", fragmentImage: "./img/guardaescoba/grecia.jpg", backgroundImage: "./img/guardaescoba/fondo-grecia.jpg" },
-    { name: "Modelo Moderno", fragmentImage: "./img/modelo-moderno.jpg", backgroundImage: "./img/fondo-moderno.jpg" },
-    { name: "Modelo Rústico", fragmentImage: "./img/modelo-rustico.jpg", backgroundImage: "./img/fondo-rustico.jpg" },
-    { name: "Modelo Elegante", fragmentImage: "./img/modelo-elegante.jpg", backgroundImage: "./img/fondo-elegante.jpg" },
-    { name: "Modelo Industrial", fragmentImage: "./img/modelo-industrial.jpg", backgroundImage: "./img/fondo-industrial.jpg" },
-    { name: "Modelo Vintage", fragmentImage: "./img/modelo-vintage.jpg", backgroundImage: "./img/fondo-vintage.jpg" }
+    { name: "10", fragmentImage: "./img/guardaescoba/cafe.png", backgroundImage: "./img/guardaescoba/fondocaf.png" },
+    { name: "11", fragmentImage: "./img/guardaescoba/blancoilusion.png", backgroundImage: "./img/guardaescoba/fondoblancoilusion.png" },
+    { name: "12", fragmentImage: "./img/guardaescoba/algarrobo.png", backgroundImage: "./img/guardaescoba/fondoalgarrobo.png" },
+    { name: "13", fragmentImage: "./img/guardaescoba/miel.png", backgroundImage: "./img/guardaescoba/fondomiel.png" },
+    { name: "14", fragmentImage: "./img/guardaescoba/negrotextura.jpg", backgroundImage: "./img/guardaescoba/fondonegrotextura.jpg" },
+    { name: "15", fragmentImage: "./img/guardaescoba/caoba.jpg", backgroundImage: "./img/guardaescoba/fondocaoba.jpg" },
+    { name: "16", fragmentImage: "./img/guardaescoba/robleclaro.jpg", backgroundImage: "./img/guardaescoba/fondorobleclaro.jpg" },
+    { name: "17", fragmentImage: "./img/guardaescoba/avellan.jpg", backgroundImage: "./img/guardaescoba/fondoavellan.jpg" },
+    { name: "18", fragmentImage: "./img/guardaescoba/pardo.jpg", backgroundImage: "./img/guardaescoba/fondopardo.jpg" },
+    { name: "20", fragmentImage: "./img/guardaescoba/marron.jpg", backgroundImage: "./img/guardaescoba/fondomarron.jpg" },
+    { name: "21", fragmentImage: "./img/guardaescoba/robleoscuro.jpg", backgroundImage: "./img/guardaescoba/fondorobleoscuro.jpg" },
+    { name: "22", fragmentImage: "./img/guardaescoba/wengueclaro.jpg", backgroundImage: "./img/guardaescoba/fondowengueclaro.jpg" },
+    { name: "23", fragmentImage: "./img/guardaescoba/crema.jpg", backgroundImage: "./img/guardaescoba/fondocrema.jpg" },
+    { name: "24", fragmentImage: "./img/guardaescoba/paris.jpg", backgroundImage: "./img/guardaescoba/fondoparis.jpg" },
+    { name: "25", fragmentImage: "./img/guardaescoba/nuez.jpg", backgroundImage: "./img/guardaescoba/fondonuez.jpg" }
 ];
 
 const sectionsContainer = document.getElementById('sections-container');
@@ -158,6 +170,8 @@ prevBtn.addEventListener('click', () => rotateSlider('prev'));
 document.body.style.backgroundImage = `url('${sections[0].backgroundImage}')`;
 document.body.style.backgroundSize = "cover";
 document.body.style.backgroundPosition = "center";
+
+
 
     </script>
 </body>

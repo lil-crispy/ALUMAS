@@ -115,62 +115,63 @@ body {
 
 /* ==== LOGOS ==== */
 .logo-container {
-  position: relative;
-  top: -42px;  /* menos margen */
-  right: 680px;
+  position: fixed;
+  top: 2px;
+  right: 960px;
   display: flex;
   align-items: center;
-  gap: 0; /* sin espacio */
+  gap: 0;
   z-index: 1000;
   cursor: pointer;
   margin-bottom: -80px;
 }
 
-/* Logo 1 más pequeño y animado */
-/* Animación zoom solo para el logo con clase logo1 */
+/* Logo 1: animado desde la derecha con efecto zoom */
 .logo1 {
-    width: 200px;
-    top: 5px;
-    height: 15px;
-    border-radius: 30%;
-    cursor: pointer;
-    animation: zoomLogo 1.5s ease-out forwards;
-    position: relative;
-    display: flex
-;
-    align-items: center;
-    justify-content: center;
-    margin: 0;
-    padding: 0;
-    left: 22px;
+  width: 200px;
+  height: auto;
+  border-radius: 30%;
+  cursor: pointer;
+  animation: zoomLogo 1.5s ease-out forwards;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  left: 22px;
+  opacity: 0;
+  transform: translateX(100vw); /* Entrada desde la derecha */
 }
-/* Efecto reflexión en logo */
+
+/* Efecto reflexión en el logo */
 .logo1::after {
-    content: "";
-    position: relative;
-    top: 30%;
-    right: 100px;
-    width: 100%;
-    height: 50%;
-    transform: scaleY(-1);
-    filter: blur(5px);
-    opacity: 0.5;
+  content: "";
+  position: relative;
+  top: 30%;
+  right: 100px;
+  width: 100%;
+  height: 50%;
+  transform: scaleY(-1);
+  filter: blur(5px);
+  opacity: 0.5;
 }
 
-
+/* Animación para logo1: de derecha a izquierda con zoom */
 @keyframes zoomLogo {
-    0% {
-        width: 100vw;
-    }
-    100% {
-        width: 260px; /* coincide con el nuevo tamaño */
-    }
+  0% {
+    width: 100vw;
+    transform: translateX(100vw);
+    opacity: 0;
+  }
+  100% {
+    width: 260px;
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
-
-
-
-/* Logo 2 superpuesto parcialmente encima del logo 1 */
+/* Logo 2: aparece superpuesto sobre logo1 */
 .logo2 {
   width: 500px;
   height: 60px;
@@ -184,48 +185,11 @@ body {
   cursor: pointer;
   position: relative;
   margin-left: -255px;
-  z-index: 9999; 
+  z-index: 9999;
   margin-top: 10px;
 }
 
-/* Imagen interna logos */
-.logo img {
-  max-width: 50%;
-  height: auto;
-}
-
-@media (max-width: 600px) {
-  .logo1 img {
-    max-width: 90px; /* o 100%, si quieres que se ajuste al contenedor */
-    animation: zoomLogoSmall 1.5s ease-out forwards;
-    
-  }
-  
-}
-@media (max-width: 600px) {
-.logo-container {
-  position: relative;
-  top: -68px;  /* menos margen */
-  right: 80px;
-  display: flex;
-  align-items: center;
-  gap: 0; /* sin espacio */
-  z-index: 1000;
-  cursor: pointer;
-  margin-bottom: -50px;
-}
- }
-
-@media (max-width: 600px) {
-  .logo2 img {
-    max-width: 160px; /* o 100%, si quieres que se ajuste al contenedor */
-    height: auto;
-    margin-right: 190px;
-
-  }
-}
-
-
+/* Animación de aparición para logo2 */
 @keyframes fadeInLogo {
   0% {
     opacity: 0;
@@ -236,6 +200,39 @@ body {
     transform: translateX(0);
   }
 }
+
+/* Imágenes internas de los logos */
+.logo img {
+  max-width: 50%;
+  height: auto;
+}
+
+/* ==== RESPONSIVE ==== */
+@media (max-width: 600px) {
+  .logo-container {
+    position: relative;
+    top: -68px;
+    right: 80px;
+    display: flex;
+    align-items: center;
+    gap: 0;
+    z-index: 1000;
+    cursor: pointer;
+    margin-bottom: -50px;
+  }
+
+  .logo1 img {
+    max-width: 90px;
+    animation: zoomLogo 1.5s ease-out forwards;
+  }
+
+  .logo2 img {
+    max-width: 160px;
+    height: auto;
+    margin-right: 190px;
+  }
+}
+
 
 /* ==== SLIDER ==== */
 .slider {
