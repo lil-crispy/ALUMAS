@@ -2062,8 +2062,9 @@
 
     try {
       const logoBase64 = await convertirImagenABase64('./img/logo5.png');
-      doc.addImage(logoBase64, 'PNG', 20, y, 40, 20);
-      y += 26;
+      doc.addImage(logoBase64, 'PNG', 10, y, 60, 30); // Más ancho y más alto
+       y += 36; // Aumentar el espacio vertical para evitar que el texto lo sobreponga
+
     } catch (error) {
       console.error("No se pudo cargar el logo:", error);
     }
@@ -2076,7 +2077,7 @@
     y += 6;
 
     doc.setFontSize(10);
-    doc.text('📦 ORDEN DE COMPRA 📦', 10, y);
+    doc.text(' ORDEN DE COMPRA ', 10, y);
     y += 6;
     doc.line(5, y, 75, y);
     y += 4;
@@ -2100,7 +2101,7 @@
     doc.setFontSize(10);
     doc.text('Gracias por tu compra.', 10, y);
     y += 5;
-    doc.text('www.alumas.com', 10, y);
+    doc.text('www.ferredistribucionesalumas.com', 10, y);
 
     doc.save('orden_compra_ALUMAS.pdf');
   }
