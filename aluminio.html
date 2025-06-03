@@ -1939,7 +1939,7 @@
     for (let i = 1; i <= 1000; i++) {
       unidades.forEach(ue => cantidadesValidas.push(ue * i));
     }
-    return cantidadesValidas.reduce((prev, curr) => 
+    return cantidadesValidas.reduce((prev, curr) =>
       Math.abs(curr - cantidad) < Math.abs(prev - cantidad) ? curr : prev
     );
   }
@@ -2032,7 +2032,6 @@
     window.open(url, '_blank');
   }
 
-  // ✅ Event listeners cuando el DOM esté listo
   document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-carrito').addEventListener('click', toggleCarrito);
     document.querySelectorAll('.agregar-btn').forEach((btn, i) => {
@@ -2046,36 +2045,83 @@
 
     document.getElementById('buscador').addEventListener('keyup', filtrarProductos);
   });
-  function imprimirOrdenCompra() {
-  const ticket = document.getElementById('ticket');
-  const itemsDiv = document.getElementById('ticket-items');
-  const totalDiv = document.getElementById('ticket-total');
-  
-  itemsDiv.innerHTML = '';
-  let total = 0;
 
-  carrito.forEach(item => {
-    const subtotal = item.precio * item.cantidad;
-    total += subtotal;
-    itemsDiv.innerHTML += `
-      <div>
-        ${item.nombre}  
-        x${item.cantidad} - $${subtotal.toLocaleString()}
-      </div>`;
-  });
+  async function imprimirOrdenCompra() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: [80, 297]
+    });
 
-  totalDiv.textContent = `TOTAL: $${total.toLocaleString()}`;
+    const nombreFerreteria = document.getElementById('nombre-ferreteria').value.trim();
+    const direccionFerreteria = document.getElementById('direccion-ferreteria').value.trim();
 
-  // Abrir nueva ventana e imprimir
-  const ventana = window.open('', '', 'width=300,height=600');
-  ventana.document.write(`<pre>${ticket.innerHTML}</pre>`);
-  ventana.document.close();
-  ventana.focus();
-  ventana.print();
-  ventana.close();
-}
+    let y = 10;
+    let total = 0;
 
+    try {
+      const logoBase64 = await convertirImagenABase64('./img/logo5.png');
+      doc.addImage(logoBase64, 'PNG', 20, y, 40, 20);
+      y += 26;
+    } catch (error) {
+      console.error("No se pudo cargar el logo:", error);
+    }
+
+    doc.setFontSize(12);
+    doc.text(nombreFerreteria || 'ALUMAS FERRETERÍA', 10, y);
+    y += 6;
+    doc.setFontSize(10);
+    doc.text(direccionFerreteria || 'Dirección no especificada', 10, y);
+    y += 6;
+
+    doc.setFontSize(10);
+    doc.text('📦 ORDEN DE COMPRA 📦', 10, y);
+    y += 6;
+    doc.line(5, y, 75, y);
+    y += 4;
+
+    carrito.forEach(item => {
+      const subtotal = item.precio * item.cantidad;
+      total += subtotal;
+      const nombre = item.nombre.substring(0, 24);
+      doc.text(`${nombre}`, 5, y);
+      y += 5;
+      doc.text(`x${item.cantidad} - $${subtotal.toLocaleString()}`, 10, y);
+      y += 6;
+    });
+
+    doc.line(5, y, 75, y);
+    y += 6;
+    doc.setFontSize(12);
+    doc.text(`TOTAL: $${total.toLocaleString()}`, 10, y);
+    y += 10;
+
+    doc.setFontSize(10);
+    doc.text('Gracias por tu compra.', 10, y);
+    y += 5;
+    doc.text('www.alumas.com', 10, y);
+
+    doc.save('orden_compra_ALUMAS.pdf');
+  }
+
+  function convertirImagenABase64(ruta) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous'; // Solo si la imagen está alojada en otro dominio
+      img.onload = function () {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        canvas.getContext('2d').drawImage(img, 0, 0);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.onerror = reject;
+      img.src = ruta;
+    });
+  }
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 
 </body>
