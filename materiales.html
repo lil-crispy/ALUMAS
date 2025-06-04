@@ -7,6 +7,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="./img/LOGO3.png" />
   <style>
+
+    
     /* (Tu CSS original, sin cambios) */
     /* Solo quité los estilos de <a> para que no parezca un link */
     
@@ -222,6 +224,53 @@
       0% { transform: scale(0.8); opacity: 0; }
       100% { transform: scale(1); opacity: 1; }
     }
+
+    @media (max-width: 768px) {
+  .titulo {
+    font-size: 2em;
+  }
+
+  .header {
+    padding: 20px 10px;
+  }
+
+  .logo-container {
+    top: 10px;
+    right: 10px;
+    width: 100px;
+    height: 100px;
+  }
+
+  .contenedor-tarjetas {
+    grid-template-columns: repeat(2, 1fr);
+    padding: 10px;
+    gap: 12px;
+  }
+
+  .tarjeta {
+    width: 100%;
+    height: 220px;
+    font-size: 0.9em;
+  }
+
+  .modal-content, .modal-contenido {
+    width: 90%;
+    margin: 20% auto;
+    padding: 20px;
+  }
+
+  .cta-button {
+    padding: 12px 24px;
+    font-size: 1em;
+  }
+
+  .modal-content img,
+  .modal-contenido img {
+    width: 20px;
+    height: 20px;
+  }
+}
+
   </style>
 </head>
 <body>
