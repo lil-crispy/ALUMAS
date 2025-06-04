@@ -2071,7 +2071,7 @@
 const logoBase64 = await convertirImagenABase64('./img/logo5.png');
 const logoWidth = 120;
 const logoHeight = 45;
-const x = 10; // margen izquierdo
+const x = 4; // margen izquierdo
 doc.addImage(logoBase64, 'PNG', x, y, logoWidth, logoHeight);
 
 y += logoHeight + 10;
@@ -2080,63 +2080,80 @@ y += logoHeight + 10;
       console.error("No se pudo cargar el logo:", error);
     }
 
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
+// Obtener fecha y hora actual
+const fechaActual = new Date();
+const fechaStr = fechaActual.toLocaleDateString();  // formato local de fecha
+const horaStr = fechaActual.toLocaleTimeString();   // formato local de hora
+
+doc.setFont("helvetica", "bold");
+doc.setFontSize(26);
 doc.text('REMISIÓN DE COMPRA', 20, y);
-    y += 10;
+y += 16;
 
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Nombre: ${nombreFerreteria || 'ALUMAS FERRETERÍA'}`, 20, y);
-    y += 7;
-    doc.text(`Dirección: ${direccionFerreteria || 'Dirección no especificada'}`, 20, y);
-    y += 10;
+// Número de teléfono para ventas y fecha/hora
+doc.setFontSize(16);
+doc.setFont("helvetica", "normal");
+doc.text('Ventas: +57 3197245235', 20, y);
+doc.text(`Fecha: ${fechaStr}  Hora: ${horaStr}`, 140, y);  // alineado a la derecha aprox.
+y += 16;
 
-    doc.setLineWidth(0.5);
-    doc.line(20, y, 190, y);
-    y += 6;
+// Datos de la ferretería
+doc.setFontSize(20);
+doc.text(`Nombre: ${nombreFerreteria || 'ALUMAS FERRETERÍA'}`, 20, y);
+y += 12;
+doc.text(`Dirección: ${direccionFerreteria || 'Dirección no especificada'}`, 20, y);
+y += 14;
 
-    doc.setFont("helvetica", "bold");
-    doc.text("Detalle del pedido:", 20, y);
-    y += 8;
+// Línea separadora
+doc.setLineWidth(0.5);
+doc.line(20, y, 190, y);
+y += 10;
 
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "normal");
+doc.setFont("helvetica", "bold");
+doc.setFontSize(20);
+doc.text("Detalle del pedido:", 20, y);
+y += 14;
 
-    carrito.forEach(item => {
-      const subtotal = item.precio * item.cantidad;
-      total += subtotal;
+doc.setFontSize(18);
+doc.setFont("helvetica", "normal");
 
-      doc.setFont("helvetica", "bold");
-      doc.text(`${item.nombre.substring(0, 60)}`, 25, y);
-      y += 6;
+carrito.forEach(item => {
+  const subtotal = item.precio * item.cantidad;
+  total += subtotal;
 
-      doc.setFont("helvetica", "normal");
-      doc.text(`Cantidad: ${item.cantidad}  |  Subtotal: $${subtotal.toLocaleString()}`, 30, y);
-      y += 10;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.text(`${item.nombre.substring(0, 60)}`, 25, y);
+  y += 10;
 
-      if (y > 270) {
-        doc.addPage();
-        y = 20;
-      }
-    });
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(16);
+  doc.text(`Cantidad: ${item.cantidad}  |  Subtotal: $${subtotal.toLocaleString()}`, 30, y);
+  y += 14;
 
-    doc.setLineWidth(0.5);
-    doc.line(20, y, 190, y);
-    y += 10;
+  if (y > 270) {
+    doc.addPage();
+    y = 20;
+  }
+});
 
-    doc.setFontSize(13);
-    doc.setFont("helvetica", "bold");
-    doc.text(`TOTAL: $${total.toLocaleString()}`, 105, y, null, null, 'center');
-    y += 15;
+doc.setLineWidth(0.5);
+doc.line(20, y, 190, y);
+y += 14;
 
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "italic");
-    doc.text('Gracias por tu compra.', 20, y);
-     y += 5;
-    doc.text('www.ferredistribucionesalumas.com', 20, y);
+doc.setFontSize(22);
+doc.setFont("helvetica", "bold");
+doc.text(`TOTAL: $${total.toLocaleString()}`, 105, y, null, null, 'center');
+y += 20;
 
-    doc.save('remision_ALUMAS.pdf');
+doc.setFontSize(16);
+doc.setFont("helvetica", "italic");
+doc.text('Gracias por tu compra.', 20, y);
+y += 8;
+doc.text('www.ferredistribucionesalumas.com', 20, y);
+
+doc.save('remision_ALUMAS.pdf');
+
   }
 
   document.addEventListener('DOMContentLoaded', () => {
