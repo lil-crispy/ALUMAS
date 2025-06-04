@@ -2032,6 +2032,113 @@
     window.open(url, '_blank');
   }
 
+  async function convertirImagenABase64(url) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = "Anonymous";
+      img.onload = function () {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+        const dataURL = canvas.toDataURL("image/png");
+        resolve(dataURL);
+      };
+      img.onerror = function (error) {
+        console.error("Error al cargar la imagen:", error);
+        reject(error);
+      };
+      img.src = url;
+    });
+  }
+
+  async function imprimirOrdenCompra() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    const nombreFerreteria = document.getElementById('nombre-ferreteria').value.trim();
+    const direccionFerreteria = document.getElementById('direccion-ferreteria').value.trim();
+
+    let y = 20;
+    let total = 0;
+
+    try {
+const logoBase64 = await convertirImagenABase64('./img/logo5.png');
+const pageWidth = doc.internal.pageSize.getWidth();
+const logoWidth = 120;  // Aumentamos el ancho
+const logoHeight = 45;  // Aumentamos la altura
+const x = (pageWidth - logoWidth) / 2;
+doc.addImage(logoBase64, 'PNG', x, y, logoWidth, logoHeight);
+y += logoHeight + 10;
+
+    } catch (error) {
+      console.error("No se pudo cargar el logo:", error);
+    }
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.text('REMISIÓN DE COMPRA', 105, y, null, null, 'center');
+    y += 10;
+
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Nombre: ${nombreFerreteria || 'ALUMAS FERRETERÍA'}`, 20, y);
+    y += 7;
+    doc.text(`Dirección: ${direccionFerreteria || 'Dirección no especificada'}`, 20, y);
+    y += 10;
+
+    doc.setLineWidth(0.5);
+    doc.line(20, y, 190, y);
+    y += 6;
+
+    doc.setFont("helvetica", "bold");
+    doc.text("Detalle del pedido:", 20, y);
+    y += 8;
+
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "normal");
+
+    carrito.forEach(item => {
+      const subtotal = item.precio * item.cantidad;
+      total += subtotal;
+
+      doc.setFont("helvetica", "bold");
+      doc.text(`${item.nombre.substring(0, 60)}`, 25, y);
+      y += 6;
+
+      doc.setFont("helvetica", "normal");
+      doc.text(`Cantidad: ${item.cantidad}  |  Subtotal: $${subtotal.toLocaleString()}`, 30, y);
+      y += 10;
+
+      if (y > 270) {
+        doc.addPage();
+        y = 20;
+      }
+    });
+
+    doc.setLineWidth(0.5);
+    doc.line(20, y, 190, y);
+    y += 10;
+
+    doc.setFontSize(13);
+    doc.setFont("helvetica", "bold");
+    doc.text(`TOTAL: $${total.toLocaleString()}`, 105, y, null, null, 'center');
+    y += 15;
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "italic");
+    doc.text('Gracias por tu compra.', 105, y, null, null, 'center');
+    y += 5;
+    doc.text('www.ferredistribucionesalumas.com', 105, y, null, null, 'center');
+
+    doc.save('remision_ALUMAS.pdf');
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-carrito').addEventListener('click', toggleCarrito);
     document.querySelectorAll('.agregar-btn').forEach((btn, i) => {
@@ -2045,85 +2152,9 @@
 
     document.getElementById('buscador').addEventListener('keyup', filtrarProductos);
   });
-
-  async function imprimirOrdenCompra() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: [80, 297]
-    });
-
-    const nombreFerreteria = document.getElementById('nombre-ferreteria').value.trim();
-    const direccionFerreteria = document.getElementById('direccion-ferreteria').value.trim();
-
-    let y = 10;
-    let total = 0;
-
-    try {
-      const logoBase64 = await convertirImagenABase64('./img/logo5.png');
-      doc.addImage(logoBase64, 'PNG', 10, y, 60, 30); // Más ancho y más alto
-       y += 36; // Aumentar el espacio vertical para evitar que el texto lo sobreponga
-
-    } catch (error) {
-      console.error("No se pudo cargar el logo:", error);
-    }
-
-    doc.setFontSize(12);
-    doc.text(nombreFerreteria || 'ALUMAS FERRETERÍA', 10, y);
-    y += 6;
-    doc.setFontSize(10);
-    doc.text(direccionFerreteria || 'Dirección no especificada', 10, y);
-    y += 6;
-
-    doc.setFontSize(10);
-    doc.text(' ORDEN DE COMPRA ', 10, y);
-    y += 6;
-    doc.line(5, y, 75, y);
-    y += 4;
-
-    carrito.forEach(item => {
-      const subtotal = item.precio * item.cantidad;
-      total += subtotal;
-      const nombre = item.nombre.substring(0, 24);
-      doc.text(`${nombre}`, 5, y);
-      y += 5;
-      doc.text(`x${item.cantidad} - $${subtotal.toLocaleString()}`, 10, y);
-      y += 6;
-    });
-
-    doc.line(5, y, 75, y);
-    y += 6;
-    doc.setFontSize(12);
-    doc.text(`TOTAL: $${total.toLocaleString()}`, 10, y);
-    y += 10;
-
-    doc.setFontSize(10);
-    doc.text('Gracias por tu compra.', 10, y);
-    y += 5;
-    doc.text('www.ferredistribucionesalumas.com', 10, y);
-
-    doc.save('orden_compra_ALUMAS.pdf');
-  }
-
-  function convertirImagenABase64(ruta) {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.crossOrigin = 'anonymous'; // Solo si la imagen está alojada en otro dominio
-      img.onload = function () {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
-        canvas.getContext('2d').drawImage(img, 0, 0);
-        resolve(canvas.toDataURL('image/png'));
-      };
-      img.onerror = reject;
-      img.src = ruta;
-    });
-  }
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 </body>
 </html>
