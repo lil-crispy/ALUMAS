@@ -2069,11 +2069,11 @@
 
     try {
 const logoBase64 = await convertirImagenABase64('./img/logo5.png');
-const pageWidth = doc.internal.pageSize.getWidth();
-const logoWidth = 120;  // Aumentamos el ancho
-const logoHeight = 45;  // Aumentamos la altura
-const x = (pageWidth - logoWidth) / 2;
+const logoWidth = 120;
+const logoHeight = 45;
+const x = 10; // margen izquierdo
 doc.addImage(logoBase64, 'PNG', x, y, logoWidth, logoHeight);
+
 y += logoHeight + 10;
 
     } catch (error) {
@@ -2082,7 +2082,7 @@ y += logoHeight + 10;
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(16);
-    doc.text('REMISIÓN DE COMPRA', 105, y, null, null, 'center');
+doc.text('REMISIÓN DE COMPRA', 20, y);
     y += 10;
 
     doc.setFontSize(12);
@@ -2132,9 +2132,9 @@ y += logoHeight + 10;
 
     doc.setFontSize(10);
     doc.setFont("helvetica", "italic");
-    doc.text('Gracias por tu compra.', 105, y, null, null, 'center');
-    y += 5;
-    doc.text('www.ferredistribucionesalumas.com', 105, y, null, null, 'center');
+    doc.text('Gracias por tu compra.', 20, y);
+     y += 5;
+    doc.text('www.ferredistribucionesalumas.com', 20, y);
 
     doc.save('remision_ALUMAS.pdf');
   }
