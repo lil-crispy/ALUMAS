@@ -1912,6 +1912,8 @@
     <input type="text" id="nombre-ferreteria" placeholder="Nombre de la ferretería">
     <input type="text" id="direccion-ferreteria" placeholder="Dirección de la ferretería">
     <button onclick="imprimirOrdenCompra()" class="btn-imprimir">🖨️ Imprimir orden de compra</button>
+<button id="editar-precios-btn" class="editar-precios-btn">✏️ Editar precios</button>
+
 
     <button class="btn-comprar" onclick="finalizarCompra()">Finalizar Compra</button>
   </div>
@@ -1921,6 +1923,7 @@
 </div>
 
 <script>
+  
   let carrito = [];
 
   function mostrarNotificacion(mensaje) {
@@ -1975,28 +1978,42 @@
   }
 
   function mostrarCarrito() {
-    const carritoItems = document.getElementById('carrito-items');
-    carritoItems.innerHTML = '';
-    let total = 0;
+  const carritoItems = document.getElementById('carrito-items');
+  carritoItems.innerHTML = '';
+  let total = 0;
 
-    carrito.forEach((item, index) => {
-      const div = document.createElement('div');
-      div.className = 'carrito-item';
-      div.innerHTML = `
-        <img src="${item.imgSrc}" alt="${item.nombre}">
-        <div class="carrito-item-details">
-          <div>${item.nombre}</div>
-          <div>Cant: ${item.cantidad}</div>
-          <div>$${(item.precio * item.cantidad).toLocaleString()}</div>
+  carrito.forEach((item, index) => {
+    const div = document.createElement('div');
+    div.className = 'carrito-item';
+    div.innerHTML = `
+      <img src="${item.imgSrc}" alt="${item.nombre}">
+      <div class="carrito-item-details">
+        <div>${item.nombre}</div>
+        <div>Cant: ${item.cantidad}</div>
+        <div>
+          $<input type="number" min="0" step="100" value="${item.precio}" data-index="${index}" class="editable-precio" disabled style="width: 80px;">
         </div>
-        <button class="eliminar-item" onclick="eliminarDelCarrito(${index})">🗑️</button>
-      `;
-      carritoItems.appendChild(div);
-      total += item.precio * item.cantidad;
-    });
+      </div>
+      <button class="eliminar-item" onclick="eliminarDelCarrito(${index})">🗑️</button>
+    `;
+    carritoItems.appendChild(div);
+    total += item.precio * item.cantidad;
+  });
 
-    document.getElementById('total').textContent = `Total: $${total.toLocaleString()}`;
-  }
+  document.getElementById('total').textContent = `Total: $${total.toLocaleString()}`;
+  
+  // Event listener para editar precios
+  document.querySelectorAll('.editable-precio').forEach(input => {
+    input.addEventListener('input', (e) => {
+      const index = parseInt(e.target.getAttribute('data-index'));
+      const nuevoPrecio = parseInt(e.target.value);
+      if (!isNaN(nuevoPrecio) && nuevoPrecio >= 0) {
+        carrito[index].precio = nuevoPrecio;
+        mostrarCarrito();
+      }
+    });
+  });
+}
 
   function filtrarProductos() {
     const input = document.getElementById('buscador').value.toLowerCase();
@@ -2012,25 +2029,38 @@
   }
 
   function finalizarCompra() {
-    const nombre = document.getElementById('nombre-ferreteria').value.trim();
-    const direccion = document.getElementById('direccion-ferreteria').value.trim();
-    if (!nombre || !direccion) {
-      alert('Por favor llena todos los campos.');
-      return;
-    }
-
-    let mensaje = `*Pedido de ferretería*\n`;
-    mensaje += `*Nombre:* ${nombre}\n`;
-    mensaje += `*Dirección:* ${direccion}\n\n`;
-    carrito.forEach(item => {
-      mensaje += `🔹 ${item.nombre} (Cant: ${item.cantidad}) - $${(item.precio * item.cantidad).toLocaleString()}\n`;
-    });
-
-    const totalTexto = document.getElementById('total').textContent;
-    mensaje += `\n*${totalTexto}*`;
-    const url = `https://wa.me/57319724535?text=${encodeURIComponent(mensaje)}`;
-    window.open(url, '_blank');
+  const nombre = document.getElementById('nombre-ferreteria').value.trim();
+  const direccion = document.getElementById('direccion-ferreteria').value.trim();
+  if (!nombre || !direccion) {
+    alert('Por favor llena todos los campos.');
+    return;
   }
+
+  let mensaje = `*Pedido de ferretería*\n`;
+  mensaje += `*Nombre:* ${nombre}\n`;
+  mensaje += `*Dirección:* ${direccion}\n\n`;
+  carrito.forEach(item => {
+    mensaje += `🔹 ${item.nombre} (Cant: ${item.cantidad}) - $${(item.precio * item.cantidad).toLocaleString()}\n`;
+  });
+
+  const totalTexto = document.getElementById('total').textContent;
+  mensaje += `\n*${totalTexto}*`;
+
+  const mensajeCodificado = encodeURIComponent(mensaje);
+  const numero = "57319724535";
+
+  // Detectar si es dispositivo móvil
+  const esMovil = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  if (esMovil) {
+    // Abre app WhatsApp
+    window.location.href = `intent://send?phone=${numero}&text=${mensajeCodificado}#Intent;scheme=smsto;package=com.whatsapp;action=android.intent.action.SENDTO;end`;
+  } else {
+    // Abre versión web
+    window.open(`https://wa.me/${numero}?text=${mensajeCodificado}`, '_blank');
+  }
+}
+
 
   async function convertirImagenABase64(url) {
     return new Promise((resolve, reject) => {
@@ -2082,20 +2112,27 @@ y += logoHeight + 10;
 
 // Obtener fecha y hora actual
 const fechaActual = new Date();
-const fechaStr = fechaActual.toLocaleDateString();  // formato local de fecha
-const horaStr = fechaActual.toLocaleTimeString();   // formato local de hora
+const fechaStr = fechaActual.toLocaleDateString();  // Ej: 04/06/2025
+const horaStr = fechaActual.toLocaleTimeString();   // Ej: 15:45:22
 
 doc.setFont("helvetica", "bold");
 doc.setFontSize(26);
 doc.text('REMISIÓN DE COMPRA', 20, y);
 y += 16;
 
-// Número de teléfono para ventas y fecha/hora
+// Teléfono de ventas
 doc.setFontSize(16);
 doc.setFont("helvetica", "normal");
-doc.text('Ventas: +57 3197245235', 20, y);
-doc.text(`Fecha: ${fechaStr}  Hora: ${horaStr}`, 140, y);  // alineado a la derecha aprox.
-y += 16;
+doc.text('Ventas:  3197245235', 20, y);
+y += 8;
+
+// Hora
+doc.text(`Hora: ${horaStr}`, 20, y);
+y += 8;
+
+// Fecha
+doc.text(`Fecha: ${fechaStr}`, 20, y);
+y += 12;
 
 // Datos de la ferretería
 doc.setFontSize(20);
@@ -2109,11 +2146,13 @@ doc.setLineWidth(0.5);
 doc.line(20, y, 190, y);
 y += 10;
 
+// Título de detalle
 doc.setFont("helvetica", "bold");
 doc.setFontSize(20);
 doc.text("Detalle del pedido:", 20, y);
 y += 14;
 
+// Listado del carrito
 doc.setFontSize(18);
 doc.setFont("helvetica", "normal");
 
@@ -2141,11 +2180,13 @@ doc.setLineWidth(0.5);
 doc.line(20, y, 190, y);
 y += 14;
 
+// TOTAL alineado a la izquierda
 doc.setFontSize(22);
 doc.setFont("helvetica", "bold");
-doc.text(`TOTAL: $${total.toLocaleString()}`, 105, y, null, null, 'center');
+doc.text(`TOTAL: $${total.toLocaleString()}`, 20, y);
 y += 20;
 
+// Mensaje final
 doc.setFontSize(16);
 doc.setFont("helvetica", "italic");
 doc.text('Gracias por tu compra.', 20, y);
@@ -2156,19 +2197,37 @@ doc.save('remision_ALUMAS.pdf');
 
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('btn-carrito').addEventListener('click', toggleCarrito);
-    document.querySelectorAll('.agregar-btn').forEach((btn, i) => {
-      btn.addEventListener('click', function () {
-        const producto = btn.closest('.producto');
-        const nombre = producto.querySelector('.descripcion').textContent;
-        const precioTexto = producto.querySelector('.precio').textContent.replace('$', '').replace('.', '');
-        agregarAlCarrito(nombre, parseInt(precioTexto), btn);
-      });
-    });
+ document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('btn-carrito').addEventListener('click', toggleCarrito);
 
-    document.getElementById('buscador').addEventListener('keyup', filtrarProductos);
+  document.querySelectorAll('.agregar-btn').forEach((btn, i) => {
+    btn.addEventListener('click', function () {
+      const producto = btn.closest('.producto');
+      const nombre = producto.querySelector('.descripcion').textContent;
+      const precioTexto = producto.querySelector('.precio').textContent.replace('$', '').replace('.', '');
+      agregarAlCarrito(nombre, parseInt(precioTexto), btn);
+    });
   });
+
+  document.getElementById('buscador').addEventListener('keyup', filtrarProductos);
+
+  // 👉 NUEVO BLOQUE: botón editar precios
+  const btnEditarPrecios = document.getElementById('editar-precios-btn');
+  if (btnEditarPrecios) {
+    btnEditarPrecios.addEventListener('click', () => {
+      const clave = prompt("Ingrese la clave para editar precios:");
+      if (clave === "0000") {
+        document.querySelectorAll('.editable-precio').forEach(input => {
+          input.disabled = false;
+        });
+        alert("Ahora puedes editar los precios.");
+      } else {
+        alert("Clave incorrecta.");
+      }
+    });
+  }
+});
+
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
