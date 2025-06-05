@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://ferredistribucionesalumas.com/sitemap.xml
