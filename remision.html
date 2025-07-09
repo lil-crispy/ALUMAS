@@ -259,10 +259,33 @@
       });
     }
   
-    function toggleTransporte() {
-      const form = document.getElementById('form-transporte');
-      form.style.display = document.getElementById('activar-transporte').checked ? 'block' : 'none';
+  function toggleTransporte() {
+  const form = document.getElementById('form-transporte');
+  const mensajeTransporte = document.getElementById('mensaje-transporte');
+
+  form.style.display = document.getElementById('activar-transporte').checked ? 'block' : 'none';
+
+  if (document.getElementById('activar-transporte').checked) {
+    if (!mensajeTransporte) {
+      const mensaje = document.createElement('div');
+      mensaje.id = 'mensaje-transporte';
+      mensaje.innerHTML = `
+        <p style="font-size: 22px; font-weight: bold; text-align: center; margin-top: 40px;">
+          IMPORTANTE: TODO ENVÍO O DOMICILIO SE ENTREGA HASTA DONDE TENGA ACCESO EL VEHÍCULO DE TRANSPORTE. 
+          EL CONDUCTOR O TRANSPORTADOR NO ESTÁ AUTORIZADO A MANIPULAR LA MERCANCÍA MÁS ALLÁ DEL PRIMER PISO. 
+          EN CASO DE HACER CASO OMISO A ESTA INSTRUCCIÓN, EL TRABAJADOR PUEDE SER SANCIONADO POR LA EMPRESA.
+        </p>
+      `;
+      const mensajeDiv = document.querySelector('.mensaje');
+      mensajeDiv.parentNode.insertBefore(mensaje, mensajeDiv);
     }
+  } else {
+    if (mensajeTransporte) {
+      mensajeTransporte.remove();
+    }
+  }
+}
+
   
     function guardarTransporte() {
       const nombre = document.getElementById('trans-nombre').value;
