@@ -265,8 +265,37 @@ mensajes_por_dia = {
     "domingo": []
 }
 
+# Promociones por semana
+promociones_por_semana = {
+    1: "🎁 Promoción semana : 2% DE DESCUENTO POR COMPRAS SUPERIORES A 250.000 ESTA SEMANA",
+    2: "🎉 Promoción semana : DESCUENTO ESPECIAL EN ALUMINIO ,WIN ESPAÑOL , TRADICIONAL,BOQUILLERA Y TUBERIA",
+    3: "🔥 Promoción semana : CINTA DE ENMASCARAR DE 1/2 HASTA 1 PULGADA DESDE 1500 PESOS,REGILLAS Y SIFONES A 1000 PESOS ENTRE OTROS DESCUENTOS",
+    4: "💥 Promoción semana : SI PIDES POR ESTE MEDIO , POR COMPRAR SUPERIORES A 500.000 RECLAMA UN OBSEQUIO CON EL TRANSPORTADOR"
+}
+
+# Función para determinar la semana del mes
+def obtener_semana_del_mes(dia):
+    if 1 <= dia <= 8:
+        return 1
+    elif 9 <= dia <= 16:
+        return 2
+    elif 17 <= dia <= 24:
+        return 3
+    else:
+        return 4
+
+# Función para enviar mensaje con promoción
 def enviar_mensaje(numero, mensaje):
     try:
+        # Obtener el día actual y la promoción de la semana
+        dia_mes = datetime.datetime.now().day
+        semana_actual = obtener_semana_del_mes(dia_mes)
+        promo = promociones_por_semana[semana_actual]
+
+        # Añadir la promoción al final del mensaje
+        mensaje += f"\n\n{promo}"
+
+        # Codificar mensaje para URL de WhatsApp
         mensaje_encoded = urllib.parse.quote(mensaje)
         url = f"https://web.whatsapp.com/send?phone={numero}&text={mensaje_encoded}"
         driver.get(url)
@@ -277,7 +306,7 @@ def enviar_mensaje(numero, mensaje):
         wait = WebDriverWait(driver, 60)
         input_element = wait.until(EC.presence_of_element_located((By.XPATH, input_xpath)))
 
-        # Asegurarse de que la caja de texto esté disponible y lista para recibir el mensaje
+        # Enviar el mensaje
         input_element.send_keys(Keys.ENTER)
 
         print(f"✅ Mensaje enviado con éxito al número: {numero}.")
