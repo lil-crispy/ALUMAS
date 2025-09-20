@@ -57,35 +57,35 @@ label {
 
 /* Rutas de imágenes corregidas */
 label:nth-of-type(1) {
-  background-image: url("../img/PLACAS/drywall.png");
+  background-image: url("../img/PLACAS/drywall.webp");
 }
 
 label:nth-of-type(2) {
-  background-image: url("../img/PLACAS/tejaplastica.png");
+  background-image: url("../img/PLACAS/tejaplastica.webp");
 }
 
 label:nth-of-type(3) {
-  background-image: url("../img/PLACAS/arquitectonica.png");
+  background-image: url("../img/PLACAS/arquitectonica.webp");
 }
 
 label:nth-of-type(4) {
-  background-image: url("../img/PLACAS/rh.png");
+  background-image: url("../img/PLACAS/rh.webp");
 }
 
 label:nth-of-type(5) {
-  background-image: url("../img/PLACAS/sb6.png");
+  background-image: url("../img/PLACAS/sb6.webp");
 }
 
 label:nth-of-type(6) {
-  background-image: url("../img/PLACAS/sb8.png");
+  background-image: url("../img/PLACAS/sb8.webp");
 }
 
 label:nth-of-type(7) {
-  background-image: url("../img/PLACAS/sb20.png");
+  background-image: url("../img/PLACAS/sb20.webp");
 }
 
 label:nth-of-type(8) {
-  background-image: url("../img/PLACAS/zinc.png");
+  background-image: url("../img/PLACAS/zinc.webp");
 }
 
 /* Opcional: personalización barra de scroll horizontal para navegadores WebKit */

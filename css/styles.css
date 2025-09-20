@@ -115,89 +115,100 @@ body {
 
 /* ==== LOGOS ==== */
 .logo-container {
-  position: fixed;
-  top: 2px;
-  right: 960px;
-  display: flex;
-  align-items: center;
-  gap: 0;
-  z-index: 1000;
-  cursor: pointer;
-  margin-bottom: -80px;
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 10000;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0px;
+    padding: 0;
+    margin: 0;
+    line-height: 0;
+  }
+
+.logo-container:hover {
+  transform: scale(1.05);
+  background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.08));
 }
 
-/* Logo 1: animado desde la derecha con efecto zoom */
+/* Logo 1: animación más sutil y natural - tamaño aumentado */
 .logo1 {
-  width: 200px;
+  width: 180px;
   height: auto;
-  border-radius: 30%;
+  border-radius: 15px;
   cursor: pointer;
-  animation: zoomLogo 1.5s ease-out forwards;
+  animation: smoothZoom 2s ease-out forwards;
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
   margin: 0;
   padding: 0;
-  left: 22px;
   opacity: 0;
-  transform: translateX(100vw); /* Entrada desde la derecha */
+  transform: translateX(-100px) scale(0.8);
+  margin-right: -10px;
 }
 
-/* Efecto reflexión en el logo */
+/* Efecto reflexión mejorado */
 .logo1::after {
   content: "";
-  position: relative;
-  top: 30%;
-  right: 100px;
+  position: absolute;
+  top: 100%;
+  left: 0;
   width: 100%;
-  height: 50%;
+  height: 20%;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.1), transparent);
   transform: scaleY(-1);
-  filter: blur(5px);
-  opacity: 0.5;
+  filter: blur(1px);
+  opacity: 0.2;
+  border-radius: 15px;
 }
 
-/* Animación para logo1: de derecha a izquierda con zoom */
-@keyframes zoomLogo {
+/* Animación más natural del logo */
+@keyframes smoothZoom {
   0% {
-    width: 100vw;
-    transform: translateX(100vw);
+    transform: translateX(-100px) scale(0.8);
     opacity: 0;
+    filter: blur(2px);
+  }
+  50% {
+    transform: translateX(-20px) scale(0.9);
+    opacity: 0.7;
+    filter: blur(1px);
   }
   100% {
-    width: 260px;
-    transform: translateX(0);
+    transform: translateX(0) scale(1);
     opacity: 1;
+    filter: blur(0px);
   }
 }
 
-/* Logo 2: aparece superpuesto sobre logo1 */
+/* Logo 2: aparece con efecto más suave - tamaño aumentado */
 .logo2 {
-  width: 500px;
-  height: 60px;
+  width: 400px;
+  height: 55px;
   opacity: 0;
-  animation: fadeInLogo 1s ease-in forwards;
-  animation-delay: 2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 20%;
+  animation: fadeInLogo 1s ease-out forwards;
+  animation-delay: 1.2s;
+  display: block;
+  border-radius: 10px;
   cursor: pointer;
   position: relative;
-  margin-left: -255px;
+  margin: 0;
+  padding: 0;
   z-index: 9999;
-  margin-top: 10px;
+  margin-left: -120px;
 }
 
-/* Animación de aparición para logo2 */
+/* Animación suave para logo2 */
 @keyframes fadeInLogo {
   0% {
     opacity: 0;
-    transform: translateX(20px);
+    transform: translateY(10px) scale(0.95);
   }
   100% {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateY(0) scale(1);
   }
 }
 
@@ -205,31 +216,110 @@ body {
 .logo img {
   max-width: 50%;
   height: auto;
+  display: block;
+  
+  padding: 0;
+}
+
+/* Contenedores de logos individuales */
+.logo {
+  display: inline-block;
+  margin: 0;
+  padding: 0;
+  line-height: 0;
+  vertical-align: top;
 }
 
 /* ==== RESPONSIVE ==== */
+@media (max-width: 1200px) {
+  .logo-container {
+    position: fixed;
+    top: 8px;
+    left: 8px;
+    z-index: 10000;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0px;
+    padding: 0;
+  }
+  
+  .logo1 {
+    width: 150px;
+  }
+  
+  .logo2 {
+    width: 320px;
+    height: 45px;
+  }
+}
+
+@media (max-width: 768px) {
+  .logo-container {
+    position: fixed;
+    top: 5px;
+    left: 5px;
+    z-index: 10000;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0px;
+    padding: 0;
+  }
+  
+  .logo1 {
+    width: 120px;
+  }
+  
+  .logo2 {
+    width: 250px;
+    height: 35px;
+  }
+}
+
 @media (max-width: 600px) {
   .logo-container {
-    position: relative;
-    top: -68px;
-    right: 80px;
+    position: fixed;
+    top: 5px;
+    left: 5px;
+    z-index: 10000;
     display: flex;
-    align-items: center;
-    gap: 0;
-    z-index: 1000;
-    cursor: pointer;
-    margin-bottom: -50px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0px;
+    padding: 0;
   }
-
-  .logo1 img {
-    max-width: 90px;
-    animation: zoomLogo 1.5s ease-out forwards;
+  
+  .logo1 {
+    width: 100px;
   }
+  
+  .logo2 {
+    width: 200px;
+    height: 28px;
+  }
+}
 
-  .logo2 img {
-    max-width: 160px;
-    height: auto;
-    margin-right: 190px;
+@media (max-width: 480px) {
+  .logo-container {
+    position: fixed;
+    top: 3px;
+    left: 3px;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0px;
+    padding: 0;
+  }
+  
+  .logo1 {
+    width: 80px;
+  }
+  
+  .logo2 {
+    width: 160px;
+    height: 22px;
   }
 }
 
