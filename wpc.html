@@ -1841,5 +1841,14 @@ function scrollToCard(cardId) {
         <!-- * * Activate your form at https://startbootstrap.com/solution/contact-forms * *-->
         <!-- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *-->
         <script src="https://cdn.startbootstrap.com/sb-forms-latest.js"></script>
+        <script>
+          (function () {
+            var p = location.pathname;
+            if (p.endsWith('.html')) {
+              var clean = p.replace(/\.html$/, '/');
+              history.replaceState(null, '', clean + location.search + location.hash);
+            }
+          })();
+        </script>
     </body>
 </html>
