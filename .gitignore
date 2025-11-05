@@ -1,0 +1,9 @@
+# Artefactos locales que no deben versionarse
+chrome_profile/
+__pycache__/
+*.pyc
+*.log
+
+# Sistemas
+.DS_Store
+Thumbs.db
