@@ -20,24 +20,43 @@ from webdriver_manager.chrome import ChromeDriverManager
 dias = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
 hoy = dias[datetime.datetime.now().weekday()]
 
+# Extensiones permitidas para estados
+ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".jfif", ".bmp"}
+
+def _collect_images_for_day(folder_name: str):
+    base = os.path.join(os.getcwd(), "img", "estados", folder_name)
+    if not os.path.isdir(base):
+        return []
+    files = []
+    for name in os.listdir(base):
+        path = os.path.join(base, name)
+        if os.path.isfile(path):
+            ext = os.path.splitext(name)[1].lower()
+            if ext in ALLOWED_EXTENSIONS:
+                files.append(os.path.abspath(path))
+    files.sort()
+    return files
+
+def _build_images_by_day():
+    # Mapea clave del diccionario (con acentos) a carpeta en mayúsculas sin acento
+    dir_map = {
+        "lunes": "LUNES",
+        "martes": "MARTES",
+        "miércoles": "MIERCOLES",
+        "jueves": "JUEVES",
+        "viernes": "VIERNES",
+        "sábado": "SABADO",
+        "domingo": "DOMINGO",
+    }
+    result = {}
+    for d in dias:
+        result[d] = _collect_images_for_day(dir_map[d])
+    return result
+
 
 # Mapea cada día a una lista de rutas de imágenes a publicar.
 # EDITA ESTE DICCIONARIO con las rutas reales (absolutas o relativas).
-IMAGENES_POR_DIA = {
-    # Ejemplos (cámbialos por los tuyos):
-    "lunes": [
-        os.path.join("img", "distribucion", "estado_lunes_1.webp"),
-        os.path.join("img", "distribucion", "estado_lunes_2.webp"),
-    ],
-    "martes": [
-        r"C:\Users\CRISHOST\Documents\DEVS\ALUMAS\img\estados\MARTES\pared1.JPG",
-    ],
-    "miércoles": [],
-    "jueves": [],
-    "viernes": [],
-    "sábado": [],
-    "domingo": [],
-}
+IMAGENES_POR_DIA = _build_images_by_day()
 
 
 def inicializar_navegador():
