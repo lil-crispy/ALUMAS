@@ -32,7 +32,7 @@ body {
 @media (max-width: 768px) and (orientation: portrait) {
   body {
     background-color: #b0b0b0; /* Gris platinado */
-    background-image: url('https://static.vecteezy.com/system/resources/previews/001/865/555/non_2x/light-gray-blurred-background-vector.jpg'); /* Fondo de imagen */
+    background-image: url('https://static.vecteezy.com/system/resources/previews/001/865/555/non_2x/light-gray-blurred-background-vector.webp'); /* Fondo de imagen */
     background-size: cover; /* Asegura que la imagen cubra toda la pantalla */
     background-position: center; /* Centra la imagen */
     background-repeat: no-repeat; /* Evita que la imagen se repita */
@@ -10918,7 +10918,7 @@ header.masthead {
   padding-bottom: 6rem;
   text-align: center;
   color: #fff;
-  background-image: url("../assets/img/header-bg.jpg");
+  background-image: url("../assets/img/header-bg.webp");
   background-repeat: no-repeat;
   background-attachment: scroll;
   background-position: center center;
@@ -11239,7 +11239,7 @@ header.masthead .masthead-heading {
 
 section#contact {
   background-color: #212529;
-  background-image: url("../assets/img/map-image.png");
+  background-image: url("../assets/img/map-image.webp");
   background-repeat: no-repeat;
   background-position: center;
 }
@@ -11405,7 +11405,7 @@ section#contact form#contactForm :-ms-input-placeholder {
   transform: translateX(-50%);
   width: 100%;
   height: 50px;
-  background-image: url('https://cdn.pixabay.com/photo/2017/08/30/02/42/sparkles-2691374_960_720.png');
+  background-image: url('https://cdn.pixabay.com/photo/2017/08/30/02/42/sparkles-2691374_960_720.webp');
   background-size: cover;
   background-repeat: no-repeat;
   opacity: 0;
