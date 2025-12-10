@@ -144,12 +144,9 @@
     </div>
 
     <div class="boton-imprimir">
-      <button onclick="window.print()">🖨️ Imprimir</button>
+      <button onclick="imprimirCotizacion()">Cotizar</button>
+      <button onclick="imprimirVenta()">Vender</button>
       <button onclick="descargarPDF()">📄 Descargar PDF</button>
-      <label>
-        <input type="checkbox" id="check-cotizacion"> Cotización
-      </label>
-      
     </div>
   </div>
 
@@ -366,37 +363,53 @@
         celda.removeAttribute('contenteditable');
       }
     }, true);
-    document.getElementById('check-cotizacion').addEventListener('change', function () {
-  const mensajeDiv = document.querySelector('.mensaje');
-  const logos = document.querySelectorAll('.logo-grande');
+    let originalMensajeHTML = '';
+    document.addEventListener('DOMContentLoaded', () => {
+      const mensajeDiv = document.querySelector('.mensaje');
+      originalMensajeHTML = mensajeDiv ? mensajeDiv.innerHTML : '';
+    });
 
-  if (this.checked) {
-    // Cambiar el contenido del div mensaje
-    mensajeDiv.innerHTML = `
-      <p style="font-size: 22px; font-weight: bold; text-align: center; margin-top: 40px;">
-        COTIZACIÓN - NO VÁLIDO COMO COMPROBANTE DE COMPRA
-      </p>
-    `;
-    
-    // Ocultar los logos
-    logos.forEach(logo => logo.style.display = 'none');
-  } else {
-    // Restaurar el mensaje original
-    mensajeDiv.innerHTML = `
-      <p><strong>***GRACIAS POR SU COMPRA***</strong></p>
-      <small>SI NECESITA FACTURA ELECTRÓNICA ENVIAR ESTA REMISIÓN Y EL RUT AL 3015827791</small>
-      <small>EL USO DE LA FACTURA ES INDISPENSABLE PARA CUALQUIER TIPO DE DEVOLUCIÓN.</small>
-      <small>NO SE REMBOLSA EL DINERO EN CASO QUE EL PRODUCTO NO CUMPLA CON EL FUNCIONAMIENTO.</small>
-      <small>SE PUEDE CAMBIAR POR OTRO DEL MISMO VALOR SIEMPRE Y CUANDO ESTÉ EN BUEN ESTADO.</small>
-      <div style="text-align: right; margin-top: 40px;">
-        <img src="./img/firma.webp" alt="Firma" style="width: 150px; opacity: 0.7;">
-      </div>
-    `;
+    function aplicarCotizacionUI() {
+      const mensajeDiv = document.querySelector('.mensaje');
+      if (mensajeDiv) {
+        mensajeDiv.innerHTML = `
+          <p style="font-size: 22px; font-weight: bold; text-align: center; margin-top: 40px;">
+            COTIZACIÓN - NO VÁLIDO COMO COMPROBANTE DE COMPRA
+          </p>
+        `;
+      }
+      document.querySelectorAll('.logo-grande').forEach(logo => logo.style.display = 'none');
+    }
 
-    // Mostrar los logos nuevamente
-    logos.forEach(logo => logo.style.display = 'block');
-  }
-});
+    function aplicarVentaUI() {
+      const mensajeDiv = document.querySelector('.mensaje');
+      if (mensajeDiv && originalMensajeHTML) {
+        mensajeDiv.innerHTML = originalMensajeHTML;
+      }
+      document.querySelectorAll('.logo-grande').forEach(logo => logo.style.display = 'block');
+    }
+
+    function imprimirCotizacion() {
+      aplicarCotizacionUI();
+      window.print();
+    }
+
+    function imprimirVenta() {
+      aplicarVentaUI();
+      window.print();
+    }
+
+    window.addEventListener('afterprint', () => {
+      aplicarVentaUI();
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      }
+    });
 // Seleccionar todo el contenido de la celda activa al presionar Shift
 tabla.addEventListener('keydown', (e) => {
   if (e.key === 'Shift' && celdaActiva) {
