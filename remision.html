@@ -447,15 +447,22 @@
       const totalEl = document.getElementById('total-general');
       const totalTxt = totalEl ? totalEl.textContent : '';
       const valorNum = parseInt((totalTxt || '').replace(/[^\d]/g, '')) || 0;
+      if (valorNum <= 0) return;
       reporteVentas.push(valorNum);
       localStorage.setItem('reporteVentas', JSON.stringify(reporteVentas));
       actualizarUIReporte();
     }
+    const REPORTE_PASS = '79333587';
     function actualizarUIReporte() {
       const cont = document.getElementById('reporte-lista');
       const sumEl = document.getElementById('reporte-suma');
       if (!cont || !sumEl) return;
-      cont.innerHTML = reporteVentas.map(v => `<div class="report-item">${formatearPesos(v)}</div>`).join('');
+      cont.innerHTML = reporteVentas.map((v, i) => `
+        <div class="report-item">
+          <span>${formatearPesos(v)}</span>
+          <button class="report-del" onclick="eliminarVenta(${i})">Eliminar</button>
+        </div>
+      `).join('');
       const suma = reporteVentas.reduce((acc, v) => acc + (parseInt(v) || 0), 0);
       sumEl.innerText = `Total vendido: ${formatearPesos(suma)}`;
     }
@@ -463,6 +470,14 @@
       const p = document.getElementById('report-panel');
       if (!p) return;
       p.classList.toggle('open');
+    }
+    function eliminarVenta(index) {
+      const input = window.prompt('Ingrese contraseña para eliminar');
+      if (input !== REPORTE_PASS) return;
+      if (index < 0 || index >= reporteVentas.length) return;
+      reporteVentas.splice(index, 1);
+      localStorage.setItem('reporteVentas', JSON.stringify(reporteVentas));
+      actualizarUIReporte();
     }
 // Seleccionar todo el contenido de la celda activa al presionar Shift
 tabla.addEventListener('keydown', (e) => {
