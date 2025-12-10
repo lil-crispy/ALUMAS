@@ -312,6 +312,11 @@ th, td {
     text-align: left;
   }
 
+  .cant {
+    font-size: 22px;
+    font-weight: bold;
+  }
+
   button {
     display: none; /* ocultar botones al imprimir */
   }
