@@ -56,6 +56,8 @@
 
 <body>
 
+  <div class="report-toggle" onclick="toggleReportePanel()">Reporte ▼</div>
+
   <div class="contenedor-principal" id="contenido-factura">
     <div class="encabezado">
       <div>
@@ -144,9 +146,17 @@
     </div>
 
     <div class="boton-imprimir">
-      <button onclick="imprimirCotizacion()">Cotizar</button>
-      <button onclick="imprimirVenta()">Vender</button>
-      <button onclick="descargarPDF()">📄 Descargar PDF</button>
+      <button class="btn btn-cotizar" onclick="imprimirCotizacion()">Cotizar</button>
+      <button class="btn btn-vender" onclick="imprimirVenta()">Vender</button>
+      <button class="btn btn-pdf" onclick="descargarPDF()">Descargar PDF</button>
+    </div>
+    <div id="report-panel" class="report-panel">
+      <div class="report-header">
+        <span>Reporte diario</span>
+        <button class="report-close" onclick="toggleReportePanel()">×</button>
+      </div>
+      <div id="reporte-lista" class="report-list"></div>
+      <div id="reporte-suma" class="report-total"></div>
     </div>
   </div>
 
@@ -396,6 +406,7 @@
 
     function imprimirVenta() {
       aplicarVentaUI();
+      agregarVentaReporte();
       window.print();
     }
 
@@ -410,6 +421,49 @@
         return false;
       }
     });
+    let reporteVentas = [];
+    function checkResetReporte() {
+      const lastReset = parseInt(localStorage.getItem('reporteLastReset') || '0');
+      const now = Date.now();
+      const doceHoras = 12 * 60 * 60 * 1000;
+      if (!lastReset || now - lastReset > doceHoras) {
+        localStorage.setItem('reporteVentas', JSON.stringify([]));
+        localStorage.setItem('reporteLastReset', String(now));
+        reporteVentas = [];
+        actualizarUIReporte();
+      }
+    }
+    function cargarReporte() {
+      checkResetReporte();
+      const guardado = localStorage.getItem('reporteVentas');
+      reporteVentas = guardado ? JSON.parse(guardado) : [];
+      actualizarUIReporte();
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      cargarReporte();
+      setInterval(checkResetReporte, 60000);
+    });
+    function agregarVentaReporte() {
+      const totalEl = document.getElementById('total-general');
+      const totalTxt = totalEl ? totalEl.textContent : '';
+      const valorNum = parseInt((totalTxt || '').replace(/[^\d]/g, '')) || 0;
+      reporteVentas.push(valorNum);
+      localStorage.setItem('reporteVentas', JSON.stringify(reporteVentas));
+      actualizarUIReporte();
+    }
+    function actualizarUIReporte() {
+      const cont = document.getElementById('reporte-lista');
+      const sumEl = document.getElementById('reporte-suma');
+      if (!cont || !sumEl) return;
+      cont.innerHTML = reporteVentas.map(v => `<div class="report-item">${formatearPesos(v)}</div>`).join('');
+      const suma = reporteVentas.reduce((acc, v) => acc + (parseInt(v) || 0), 0);
+      sumEl.innerText = `Total vendido: ${formatearPesos(suma)}`;
+    }
+    function toggleReportePanel() {
+      const p = document.getElementById('report-panel');
+      if (!p) return;
+      p.classList.toggle('open');
+    }
 // Seleccionar todo el contenido de la celda activa al presionar Shift
 tabla.addEventListener('keydown', (e) => {
   if (e.key === 'Shift' && celdaActiva) {
