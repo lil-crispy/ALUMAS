@@ -93,7 +93,7 @@ def inicializar_navegador():
         opciones_fallback = crear_opciones(usar_perfil=False)
         driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=opciones_fallback)
         driver.maximize_window()
-        return driver
+        return driver 
 
 
 def abrir_whatsapp_web(driver):

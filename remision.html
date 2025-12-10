@@ -7,7 +7,7 @@
   <link rel="icon" type="image/svg+xml" href="./img/LOGO3.webp" />
 
   <!-- Estilos personalizados -->
-  <link rel="stylesheet" href="./css/remision.css">
+  <link rel="stylesheet" href="./css/remision.css?v=20251209">
 
   <!-- Cargar fuentes personalizadas -->
   <style>
@@ -55,6 +55,8 @@
 </head>
 
 <body>
+
+  <div class="report-toggle" onclick="toggleReportePanel()">Reporte ▼</div>
 
   <div class="contenedor-principal" id="contenido-factura">
     <div class="encabezado">
@@ -144,12 +146,17 @@
     </div>
 
     <div class="boton-imprimir">
-      <button onclick="window.print()">🖨️ Imprimir</button>
-      <button onclick="descargarPDF()">📄 Descargar PDF</button>
-      <label>
-        <input type="checkbox" id="check-cotizacion"> Cotización
-      </label>
-      
+      <button class="btn btn-cotizar" onclick="imprimirCotizacion()">Cotizar</button>
+      <button class="btn btn-vender" onclick="imprimirVenta()">Vender</button>
+      <button class="btn btn-pdf" onclick="descargarPDF()">Descargar PDF</button>
+    </div>
+    <div id="report-panel" class="report-panel">
+      <div class="report-header">
+        <span>Reporte diario</span>
+        <button class="report-close" onclick="toggleReportePanel()">×</button>
+      </div>
+      <div id="reporte-lista" class="report-list"></div>
+      <div id="reporte-suma" class="report-total"></div>
     </div>
   </div>
 
@@ -366,37 +373,112 @@
         celda.removeAttribute('contenteditable');
       }
     }, true);
-    document.getElementById('check-cotizacion').addEventListener('change', function () {
-  const mensajeDiv = document.querySelector('.mensaje');
-  const logos = document.querySelectorAll('.logo-grande');
+    let originalMensajeHTML = '';
+    document.addEventListener('DOMContentLoaded', () => {
+      const mensajeDiv = document.querySelector('.mensaje');
+      originalMensajeHTML = mensajeDiv ? mensajeDiv.innerHTML : '';
+    });
 
-  if (this.checked) {
-    // Cambiar el contenido del div mensaje
-    mensajeDiv.innerHTML = `
-      <p style="font-size: 22px; font-weight: bold; text-align: center; margin-top: 40px;">
-        COTIZACIÓN - NO VÁLIDO COMO COMPROBANTE DE COMPRA
-      </p>
-    `;
-    
-    // Ocultar los logos
-    logos.forEach(logo => logo.style.display = 'none');
-  } else {
-    // Restaurar el mensaje original
-    mensajeDiv.innerHTML = `
-      <p><strong>***GRACIAS POR SU COMPRA***</strong></p>
-      <small>SI NECESITA FACTURA ELECTRÓNICA ENVIAR ESTA REMISIÓN Y EL RUT AL 3015827791</small>
-      <small>EL USO DE LA FACTURA ES INDISPENSABLE PARA CUALQUIER TIPO DE DEVOLUCIÓN.</small>
-      <small>NO SE REMBOLSA EL DINERO EN CASO QUE EL PRODUCTO NO CUMPLA CON EL FUNCIONAMIENTO.</small>
-      <small>SE PUEDE CAMBIAR POR OTRO DEL MISMO VALOR SIEMPRE Y CUANDO ESTÉ EN BUEN ESTADO.</small>
-      <div style="text-align: right; margin-top: 40px;">
-        <img src="./img/firma.webp" alt="Firma" style="width: 150px; opacity: 0.7;">
-      </div>
-    `;
+    function aplicarCotizacionUI() {
+      const mensajeDiv = document.querySelector('.mensaje');
+      if (mensajeDiv) {
+        mensajeDiv.innerHTML = `
+          <p style="font-size: 22px; font-weight: bold; text-align: center; margin-top: 40px;">
+            COTIZACIÓN - NO VÁLIDO COMO COMPROBANTE DE COMPRA
+          </p>
+        `;
+      }
+      document.querySelectorAll('.logo-grande').forEach(logo => logo.style.display = 'none');
+    }
 
-    // Mostrar los logos nuevamente
-    logos.forEach(logo => logo.style.display = 'block');
-  }
-});
+    function aplicarVentaUI() {
+      const mensajeDiv = document.querySelector('.mensaje');
+      if (mensajeDiv && originalMensajeHTML) {
+        mensajeDiv.innerHTML = originalMensajeHTML;
+      }
+      document.querySelectorAll('.logo-grande').forEach(logo => logo.style.display = 'block');
+    }
+
+    function imprimirCotizacion() {
+      aplicarCotizacionUI();
+      window.print();
+    }
+
+    function imprimirVenta() {
+      aplicarVentaUI();
+      agregarVentaReporte();
+      window.print();
+    }
+
+    window.addEventListener('afterprint', () => {
+      aplicarVentaUI();
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      }
+    });
+    let reporteVentas = [];
+    function checkResetReporte() {
+      const lastReset = parseInt(localStorage.getItem('reporteLastReset') || '0');
+      const now = Date.now();
+      const doceHoras = 12 * 60 * 60 * 1000;
+      if (!lastReset || now - lastReset > doceHoras) {
+        localStorage.setItem('reporteVentas', JSON.stringify([]));
+        localStorage.setItem('reporteLastReset', String(now));
+        reporteVentas = [];
+        actualizarUIReporte();
+      }
+    }
+    function cargarReporte() {
+      checkResetReporte();
+      const guardado = localStorage.getItem('reporteVentas');
+      reporteVentas = guardado ? JSON.parse(guardado) : [];
+      actualizarUIReporte();
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      cargarReporte();
+      setInterval(checkResetReporte, 60000);
+    });
+    function agregarVentaReporte() {
+      const totalEl = document.getElementById('total-general');
+      const totalTxt = totalEl ? totalEl.textContent : '';
+      const valorNum = parseInt((totalTxt || '').replace(/[^\d]/g, '')) || 0;
+      if (valorNum <= 0) return;
+      reporteVentas.push(valorNum);
+      localStorage.setItem('reporteVentas', JSON.stringify(reporteVentas));
+      actualizarUIReporte();
+    }
+    const REPORTE_PASS = '79333587';
+    function actualizarUIReporte() {
+      const cont = document.getElementById('reporte-lista');
+      const sumEl = document.getElementById('reporte-suma');
+      if (!cont || !sumEl) return;
+      cont.innerHTML = reporteVentas.map((v, i) => `
+        <div class="report-item">
+          <span>${formatearPesos(v)}</span>
+          <button class="report-del" onclick="eliminarVenta(${i})">Eliminar</button>
+        </div>
+      `).join('');
+      const suma = reporteVentas.reduce((acc, v) => acc + (parseInt(v) || 0), 0);
+      sumEl.innerText = `Total vendido: ${formatearPesos(suma)}`;
+    }
+    function toggleReportePanel() {
+      const p = document.getElementById('report-panel');
+      if (!p) return;
+      p.classList.toggle('open');
+    }
+    function eliminarVenta(index) {
+      const input = window.prompt('Ingrese contraseña para eliminar');
+      if (input !== REPORTE_PASS) return;
+      if (index < 0 || index >= reporteVentas.length) return;
+      reporteVentas.splice(index, 1);
+      localStorage.setItem('reporteVentas', JSON.stringify(reporteVentas));
+      actualizarUIReporte();
+    }
 // Seleccionar todo el contenido de la celda activa al presionar Shift
 tabla.addEventListener('keydown', (e) => {
   if (e.key === 'Shift' && celdaActiva) {
@@ -423,5 +505,5 @@ actualizarFechaHora();
   
   
 </body>
-<script src="js/scripts.js"></script>
+<script src="js/scripts.js?v=20251209"></script>
 </html>
