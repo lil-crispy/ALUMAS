@@ -309,7 +309,7 @@ def enviar_mensaje(numero, mensaje):
         # Enviar el mensaje
         input_element.send_keys(Keys.ENTER)
 
-        print(f"✅ Mensaje enviado con éxito al número: {numero}.")
+        print(f"✅ Mensaje enviado con éxito al   número: {numero}.")
         time.sleep(5)  # Pausa para permitir que se envíe el mensaje antes de ir al siguiente
 
     except Exception as e:
