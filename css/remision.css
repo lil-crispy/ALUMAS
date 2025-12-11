@@ -3,6 +3,8 @@ body {
   background-color: #fff;
   margin: 0;
   padding: 20px;
+  font-size: 14px;
+  color: #000;
 }
 
 .contenedor-principal {
@@ -28,6 +30,13 @@ body {
 .info {
   text-align: left;
   margin-top: 10px;
+}
+
+.nota-whatsapp {
+  margin-top: 6px;
+  font-size: 11px;
+  font-weight: bold;
+  color: #000;
 }
 
 .editable-linea {
@@ -131,6 +140,16 @@ th, td {
   display: flex;
   gap: 12px;
   justify-content: center;
+}
+
+.metodos-pago {
+  margin-top: 10px;
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+}
+.metodos-pago label {
+  font-weight: bold;
 }
 
 .btn {
@@ -281,7 +300,6 @@ th, td {
 
 .logo-grande,
 .mensaje,
-.total,
 #mensaje-transporte {
   display: none;
 }
@@ -476,6 +494,23 @@ th, td {
   font-weight: bold;
 }
 
+.report-filters {
+  display: flex;
+  gap: 8px;
+}
+.chip {
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+.chip.active {
+  background: #2563eb;
+  color: #fff;
+  border-color: #1e3a8a;
+}
+
 .report-close {
   background: transparent;
   border: none;
@@ -503,6 +538,9 @@ th, td {
   padding: 12px 14px;
   border-top: 1px solid #eee;
   font-weight: bold;
+}
+.report-total div {
+  margin: 2px 0;
 }
 
 .report-del {

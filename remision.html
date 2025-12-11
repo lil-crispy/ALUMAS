@@ -70,14 +70,20 @@
       <p id="fecha-actual"><strong>FECHA:</strong></p>
       <p><strong>CLIENTE:</strong> <span contenteditable="true" id="nombre-cliente" class="editable-linea"></span></p>
       <p><strong>NIT:</strong> 901797743-2</p>
-      <p><strong>CEL 1:</strong> 3015827791</p>
-      <p><strong>CEL 2:</strong> 3197245235</p>
+      <p><strong>ATENCIÓN AL CLIENTE:</strong> 3015827791</p>
+      <p><strong>CONSULTAR ENVÍOS:</strong> 3197245235</p>
+      <p class="nota-whatsapp"><strong>Por seguridad, solo atendemos llamadas y mensajes vía WhatsApp.</strong></p>
       <p><strong>DIR:</strong> CALLE 139#109-46</p>
       <div id="info-transporte"></div>
     </div>
 
     <div class="checkbox-transporte">
       <input type="checkbox" id="activar-transporte" onchange="toggleTransporte()"> <label for="activar-transporte">Añadir transporte</label>
+    </div>
+    <div class="metodos-pago">
+      <label><input type="checkbox" id="pago-efectivo"> Efectivo</label>
+      <label><input type="checkbox" id="pago-tarjeta"> Tarjeta</label>
+      <label><input type="checkbox" id="pago-qr"> QR</label>
     </div>
 
     <div id="form-transporte">
@@ -405,13 +411,22 @@
     }
 
     function imprimirVenta() {
+      const metodo = getSelectedMetodoPago();
+      if (!metodo) {
+        alert('Seleccione un método de pago (Efectivo, Tarjeta o QR)');
+        return;
+      }
       aplicarVentaUI();
-      agregarVentaReporte();
+      agregarVentaReporte(metodo);
       window.print();
     }
 
     window.addEventListener('afterprint', () => {
       aplicarVentaUI();
+      ['pago-efectivo','pago-tarjeta','pago-qr'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.checked = false;
+      });
     });
 
     window.addEventListener('keydown', (e) => {
@@ -422,6 +437,7 @@
       }
     });
     let reporteVentas = [];
+    let filtroMetodo = 'todos';
     function checkResetReporte() {
       const lastReset = parseInt(localStorage.getItem('reporteLastReset') || '0');
       const now = Date.now();
@@ -436,19 +452,61 @@
     function cargarReporte() {
       checkResetReporte();
       const guardado = localStorage.getItem('reporteVentas');
-      reporteVentas = guardado ? JSON.parse(guardado) : [];
+      const parsed = guardado ? JSON.parse(guardado) : [];
+      reporteVentas = Array.isArray(parsed) ? parsed
+        .map(item => (typeof item === 'number' ? { v: item, m: 'desconocido' } : item))
+        .filter(item => item && typeof item.v === 'number' && item.v > 0 && typeof item.m === 'string')
+        : [];
       actualizarUIReporte();
     }
     document.addEventListener('DOMContentLoaded', () => {
       cargarReporte();
+      // Exclusividad de método de pago
+      ['pago-efectivo','pago-tarjeta','pago-qr'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.addEventListener('change', () => {
+            if (el.checked) {
+              ['pago-efectivo','pago-tarjeta','pago-qr'].forEach(otherId => {
+                if (otherId !== id) {
+                  const other = document.getElementById(otherId);
+                  if (other) other.checked = false;
+                }
+              });
+            }
+          });
+        }
+      });
+      // Filtros del reporte
+      const header = document.querySelector('.report-header');
+      if (header) {
+        const filtrosHTML = `
+          <div class="report-filters">
+            <button class="chip" data-metodo="todos">Todos</button>
+            <button class="chip" data-metodo="efectivo">Efectivo</button>
+            <button class="chip" data-metodo="tarjeta">Tarjeta</button>
+            <button class="chip" data-metodo="qr">QR</button>
+          </div>`;
+        header.insertAdjacentHTML('beforeend', filtrosHTML);
+        header.querySelectorAll('.chip').forEach(btn => {
+          btn.addEventListener('click', () => {
+            filtroMetodo = btn.getAttribute('data-metodo') || 'todos';
+            header.querySelectorAll('.chip').forEach(b => b.classList.toggle('active', b === btn));
+            actualizarUIReporte();
+          });
+        });
+        const def = header.querySelector('.chip[data-metodo="todos"]');
+        if (def) def.classList.add('active');
+      }
       setInterval(checkResetReporte, 60000);
     });
-    function agregarVentaReporte() {
+    function agregarVentaReporte(metodo) {
       const totalEl = document.getElementById('total-general');
       const totalTxt = totalEl ? totalEl.textContent : '';
       const valorNum = parseInt((totalTxt || '').replace(/[^\d]/g, '')) || 0;
       if (valorNum <= 0) return;
-      reporteVentas.push(valorNum);
+      const item = { v: valorNum, m: metodo };
+      reporteVentas.push(item);
       localStorage.setItem('reporteVentas', JSON.stringify(reporteVentas));
       actualizarUIReporte();
     }
@@ -457,14 +515,23 @@
       const cont = document.getElementById('reporte-lista');
       const sumEl = document.getElementById('reporte-suma');
       if (!cont || !sumEl) return;
-      cont.innerHTML = reporteVentas.map((v, i) => `
+      const visibles = reporteVentas.filter(it => filtroMetodo === 'todos' ? true : it.m === filtroMetodo);
+      cont.innerHTML = visibles.map((it, i) => `
         <div class="report-item">
-          <span>${formatearPesos(v)}</span>
+          <span>${formatearPesos(it.v)} — ${it.m.toUpperCase()}</span>
           <button class="report-del" onclick="eliminarVenta(${i})">Eliminar</button>
         </div>
       `).join('');
-      const suma = reporteVentas.reduce((acc, v) => acc + (parseInt(v) || 0), 0);
-      sumEl.innerText = `Total vendido: ${formatearPesos(suma)}`;
+      const sumaTotal = reporteVentas.reduce((acc, it) => acc + (parseInt(it.v) || 0), 0);
+      const sumaEf = reporteVentas.filter(it => it.m === 'efectivo').reduce((acc, it) => acc + it.v, 0);
+      const sumaTa = reporteVentas.filter(it => it.m === 'tarjeta').reduce((acc, it) => acc + it.v, 0);
+      const sumaQr = reporteVentas.filter(it => it.m === 'qr').reduce((acc, it) => acc + it.v, 0);
+      sumEl.innerHTML = `
+        <div><strong>Total vendido:</strong> ${formatearPesos(sumaTotal)}</div>
+        <div><strong>Efectivo:</strong> ${formatearPesos(sumaEf)}</div>
+        <div><strong>Tarjeta:</strong> ${formatearPesos(sumaTa)}</div>
+        <div><strong>QR:</strong> ${formatearPesos(sumaQr)}</div>
+      `;
     }
     function toggleReportePanel() {
       const p = document.getElementById('report-panel');
@@ -474,10 +541,23 @@
     function eliminarVenta(index) {
       const input = window.prompt('Ingrese contraseña para eliminar');
       if (input !== REPORTE_PASS) return;
-      if (index < 0 || index >= reporteVentas.length) return;
-      reporteVentas.splice(index, 1);
+      const visibles = reporteVentas.filter(it => filtroMetodo === 'todos' ? true : it.m === filtroMetodo);
+      if (index < 0 || index >= visibles.length) return;
+      const item = visibles[index];
+      const pos = reporteVentas.findIndex(it => it === item);
+      if (pos === -1) return;
+      reporteVentas.splice(pos, 1);
       localStorage.setItem('reporteVentas', JSON.stringify(reporteVentas));
       actualizarUIReporte();
+    }
+    function getSelectedMetodoPago() {
+      const esEf = document.getElementById('pago-efectivo')?.checked;
+      const esTa = document.getElementById('pago-tarjeta')?.checked;
+      const esQr = document.getElementById('pago-qr')?.checked;
+      if (esEf) return 'efectivo';
+      if (esTa) return 'tarjeta';
+      if (esQr) return 'qr';
+      return null;
     }
 // Seleccionar todo el contenido de la celda activa al presionar Shift
 tabla.addEventListener('keydown', (e) => {
