@@ -80,6 +80,21 @@
   </div>
 </nav>
 
+  <button class="promo-bird" aria-label="Descuento 5%">
+    <img src="./img/rio.png" alt="Mascota con casco, promoción 5%" />
+  </button>
+
+<div class="promo-modal" role="dialog" aria-modal="true" aria-labelledby="promo-title" hidden>
+  <div class="promo-modal__backdrop"></div>
+  <div class="promo-modal__content">
+    <button class="promo-modal__close" aria-label="Cerrar">✕</button>
+    <h2 id="promo-title">Descuento 5%</h2>
+    <p>Toma un pantallazo de esta ventana y acércate al punto físico en calle 139 #109-46 para redimir tu descuento.</p>
+    <p>Válido una vez por persona. Sujeto a verificación en tienda.</p>
+    <button class="promo-modal__cta">Tomar pantallazo y cerrar</button>
+  </div>
+</div>
+
 
 
 <style>
@@ -252,8 +267,8 @@ window.addEventListener('resize', updateNavButtonsVisibility);
             <img src="./img/correo.webp" alt="Correo electrónico">
             <span>alumasltda@hotmail.com</span>
             
-        </a>
-        
+      </a>
+    
     </div>
 
 <div class="catalogo-container">
@@ -544,4 +559,38 @@ window.addEventListener('resize', updateNavButtonsVisibility);
 
 
 <script src="js/scripts.js"></script>
+<script>
+  const birdBtn = document.querySelector('.promo-bird');
+  const modal = document.querySelector('.promo-modal');
+  const closeBtn = document.querySelector('.promo-modal__close');
+  const ctaBtn = document.querySelector('.promo-modal__cta');
+  const backdrop = document.querySelector('.promo-modal__backdrop');
+  const headerEl = document.querySelector('.main-header');
+
+  function positionPromo() {
+    if (!birdBtn || !headerEl) return;
+    const rect = headerEl.getBoundingClientRect();
+    const offset = -12; // subir un poco la imagen
+    const top = window.scrollY + rect.bottom + offset;
+    birdBtn.style.setProperty('--promo-top', `${top}px`);
+  }
+
+  function openPromoModal() { if (modal) modal.hidden = false; }
+  function closePromoModal() { if (modal) modal.hidden = true; }
+
+  if (birdBtn) birdBtn.addEventListener('click', openPromoModal);
+  if (closeBtn) closeBtn.addEventListener('click', closePromoModal);
+  if (backdrop) backdrop.addEventListener('click', closePromoModal);
+  if (ctaBtn) ctaBtn.addEventListener('click', () => {
+    alert('Toma un pantallazo de esta ventana y acércate a calle 139 #109-46 para redimir tu 5% de descuento.');
+    closePromoModal();
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal && !modal.hidden) closePromoModal();
+  });
+
+  window.addEventListener('load', positionPromo);
+  window.addEventListener('resize', positionPromo);
+</script>
 </html>
