@@ -325,7 +325,7 @@ body {
 
 
 /* ==== SLIDER ==== */
-.carousel {
+  .carousel {
   position: relative;
   overflow: visible;
   width: 100%;
@@ -445,7 +445,7 @@ html, body {
 /* Botón promo imagen en banner */
 .promo-bird {
   position: fixed;
-  right: 16px;
+  right: 10px;
   top: var(--promo-top, 0);
   bottom: auto;
   padding: 0;
@@ -529,8 +529,8 @@ html, body {
 }
 
 @media (max-width: 600px) {
-  .promo-bird { right: 12px; }
-  .promo-bird img { width: 240px; }
+  .promo-bird { right: 12px; top: auto; bottom: 84px; }
+  .promo-bird img { width: 150px; }
   .promo-modal__content { width: 92vw; padding: 18px; border-radius: 14px; }
   .promo-modal__close { font-size: 22px; }
 }
