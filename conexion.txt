@@ -1,0 +1,29 @@
+========================================
+INFORMACIÓN DE CONEXIÓN VPS Y BASE DE DATOS
+========================================
+
+SERVIDOR VPS (Hostinger)
+------------------------
+IP (Host):      72.62.166.253
+Ubicación:      Boston, USA
+Sistema OS:     Ubuntu 24.04 LTS
+
+ACCESO SSH (Consola / Terminal)
+-------------------------------
+Usuario:        roots
+Contraseña:     Antonella0712#
+Puerto SSH:     22 (Por defecto)
+
+BASE DE DATOS (MySQL / MariaDB)
+-------------------------------
+Host:           72.62.166.253
+Puerto:         3306
+Base de Datos:  sistema_contable
+Usuario:        sistema_user
+Contraseña:     12345
+
+NOTAS IMPORTANTES
+-----------------
+1. Esta información es sensible. Guarda este archivo en un lugar seguro.
+2. La base de datos está configurada para aceptar conexiones remotas desde cualquier IP (o las configuradas en el firewall).
+3. Para conectar por SSH usa: ssh root@72.62.166.253

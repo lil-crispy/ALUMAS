@@ -1,5 +1,14 @@
 {
+  "name": "alumas",
+  "private": true,
+  "scripts": {
+    "start": "node server.js"
+  },
   "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "mysql2": "^3.16.0",
     "swiper": "^11.2.0"
   }
 }

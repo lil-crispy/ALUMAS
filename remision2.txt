@@ -1,0 +1,2427 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Remisión ALUMAS</title>
+  <link rel="icon" type="image/svg+xml" href="../static/img/LOGO3.png" />
+
+  <!-- Estilos personalizados -->
+  <link rel="stylesheet" href="../static/remision.css">
+
+  <!-- Cargar fuentes personalizadas -->
+  <style>
+    @font-face {
+      font-family: 'Bauhaus';
+      src: local('Bauhaus 93'), local('Bauhaus93');
+    }
+
+    .valor-u[contenteditable="true"] {
+      direction: ltr;
+      unicode-bidi: plaintext;
+      text-align: left;
+    }
+
+    th {
+      background-color: #f2f2f2;
+      font-weight: bold;
+    }
+
+    .cant {
+      width: 10%;
+    }
+
+    .valor-u, .valor-t {
+      width: 15%;
+    }
+
+    .consecutivo-display {
+      font-size: 18px;
+      font-weight: bold;
+      color: #000000;
+      margin: 10px 0;
+      text-align: center;
+      padding: 10px;
+      background-color: #f5f5f5;
+      border: 2px solid #333333;
+      border-radius: 8px;
+    }
+
+    /* Estilos para punto de venta */
+
+
+    .boton-cambiar-punto {
+      background-color: #ffc107;
+      color: #212529;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 12px;
+      margin-left: 10px;
+      transition: background-color 0.3s;
+    }
+
+    .boton-cambiar-punto:hover {
+      background-color: #e0a800;
+    }
+
+    /* Modal para clave de administrador */
+    .modal-admin {
+      display: none;
+      position: fixed;
+      z-index: 2000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+    }
+
+    .modal-admin-content {
+      background-color: #fefefe;
+      margin: 20% auto;
+      padding: 20px;
+      border: none;
+      border-radius: 10px;
+      width: 350px;
+      text-align: center;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    /* Panel lateral para sugerencias de productos */
+    .panel-sugerencias {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 350px;
+      height: 100vh;
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+      border-left: 3px solid #007bff;
+      box-shadow: -5px 0 15px rgba(0,0,0,0.1);
+      z-index: 1500;
+      display: none;
+      overflow: hidden;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .panel-header {
+      background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+      color: white;
+      padding: 15px 20px;
+      font-weight: 600;
+      font-size: 16px;
+      border-bottom: 2px solid #0056b3;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .panel-close {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 5px;
+      border-radius: 3px;
+      transition: background-color 0.2s;
+    }
+
+    .panel-close:hover {
+      background-color: rgba(255,255,255,0.2);
+    }
+
+    .panel-content {
+      height: calc(100vh - 70px);
+      overflow-y: auto;
+      padding: 0;
+    }
+
+    /* Estilos para autocompletado de productos */
+    .producto-autocomplete {
+      position: relative;
+    }
+
+    .producto-dropdown {
+      width: 100%;
+      background: white;
+      max-height: none;
+      overflow-y: visible;
+      z-index: 1000;
+      display: block;
+      box-shadow: none;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      border: none;
+      border-radius: 0;
+    }
+
+    .producto-item {
+      padding: 15px 20px;
+      cursor: pointer;
+      border-bottom: 1px solid #e9ecef;
+      transition: all 0.3s ease;
+      margin: 0;
+      background: white;
+    }
+
+    .producto-item:first-child {
+      border-top: none;
+    }
+
+    .producto-item:last-child {
+      border-bottom: none;
+    }
+
+    .producto-item:hover {
+      background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+      transform: translateX(5px);
+      border-left: 4px solid #007bff;
+      box-shadow: 0 2px 8px rgba(0,123,255,0.2);
+    }
+
+    .producto-item.selected {
+      background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+      color: white;
+      border-left: 4px solid #004085;
+    }
+
+    .producto-item.selected .producto-nombre {
+      color: white;
+    }
+
+    .producto-item.selected .producto-info {
+      color: #e9ecef;
+    }
+
+    .producto-nombre {
+      font-weight: 600;
+      color: #2c3e50;
+      font-size: 15px;
+      margin-bottom: 6px;
+      line-height: 1.2;
+    }
+
+    .producto-info {
+      font-size: 13px;
+      color: #6c757d;
+      line-height: 1.4;
+    }
+
+    .no-productos {
+       padding: 30px 20px;
+       text-align: center;
+       color: #6c757d;
+       font-style: italic;
+     }
+
+     /* Estilos para indicadores de validación de productos */
+     .celda-producto {
+       position: relative;
+       padding-right: 30px !important;
+     }
+
+
+
+    .modal-admin h3 {
+      color: #dc3545;
+      margin-bottom: 20px;
+    }
+
+    .modal-admin input[type="password"] {
+      width: 80%;
+      padding: 10px;
+      border: 2px solid #ddd;
+      border-radius: 5px;
+      margin: 10px 0;
+      font-size: 16px;
+      text-align: center;
+    }
+
+    .modal-admin-buttons {
+      margin-top: 20px;
+    }
+
+    .modal-admin-buttons button {
+      margin: 5px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .btn-admin-validar {
+      background-color: #28a745;
+      color: white;
+    }
+
+    .btn-admin-validar:hover {
+      background-color: #218838;
+    }
+
+    .btn-admin-cancelar {
+      background-color: #6c757d;
+      color: white;
+    }
+
+    .btn-admin-cancelar:hover {
+      background-color: #545b62;
+    }
+
+    /* Estilos compactos para tipo de pago y forma de pago */
+    .pago-compacto {
+      display: flex;
+      gap: 10px;
+      margin: 10px 0;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .pago-select {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .pago-select label {
+      font-weight: bold;
+      font-size: 14px;
+      color: #333;
+      min-width: 80px;
+    }
+
+    .pago-select select {
+      padding: 6px 10px;
+      border: 2px solid #ddd;
+      border-radius: 5px;
+      font-size: 14px;
+      background-color: white;
+      cursor: pointer;
+      transition: border-color 0.3s;
+    }
+
+    .pago-select select:focus {
+      outline: none;
+      border-color: #28a745;
+    }
+
+    .tipo-pago-select select {
+      border-color: #28a745;
+    }
+
+    .forma-pago-select select {
+      border-color: #ffc107;
+    }
+
+    /* ESTILOS MODERNOS PARA CHECKBOXES DE FORMA DE PAGO */
+    .forma-pago-checkboxes {
+      margin: 8px 0;
+      padding: 10px;
+      background-color: #f8f9fa;
+      border-radius: 8px;
+      border: 1px solid #e9ecef;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+      transition: border-color 0.3s ease;
+    }
+    
+    .forma-pago-checkboxes.error-pago {
+      border-color: #dc3545 !important;
+      background-color: #fff5f5;
+    }
+
+    .forma-pago-label {
+      font-weight: 600;
+      font-size: 12px;
+      color: #495057;
+      display: block;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .checkbox-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .checkbox-label-modern {
+      position: relative;
+      cursor: pointer;
+      user-select: none;
+      margin: 0;
+    }
+
+    .checkbox-label-modern input[type="checkbox"] {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .checkmark-modern {
+      display: inline-block;
+      padding: 4px 10px;
+      font-size: 10px;
+      font-weight: 600;
+      color: #6c757d;
+      background-color: #ffffff;
+      border: 1px solid #ced4da;
+      border-radius: 15px;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      min-width: 50px;
+      text-align: center;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .checkmark-modern::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+      transition: left 0.5s;
+    }
+
+    .checkbox-label-modern:hover .checkmark-modern::before {
+      left: 100%;
+    }
+
+    .checkbox-label-modern:hover .checkmark-modern {
+        border-color: #80bdff;
+        box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+        transform: translateY(-1px);
+      }
+
+    .checkbox-label-modern input[type="checkbox"]:focus + .checkmark-modern {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.3);
+    }
+
+    .checkbox-label-modern input[type="checkbox"]:checked + .checkmark-modern {
+      background-color: #007bff;
+      color: white;
+      border-color: #007bff;
+      box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
+    }
+
+    .checkbox-label-modern input[type="checkbox"]:checked + .checkmark-modern.efectivo {
+      background-color: #28a745;
+      border-color: #28a745;
+    }
+
+    .checkbox-label-modern input[type="checkbox"]:checked + .checkmark-modern.qr {
+      background-color: #17a2b8;
+      border-color: #17a2b8;
+    }
+
+    .checkbox-label-modern input[type="checkbox"]:checked + .checkmark-modern.tarjeta {
+        background-color: #6f42c1;
+        border-color: #6f42c1;
+      }
+
+    /* Animación sutil para checkboxes seleccionados */
+    @keyframes pulse-light {
+      0% { box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.4); }
+      70% { box-shadow: 0 0 0 6px rgba(0, 123, 255, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(0, 123, 255, 0); }
+    }
+
+    .checkbox-label-modern input[type="checkbox"]:checked + .checkmark-modern {
+       animation: pulse-light 1.5s ease-out;
+     }
+
+     /* Animación de shake para validación */
+     @keyframes shake {
+       0%, 100% { transform: translateX(0); }
+       10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
+       20%, 40%, 60%, 80% { transform: translateX(2px); }
+     }
+
+     /* Responsive design para checkboxes */
+     @media (max-width: 768px) {
+       .forma-pago-checkboxes {
+         padding: 6px;
+         margin: 4px 0;
+       }
+       
+       .forma-pago-label {
+         font-size: 10px;
+         margin-bottom: 4px;
+       }
+       
+       .checkbox-group {
+         gap: 4px;
+       }
+       
+       .checkmark-modern {
+         padding: 3px 6px;
+         font-size: 9px;
+         min-width: 40px;
+         letter-spacing: 0.4px;
+       }
+     }
+
+     @media (max-width: 480px) {
+       .forma-pago-checkboxes {
+         padding: 4px;
+       }
+       
+       .checkbox-group {
+         gap: 3px;
+       }
+       
+       .checkmark-modern {
+         padding: 2px 5px;
+         font-size: 8px;
+         min-width: 35px;
+       }
+     }
+
+    .boton-vender {
+      background-color: #28a745;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      margin: 10px 5px;
+      transition: background-color 0.3s;
+    }
+
+    .boton-vender:hover {
+      background-color: #218838;
+    }
+
+    .boton-vender:disabled {
+      background-color: #6c757d;
+      cursor: not-allowed;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+    }
+
+    .modal-content {
+      background-color: #fefefe;
+      margin: 15% auto;
+      padding: 20px;
+      border: none;
+      border-radius: 10px;
+      width: 400px;
+      text-align: center;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .modal h2 {
+      color: #28a745;
+      margin-bottom: 20px;
+    }
+
+    .modal-buttons {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .modal-buttons button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+      min-width: 120px;
+      flex: 1;
+      max-width: 200px;
+    }
+
+    .btn-imprimir-modal {
+      background-color: #007bff;
+      color: white;
+    }
+
+    .btn-imprimir-modal:hover {
+      background-color: #0056b3;
+    }
+
+    .btn-cerrar-modal {
+      background-color: #6c757d;
+      color: white;
+    }
+
+    .btn-cerrar-modal:hover {
+      background-color: #545b62;
+    }
+
+
+
+    .btn-cerrar-modal:hover {
+      background-color: #545b62;
+    }
+
+    /* Estilos para el autocompletado */
+    .cliente-container {
+      position: relative;
+      display: inline-block;
+      width: 300px;
+    }
+
+    .cliente-input {
+      width: 100%;
+      padding: 8px;
+      border: 2px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      background: transparent;
+      outline: none;
+    }
+
+    .cliente-input:focus {
+      border-color: #333333;
+      box-shadow: 0 0 5px rgba(51, 51, 51, 0.3);
+    }
+
+    .autocomplete-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: white;
+      border: 1px solid #ddd;
+      border-top: none;
+      border-radius: 0 0 4px 4px;
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 1000;
+      display: none;
+    }
+
+    .autocomplete-item {
+      padding: 10px;
+      cursor: pointer;
+      border-bottom: 1px solid #eee;
+    }
+
+    .autocomplete-item:hover {
+      background-color: #f0f8f0;
+    }
+
+    .autocomplete-item:last-child {
+      border-bottom: none;
+    }
+
+    .autocomplete-item .cliente-nombre {
+      font-weight: bold;
+      color: #000000;
+    }
+
+    .autocomplete-item .cliente-info {
+      font-size: 12px;
+      color: #666;
+      margin-top: 2px;
+    }
+
+
+
+    .cliente-selected {
+      background-color: #e8f5e8 !important;
+    }
+
+    /* Estilos para formato bodega (media carta) - Actualizado según imagen de referencia */
+    @media print {
+      .formato-bodega {
+        width: 19cm !important;
+        max-width: 19cm !important;
+        font-size: 12px !important;
+        padding: 0.3cm !important;
+        margin: 0 auto !important;
+        max-height: 14.8cm !important; /* Media página A4 */
+        overflow: hidden !important;
+      }
+
+      .formato-bodega .contenedor-principal {
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+      
+      /* Estilo para el encabezado en formato bodega */
+      .formato-bodega .encabezado {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        margin-bottom: 5px !important;
+        border-bottom: 1px solid #000 !important;
+        padding-bottom: 5px !important;
+      }
+      
+      /* Logo ALUMAS en formato bodega */
+      .formato-bodega .encabezado img.logo-bodega {
+        max-width: 80px !important;
+        height: auto !important;
+        display: inline-block !important;
+        vertical-align: middle !important;
+        margin-left: 10px !important;
+      }
+      
+      .formato-bodega .encabezado img:not(.logo-bodega) {
+        max-width: 200px !important;
+        height: auto !important;
+        display: inline-block !important;
+        margin: 0 auto !important;
+      }
+      
+      /* Información de la empresa en formato bodega */
+      .formato-bodega .encabezado-info {
+        text-align: left !important;
+        font-size: 14px !important;
+        margin-left: -10px !important;
+        padding: 8px 12px !important;
+        background-color: #f8f8f8 !important;
+        border: 2px solid #333 !important;
+        border-radius: 5px !important;
+        width: 180px !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+      }
+      
+      .formato-bodega .encabezado-info p {
+        margin: 3px 0 !important;
+        font-weight: bold !important;
+        color: #000 !important;
+      }
+      
+      .formato-bodega .encabezado-info p:nth-child(2) {
+        font-size: 18px !important;
+        color: #000 !important;
+        text-align: center !important;
+        background-color: #e0e0e0 !important;
+        padding: 2px !important;
+        border-radius: 3px !important;
+      }
+      
+      /* Información de fecha y consecutivo */
+      .formato-bodega .info-documento {
+        display: flex !important;
+        justify-content: space-between !important;
+        margin-bottom: 5px !important;
+        font-size: 10px !important;
+      }
+      
+      /* Estilo para la tabla en formato bodega */
+      .formato-bodega table {
+        width: 95% !important;
+        font-size: 10px !important;
+        border: 1px solid #000 !important;
+        margin-top: 5px !important;
+        margin-bottom: 5px !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+      }
+      
+      .formato-bodega .contenedor-tabla {
+        width: 95% !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+      }
+
+      .formato-bodega th {
+        background-color: #f0f0f0 !important;
+        padding: 3px 2px !important;
+        font-size: 10px !important;
+        text-align: center !important;
+      }
+      
+      .formato-bodega td {
+        padding: 3px 2px !important;
+        font-size: 10px !important;
+        text-align: left !important;
+      }
+      
+      .formato-bodega .col-cant {
+        width: 8% !important;
+        text-align: center !important;
+        font-weight: bold !important;
+        font-size: 14px !important;
+      }
+      
+      .formato-bodega .cant {
+        font-weight: bold !important;
+        font-size: 14px !important;
+        text-align: center !important;
+        color: #000 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      
+      .formato-bodega .col-desc {
+        width: 50% !important;
+        text-align: left !important;
+      }
+      
+      .formato-bodega .col-valor {
+        width: 21% !important;
+        text-align: right !important;
+      }
+      
+      .formato-bodega .valor-t {
+        text-align: right !important;
+      }
+
+      .formato-bodega .total {
+        font-size: 12px !important;
+        text-align: center !important;
+        margin-top: 5px !important;
+        padding: 0 !important;
+        width: 100% !important;
+      }
+      
+      /* Ocultar elementos innecesarios en la impresión */
+      .formato-bodega .acciones-tabla,
+      .formato-bodega .consecutivo-display,
+      .formato-bodega .pago-compacto,
+      .formato-bodega .pago-select {
+        display: none !important;
+      }
+      
+      /* Ocultar desplegables en TODOS los formatos de impresión */
+      .pago-compacto,
+      .pago-select {
+        display: none !important;
+      }
+      
+      /* Información del cliente */
+      .formato-bodega .info {
+        margin-bottom: 5px !important;
+        font-size: 10px !important;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        justify-content: space-between !important;
+      }
+      
+      .formato-bodega .info p {
+        margin: 2px 0 !important;
+        width: 48% !important;
+      }
+      
+      /* Firma y sello */
+      .formato-bodega .firma-sello {
+        margin-top: 5px !important;
+        text-align: center !important;
+        font-size: 10px !important;
+      }
+      
+      .formato-bodega .linea-firma {
+        width: 50% !important;
+        margin: 5px auto 2px auto !important;
+        border-top: 1px solid #000 !important;
+      }
+      
+      /* Ocultar mensaje de agradecimiento en formato ferretería */
+      .mensaje-agradecimiento {
+        display: none;
+      }
+      
+      /* Mensaje de agradecimiento para formato bodega */
+      .formato-bodega .mensaje-agradecimiento {
+        display: block !important;
+        font-size: 9px !important;
+        text-align: center !important;
+        margin-top: 2px !important;
+        margin-bottom: 0 !important;
+      }
+      
+      .formato-bodega .mensaje-agradecimiento::after {
+        content: "***GRACIAS POR SU COMPRA***" !important;
+        font-weight: bold !important;
+        display: block !important;
+      }
+      
+      /* Ocultar logo grande y mensaje original en formato bodega */
+      .formato-bodega .logo-grande,
+      .formato-bodega .mensaje {
+        display: none !important;
+      }
+      
+      /* Estilos para formato ferretería (tamaño normal) */
+      .cant {
+        font-weight: bold !important;
+        font-size: 12px !important;
+        text-align: center !important;
+        color: #000 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      
+      .col-cant {
+        font-weight: bold !important;
+        font-size: 12px !important;
+        text-align: center !important;
+        color: #000 !important;
+      }
+      
+      /* Estilos específicos para formato bodega (fuente más grande) */
+      .formato-bodega .cant {
+        font-size: 14px !important;
+      }
+      
+      .formato-bodega .col-cant {
+        font-size: 14px !important;
+      }
+      
+      /* Mejorar nitidez general de texto en impresión */
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+    }
+  </style>
+
+  <!-- Librerías para PDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+
+<body>
+
+  <!-- Panel lateral para sugerencias de productos -->
+  <div class="panel-sugerencias" id="panel-sugerencias">
+    <div class="panel-header">
+      <span>🔍 Sugerencias de Productos</span>
+      <button class="panel-close" onclick="cerrarPanelSugerencias()">×</button>
+    </div>
+    <div class="panel-content">
+      <div id="producto-autocomplete-dropdown" class="producto-dropdown">
+        <div class="no-productos">Escribe en el campo de producto para ver sugerencias...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="contenedor-principal" id="contenido-factura">
+    <div class="encabezado">
+      <div style="text-align: center;">
+        <img src="../static/img/LOGO4.png" alt="Logo ALUMAS" style="max-width: 250px; display: inline-block; vertical-align: middle;">
+        <!-- Logo para formato bodega que solo se mostrará en ese formato -->
+        <img src="../static/img/LOGO3.png" alt="Logo ALUMAS" class="logo-bodega" style="display: none; max-width: 80px; vertical-align: middle;">
+      </div>
+      <div class="encabezado-info">
+        <p><strong>FEC</strong> <span id="fecha-corta">8/07/2025</span></p>
+        <p><strong>REM</strong> <span id="numero-consecutivo-corto">1725</span></p>
+        <p><strong>CEL</strong> <span>3197245235</span></p>
+      </div>
+    </div>
+
+    <div class="consecutivo-display" id="consecutivo-display">
+      CONSECUTIVO: <span id="numero-consecutivo">----</span>
+    </div>
+
+    <!-- SECCIÓN COMPACTA: PUNTO DE VENTA -->
+    <div class="pago-compacto">
+      <div class="pago-select">
+        <label>📍 Punto:</label>
+        <select id="punto-venta" name="punto-venta">
+          <option value="ferreteria">🏪 FERRETERÍA (80mm)</option>
+          <option value="bodega" selected>🏭 BODEGA (Media Carta)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- SECCIÓN COMPACTA: OPCIONES DE PAGO -->
+    <div class="pago-compacto">
+      <div class="pago-select tipo-pago-select">
+        <label>💳 Tipo:</label>
+        <select id="tipo-pago" name="tipo-pago">
+          <option value="CONTADO" selected>💵 CONTADO</option>
+          <option value="CREDITO">📋 CRÉDITO</option>
+        </select>
+      </div>
+      <!-- CHECKBOXES ESTÉTICOS PARA FORMA DE PAGO -->
+      <div class="forma-pago-checkboxes">
+        <label class="forma-pago-label">Forma de Pago:</label>
+        <div class="checkbox-group">
+          <label class="checkbox-label-modern">
+            <input type="checkbox" id="forma-efectivo" name="forma-pago" value="EFECTIVO" onchange="onFormaPagoChange(this)">
+            <span class="checkmark-modern">EFECTIVO</span>
+          </label>
+          <label class="checkbox-label-modern">
+            <input type="checkbox" id="forma-qr" name="forma-pago" value="QR" onchange="onFormaPagoChange(this)">
+            <span class="checkmark-modern">QR</span>
+          </label>
+          <label class="checkbox-label-modern">
+            <input type="checkbox" id="forma-tarjeta" name="forma-pago" value="TARJETA" onchange="onFormaPagoChange(this)">
+            <span class="checkmark-modern">TARJETA</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+
+
+    <div class="info">
+      <p id="fecha-actual"><strong>FECHA:</strong></p>
+      <div style="display: flex; align-items: center; margin-bottom: 5px;">
+        <strong style="margin-right: 5px;">CLIENTE:</strong>
+        <div class="cliente-container" style="flex: 1;">
+          <input type="text" id="nombre-cliente" class="cliente-input" placeholder="Buscar cliente por nombre o NIT..." style="width: 100%;">
+          <div id="autocomplete-dropdown" class="autocomplete-dropdown"></div>
+        </div>
+      </div>
+      <p><strong>NIT:</strong> <span id="cliente-nit">901797743-2</span></p>
+      <p><strong>CEL:</strong> <span id="cliente-cel1">3015827791</span> / <span id="cliente-cel2">3197245235</span></p>
+      <p><strong>DIR:</strong> <span id="cliente-dir">CALLE 139#109-46</span></p>
+    </div>
+
+
+
+
+
+    <div class="contenedor-tabla">
+      <div class="acciones-tabla">
+        <button onclick="agregarFila()">➕</button>
+        <button onclick="eliminarFila()">➖</button>
+        <button onclick="limpiarTabla()">🧹 Limpiar</button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th class="col-cant">CANT</th>
+            <th class="col-desc">PRODUCTO</th>
+            <th class="col-valor">V.UNI</th>
+            <th class="col-valor">V. TOTAL</th>
+          </tr>
+        </thead>
+        <tbody id="tabla-productos">
+          <tr><td contenteditable="true" class="cant"></td><td contenteditable="true" class="celda-producto"><span class="indicador-producto" style="display: none;"></span></td><td contenteditable="true" class="valor-u"></td><td class="valor-t"></td></tr>
+          <tr><td contenteditable="true" class="cant"></td><td contenteditable="true" class="celda-producto"><span class="indicador-producto" style="display: none;"></span></td><td contenteditable="true" class="valor-u"></td><td class="valor-t"></td></tr>
+          <tr><td contenteditable="true" class="cant"></td><td contenteditable="true" class="celda-producto"><span class="indicador-producto" style="display: none;"></span></td><td contenteditable="true" class="valor-u"></td><td class="valor-t"></td></tr>
+          <tr><td contenteditable="true" class="cant"></td><td contenteditable="true" class="celda-producto"><span class="indicador-producto" style="display: none;"></span></td><td contenteditable="true" class="valor-u"></td><td class="valor-t"></td></tr>
+          <tr><td contenteditable="true" class="cant"></td><td contenteditable="true" class="celda-producto"><span class="indicador-producto" style="display: none;"></span></td><td contenteditable="true" class="valor-u"></td><td class="valor-t"></td></tr>
+          <tr><td contenteditable="true" class="cant"></td><td contenteditable="true" class="celda-producto"><span class="indicador-producto" style="display: none;"></span></td><td contenteditable="true" class="valor-u"></td><td class="valor-t"></td></tr>
+          <tr><td contenteditable="true" class="cant"></td><td contenteditable="true" class="celda-producto"><span class="indicador-producto" style="display: none;"></span></td><td contenteditable="true" class="valor-u"></td><td class="valor-t"></td></tr>
+        </tbody>
+      </table>
+      <!-- Dropdown para autocompletado de productos -->
+      <div id="producto-autocomplete-dropdown" class="producto-dropdown"></div>
+    </div>
+  
+    <p class="total" id="total-general">TOTAL: $ 0</p>
+
+    <!-- Mensaje de agradecimiento para formato bodega -->
+    <div class="mensaje-agradecimiento">
+      <!-- Mensaje se mostrará solo en formato bodega -->
+    </div>
+
+    <div class="firma-sello">
+      <div class="linea-firma"></div>
+      <p>Firma/Sello de Recibido</p>
+    </div>
+
+    <!-- Logo original que se ocultará en formato bodega -->
+    <img src="../static/img/LOGO3.png" alt="Logo ALUMAS" class="logo-grande">
+
+    <!-- Mensaje original que se ocultará en formato bodega -->
+    <div class="mensaje">
+      <p><strong>***GRACIAS POR SU COMPRA***</strong></p>
+      <small>SI NECESITA FACTURA ELECTRÓNICA ENVIAR ESTA REMISIÓN Y EL RUT AL 3015827791</small>
+      <small>EL USO DE LA FACTURA ES INDISPENSABLE PARA CUALQUIER TIPO DE DEVOLUCIÓN.</small>
+      <small>NO SE REMBOLSA EL DINERO EN CASO QUE EL PRODUCTO NO CUMPLA CON EL FUNCIONAMIENTO.</small>
+      <small>SE PUEDE CAMBIAR POR OTRO DEL MISMO VALOR SIEMPRE Y CUANDO ESTÉ EN BUEN ESTADO.</small>
+      <div style="text-align: right; margin-top: 40px;">
+        <img src="../static/img/firma.png" alt="Firma" style="width:150px;filter:brightness(0) contrast(1000);-webkit-print-color-adjust:exact;print-color-adjust:exact;mix-blend-mode:multiply;">
+      </div>
+    </div>
+
+    <div class="boton-imprimir">
+      <button class="boton-vender" id="boton-vender" onclick="mostrarModalVenta()">💾 Guardar Venta</button>
+      <button onclick="descargarPDF()">📄 Descargar PDF</button>
+      <label>
+        <input type="checkbox" id="check-cotizacion"> Cotización
+      </label>
+    </div>
+    <div id="boton-cotizacion" style="display:none; text-align:center; margin:15px;">
+      <button class="boton-vender" onclick="imprimirCotizacion()">🖨️ Imprimir Cotización</button>
+    </div>
+  </div>
+
+  <!-- Modal de venta -->
+  <div id="modal-venta" class="modal">
+    <div class="modal-content">
+      <h2>✅ Venta Registrada</h2>
+      <p>La venta ha sido registrada exitosamente.</p>
+      <p><strong>Consecutivo:</strong> <span id="consecutivo-modal">----</span></p>
+      <p><strong>Punto de venta:</strong> <span id="punto-modal">----</span></p>
+      <div class="modal-buttons">
+        <button class="btn-imprimir-modal" onclick="imprimirDesdeModal()">🖨️ Imprimir</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal para clave de administrador -->
+  <div id="modal-admin" class="modal-admin">
+    <div class="modal-admin-content">
+      <h3>🔐 CLAVE DE ADMINISTRADOR REQUERIDA</h3>
+      <p>Para cambiar el punto de venta, ingrese la clave de administrador:</p>
+      <input type="password" id="clave-admin" placeholder="Ingrese la clave">
+      <div class="modal-admin-buttons">
+        <button class="btn-admin-validar" onclick="validarClaveAdmin()">Validar</button>
+        <button class="btn-admin-cancelar" onclick="cerrarModalAdmin()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+<script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+
+<script>
+    // Flag para coordinar limpieza y generación de consecutivo durante impresión
+    let enProcesoImpresion = false;
+
+    function descargarPDF() {
+        const element = document.getElementById('contenido-factura');
+        const puntoVenta = obtenerPuntoVentaSeleccionado();
+        
+        let options = {
+            margin: [10, 5, 10, 5],
+            filename: 'remision.pdf',
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        // Si es bodega, ajustar para media carta
+        if (puntoVenta === 'bodega') {
+            options.jsPDF.format = [210, 148]; // A5 horizontal (media carta aprox)
+            options.margin = [5, 5, 5, 5];
+        }
+
+        html2pdf()
+            .set(options)
+            .from(element)
+            .save();
+    }
+    
+    // Variables globales
+    const tabla = document.getElementById('tabla-productos');
+    let celdaActiva = null;
+    let consecutivoActual = null;
+    let consecutivoOrigenBridge = false; // true si viene del backend, false si es local
+    let consecutivoVenta = null;
+    let ventaGuardada = false;
+    let clienteSeleccionado = null;
+    let puntoVentaCambiado = false; // Para controlar cambios
+    let puntoVentaAnterior = 'ferreteria'; // Valor anterior para revertir cambios
+    const CLAVE_ADMIN = "ALUMAS"; // Clave de administrador (cambiar por una más segura)
+    let timeoutBusqueda = null; // Variable para el timeout de búsqueda de clientes
+
+
+
+    // Mensaje original para restaurar cuando se desmarca la cotización
+    const mensajeOriginal = `
+        <p><strong>***GRACIAS POR SU COMPRA***</strong></p>
+        <small>SI NECESITA FACTURA ELECTRÓNICA ENVIAR ESTA REMISIÓN Y EL RUT AL 3015827791</small>
+        <small>EL USO DE LA FACTURA ES INDISPENSABLE PARA CUALQUIER TIPO DE DEVOLUCIÓN.</small>
+        <small>NO SE REMBOLSA EL DINERO EN CASO QUE EL PRODUCTO NO CUMPLA CON EL FUNCIONAMIENTO.</small>
+        <small>SE PUEDE CAMBIAR POR OTRO DEL MISMO VALOR SIEMPRE Y CUANDO ESTÉ EN BUEN ESTADO.</small>
+        <div style="text-align: right; margin-top: 40px;">
+            <img src="../static/img/firma.png" alt="Firma" style="width:150px;filter:brightness(0) contrast(1000);-webkit-print-color-adjust:exact;print-color-adjust:exact;mix-blend-mode:multiply;">
+        </div>
+    `;
+
+    // Inicializar QWebChannel
+    let bridge;
+    let bridgeInicializado = false;
+    let intentosVerificacion = 0;
+    const MAX_INTENTOS = 20; // Máximo 10 segundos de intentos
+    
+    // Verificar si QWebChannel está disponible (solo en la aplicación Qt)
+    if (typeof QWebChannel !== 'undefined' && typeof qt !== 'undefined') {
+        new QWebChannel(qt.webChannelTransport, function(channel) {
+        console.log('🔗 QWebChannel conectado, obteniendo bridge...');
+        bridge = channel.objects.bridge;
+        // Suscribirse a la señal Python→JS que indica que la impresión ha finalizado
+        try {
+            if (bridge && bridge.impresionCompletada && typeof bridge.impresionCompletada.connect === 'function') {
+                console.log('🔔 Suscribiendo a señal impresionCompletada');
+                bridge.impresionCompletada.connect(async function(consecutivoNotificado) {
+                    console.log('📩 Señal impresionCompletada recibida, consecutivo:', consecutivoNotificado);
+                    // Marcar confirmación y proceder con limpieza y nuevo consecutivo
+                    impresionConfirmada = true;
+                    try {
+                        await limpiarTabla();
+                        await generarConsecutivo();
+                        console.log('✅ Limpieza y nuevo consecutivo tras impresión');
+                        
+                        // Abrir nueva ventana automáticamente después de imprimir
+                        console.log('🔄 Abriendo nueva ventana de venta desde señal...');
+                        setTimeout(() => {
+                            window.open(window.location.href, '_blank');
+                        }, 500);
+                        
+                    } catch (e) {
+                        console.error('❌ Error post-impresión (limpieza/generación):', e);
+                    } finally {
+                        enProcesoImpresion = false;
+                    }
+                });
+            } else {
+                console.warn('⚠️ Señal impresionCompletada no disponible en bridge');
+            }
+        } catch (e) {
+            console.error('❌ Error suscribiendo a impresionCompletada:', e);
+        }
+        
+        // Verificar que el bridge esté completamente disponible
+        function verificarBridge() {
+            intentosVerificacion++;
+            console.log(`🔍 Verificando disponibilidad del bridge... (Intento ${intentosVerificacion}/${MAX_INTENTOS})`);
+            console.log('Bridge objeto:', bridge);
+            
+            if (bridge) {
+                console.log('Métodos disponibles:', Object.getOwnPropertyNames(bridge));
+                console.log('Tipo de bridge:', typeof bridge);
+                console.log('Constructor:', bridge.constructor ? bridge.constructor.name : 'undefined');
+                
+                // Verificar métodos críticos
+                const metodosRequeridos = ['generarConsecutivo', 'buscarClientes', 'guardarVenta'];
+                const metodosDisponibles = metodosRequeridos.filter(metodo => {
+                    const disponible = typeof bridge[metodo] === 'function';
+                    console.log(`Método ${metodo}: ${disponible ? '✅' : '❌'} (${typeof bridge[metodo]})`);
+                    return disponible;
+                });
+                
+                console.log(`Métodos disponibles: ${metodosDisponibles.length}/${metodosRequeridos.length}`);
+                
+                if (typeof bridge.generarConsecutivo === 'function') {
+                    console.log('✅ Bridge completamente inicializado');
+                    bridgeInicializado = true;
+                    
+                    // Inicializar funciones que dependen del bridge con delays escalonados
+                    setTimeout(() => {
+                        console.log('🚀 Iniciando generación de consecutivo...');
+                        generarConsecutivo().catch(error => {
+                            console.error('Error en generación inicial de consecutivo:', error);
+                        });
+                    }, 100);
+                    
+                    setTimeout(() => {
+                        console.log('🚀 Iniciando autocompletado de cliente...');
+                        if (typeof bridge.buscarClientes === 'function') {
+                            inicializarAutocompletadoCliente();
+                        }
+                    }, 300);
+                    
+                    setTimeout(() => {
+                        if (typeof bridge.testConexionClientes === 'function') {
+                            console.log('🚀 Probando conexión de clientes...');
+                            bridge.testConexionClientes();
+                        }
+                    }, 500);
+                    
+                    return true;
+                } else {
+                    console.warn('⚠️ Bridge existe pero generarConsecutivo no está disponible');
+                    console.warn('Tipo de generarConsecutivo:', typeof bridge.generarConsecutivo);
+                }
+            } else {
+                console.warn('❌ Bridge no existe aún');
+            }
+            
+            // Reintentar si no está listo y no hemos excedido el máximo de intentos
+            if (intentosVerificacion < MAX_INTENTOS) {
+                console.log(`🔄 Reintentando verificación en 500ms... (${intentosVerificacion}/${MAX_INTENTOS})`);
+                setTimeout(verificarBridge, 500);
+            } else {
+                console.error('❌ Se agotaron los intentos de verificación del bridge. Usando modo fallback.');
+                // Generar consecutivo local como fallback
+                if (!consecutivoActual) {
+                    consecutivoActual = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
+                    document.getElementById('numero-consecutivo').textContent = consecutivoActual;
+                    if (document.getElementById('numero-consecutivo-corto')) {
+                        document.getElementById('numero-consecutivo-corto').textContent = consecutivoActual;
+                    }
+                    console.log('🔄 Consecutivo fallback generado:', consecutivoActual);
+                }
+            }
+            return false;
+        }
+        
+        // Iniciar verificación inmediatamente
+        verificarBridge();
+    });
+    } else {
+        console.log('🌐 Ejecutándose en navegador web - QWebChannel no disponible');
+        // Modo fallback para navegador web
+        consecutivoActual = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
+        document.getElementById('numero-consecutivo').textContent = consecutivoActual;
+        if (document.getElementById('numero-consecutivo-corto')) {
+            document.getElementById('numero-consecutivo-corto').textContent = consecutivoActual;
+        }
+        console.log('🔄 Consecutivo fallback generado para navegador:', consecutivoActual);
+    }
+
+    // ===== FUNCIONES DE PUNTO DE VENTA =====
+    function inicializarPuntoVenta() {
+        const select = document.getElementById('punto-venta');
+        if (select) {
+            puntoVentaAnterior = select.value; // Guardar valor inicial
+            
+            select.addEventListener('change', function() {
+                // Si hay cambio después de la primera selección, solicitar clave
+                if (puntoVentaCambiado) {
+                    solicitarCambio();
+                } else {
+                    puntoVentaAnterior = select.value;
+                    actualizarPuntoVenta();
+                    puntoVentaCambiado = true;
+                }
+            });
+        }
+        
+        // Establecer valor inicial
+        actualizarPuntoVenta();
+    }
+
+    function obtenerPuntoVentaSeleccionado() {
+        const selector = document.getElementById('punto-venta');
+        return selector ? selector.value : 'bodega';
+    }
+
+    function actualizarPuntoVenta() {
+        const punto = obtenerPuntoVentaSeleccionado();
+        const body = document.body;
+        const contenedor = document.getElementById('contenido-factura');
+        const logoBodega = document.querySelector('.logo-bodega');
+        
+        if (punto === 'bodega') {
+            body.classList.add('formato-bodega');
+            contenedor.classList.add('formato-bodega');
+            if (logoBodega) logoBodega.style.display = 'inline-block';
+        } else {
+            body.classList.remove('formato-bodega');
+            contenedor.classList.remove('formato-bodega');
+            if (logoBodega) logoBodega.style.display = 'none';
+        }
+    }
+
+    function solicitarCambio() {
+        if (!puntoVentaCambiado) {
+            // Primer cambio, no requiere clave
+            actualizarPuntoVenta();
+            puntoVentaCambiado = true;
+            return;
+        }
+        
+        document.getElementById('modal-admin').style.display = 'block';
+        document.getElementById('clave-admin').focus();
+    }
+
+    function cerrarModalAdmin() {
+        document.getElementById('modal-admin').style.display = 'none';
+        document.getElementById('clave-admin').value = '';
+        
+        // Revertir la selección al estado anterior
+        const select = document.getElementById('punto-venta');
+        if (select) {
+            select.value = puntoVentaAnterior;
+            actualizarPuntoVenta();
+        }
+    }
+
+    function validarClaveAdmin() {
+        const claveIngresada = document.getElementById('clave-admin').value;
+        
+        if (claveIngresada === CLAVE_ADMIN) {
+            document.getElementById('modal-admin').style.display = 'none';
+            document.getElementById('clave-admin').value = '';
+            
+            // Actualizar el valor anterior al nuevo valor
+            puntoVentaAnterior = obtenerPuntoVentaSeleccionado();
+            actualizarPuntoVenta();
+            alert('✅ Punto de venta cambiado exitosamente');
+        } else {
+            alert('❌ Clave incorrecta');
+            document.getElementById('clave-admin').value = '';
+            document.getElementById('clave-admin').focus();
+            
+            // Revertir selección
+            cerrarModalAdmin();
+        }
+    }
+
+    // Manejar Enter en el campo de clave
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && document.getElementById('modal-admin').style.display === 'block') {
+            validarClaveAdmin();
+        }
+    });
+
+    // ===== FUNCIONES DE AUTOCOMPLETADO DE CLIENTE =====
+    function inicializarAutocompletadoCliente() {
+        const input = document.getElementById('nombre-cliente');
+        const dropdown = document.getElementById('autocomplete-dropdown');
+
+        input.addEventListener('input', function() {
+            const valor = this.value.trim();
+            
+            if (timeoutBusqueda) {
+                clearTimeout(timeoutBusqueda);
+            }
+
+            timeoutBusqueda = setTimeout(() => {
+                if (valor.length >= 2) {
+                    buscarClientes(valor);
+                } else {
+                    ocultarDropdown();
+                }
+            }, 300);
+        });
+
+        input.addEventListener('keydown', function(e) {
+            const items = dropdown.querySelectorAll('.autocomplete-item');
+            const selected = dropdown.querySelector('.cliente-selected');
+            
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (selected && selected.nextElementSibling) {
+                    selected.classList.remove('cliente-selected');
+                    selected.nextElementSibling.classList.add('cliente-selected');
+                } else if (items.length > 0) {
+                    if (selected) selected.classList.remove('cliente-selected');
+                    items[0].classList.add('cliente-selected');
+                }
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (selected && selected.previousElementSibling) {
+                    selected.classList.remove('cliente-selected');
+                    selected.previousElementSibling.classList.add('cliente-selected');
+                } else if (items.length > 0) {
+                    if (selected) selected.classList.remove('cliente-selected');
+                    items[items.length - 1].classList.add('cliente-selected');
+                }
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (selected) {
+                    const clienteData = JSON.parse(selected.getAttribute('data-cliente'));
+                    seleccionarCliente(clienteData);
+                }
+            } else if (e.key === 'Escape') {
+                ocultarDropdown();
+            }
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.cliente-container')) {
+                ocultarDropdown();
+            }
+        });
+    }
+
+    async function buscarClientes(termino) {
+        try {
+            const resultados = await bridge.buscarClientes(termino);
+            const clientes = JSON.parse(resultados);
+            mostrarDropdown(clientes);
+        } catch (error) {
+            console.error('Error buscando clientes:', error);
+            ocultarDropdown();
+        }
+    }
+
+    function mostrarDropdown(clientes) {
+        const dropdown = document.getElementById('autocomplete-dropdown');
+        dropdown.innerHTML = '';
+
+        if (clientes.length === 0) {
+            dropdown.style.display = 'none';
+            return;
+        }
+
+        clientes.forEach(cliente => {
+            const item = document.createElement('div');
+            item.className = 'autocomplete-item';
+            item.setAttribute('data-cliente', JSON.stringify(cliente));
+            
+            item.innerHTML = `
+                <div class="cliente-nombre">NIT: ${cliente.nit_cc || 'Sin NIT'} - ${cliente.nombre}</div>
+                <div class="cliente-info">Tel: ${cliente.telefono || 'N/A'} | Dir: ${cliente.direccion || 'N/A'}</div>
+            `;
+
+            item.addEventListener('click', function() {
+                seleccionarCliente(cliente);
+            });
+
+            dropdown.appendChild(item);
+        });
+
+        dropdown.style.display = 'block';
+    }
+
+    function seleccionarCliente(cliente) {
+        const input = document.getElementById('nombre-cliente');
+        input.value = `${cliente.nit_cc || 'Sin NIT'} - ${cliente.nombre}`;
+        clienteSeleccionado = cliente;
+        ocultarDropdown();
+        
+        console.log('Cliente seleccionado:', cliente);
+    }
+
+    function ocultarDropdown() {
+        const dropdown = document.getElementById('autocomplete-dropdown');
+        dropdown.style.display = 'none';
+        dropdown.innerHTML = '';
+    }
+
+    // Deshabilitar Ctrl+P para evitar la impresión directa del navegador
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'p') {
+            e.preventDefault();
+            alert('La impresión directa está deshabilitada. Use el botón de imprimir.');
+            return false;
+        }
+    });
+
+    // Generar consecutivo único usando la función del backend de Python a través de QWebChannel
+    async function generarConsecutivo() {
+        console.log('🎯 Iniciando generación de consecutivo...');
+        console.log('Estado del bridge:', {
+            existe: !!bridge,
+            inicializado: bridgeInicializado,
+            tieneMetodo: bridge && typeof bridge.generarConsecutivo === 'function'
+        });
+        
+        try {
+            // Verificar que el bridge esté disponible
+            if (!bridge) {
+                throw new Error('Bridge no está inicializado');
+            }
+            
+            if (!bridgeInicializado) {
+                throw new Error('Bridge aún no está completamente inicializado');
+            }
+            
+            if (typeof bridge.generarConsecutivo !== 'function') {
+                console.error('Métodos disponibles en bridge:', Object.getOwnPropertyNames(bridge));
+                throw new Error('Método generarConsecutivo no encontrado en Bridge');
+            }
+            
+            console.log('📞 Llamando a bridge.generarConsecutivo()...');
+            consecutivoActual = await bridge.generarConsecutivo();
+            consecutivoOrigenBridge = true;
+            
+            if (!consecutivoActual) {
+                throw new Error('El bridge devolvió un consecutivo vacío');
+            }
+            
+            document.getElementById('numero-consecutivo').textContent = consecutivoActual;
+            // Actualizar también el consecutivo corto en el encabezado
+            if (document.getElementById('numero-consecutivo-corto')) {
+                document.getElementById('numero-consecutivo-corto').textContent = consecutivoActual;
+            }
+            console.log('✅ Consecutivo generado exitosamente:', consecutivoActual);
+            return consecutivoActual;
+        } catch (error) {
+            console.error('❌ Error generando consecutivo:', error);
+            console.error('Tipo de error:', error.name);
+            console.error('Mensaje de error:', error.message);
+            console.error('Stack trace:', error.stack);
+            
+            // Generar consecutivo local como fallback
+            consecutivoActual = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
+            document.getElementById('numero-consecutivo').textContent = consecutivoActual;
+            // Actualizar también el consecutivo corto en el encabezado
+            if (document.getElementById('numero-consecutivo-corto')) {
+                document.getElementById('numero-consecutivo-corto').textContent = consecutivoActual;
+            }
+            consecutivoOrigenBridge = false;
+            console.log('🔄 Usando consecutivo local como fallback:', consecutivoActual);
+            return consecutivoActual;
+        }
+    }
+
+    // FUNCIONES PARA MANEJO DE CHECKBOXES MODERNOS DE FORMA DE PAGO
+    function onFormaPagoChange(checkbox) {
+        // Desmarcar todos los demás checkboxes cuando se marca uno
+        const checkboxes = document.querySelectorAll('input[name="forma-pago"]');
+        checkboxes.forEach(cb => {
+            if (cb !== checkbox) {
+                cb.checked = false;
+            }
+        });
+        
+        // Si se seleccionó un método de pago, quitar el borde rojo de error
+        if (checkbox.checked) {
+            const checkboxesContainer = document.querySelector('.forma-pago-checkboxes');
+            checkboxesContainer.classList.remove('error-pago');
+            checkboxesContainer.style.borderColor = '#e9ecef';
+        }
+        
+        // Actualizar la apariencia visual con colores específicos
+        actualizarAparienciaCheckboxes();
+    }
+    
+    function actualizarAparienciaCheckboxes() {
+        const checkboxes = document.querySelectorAll('input[name="forma-pago"]');
+        checkboxes.forEach(cb => {
+            const checkmark = cb.nextElementSibling;
+            // Limpiar clases de color anteriores
+            checkmark.classList.remove('efectivo', 'qr', 'tarjeta');
+            
+            if (cb.checked) {
+                // Agregar clase de color según el método de pago
+                if (cb.value === 'EFECTIVO') {
+                    checkmark.classList.add('efectivo');
+                } else if (cb.value === 'QR') {
+                    checkmark.classList.add('qr');
+                } else if (cb.value === 'TARJETA') {
+                    checkmark.classList.add('tarjeta');
+                }
+            }
+        });
+    }
+
+    function inicializarCheckboxesFormaPago() {
+        // NO marcar ningún método de pago por defecto - el usuario debe seleccionar uno
+        // Desmarcar todos los checkboxes por defecto
+        const checkboxes = document.querySelectorAll('input[name="forma-pago"]');
+        checkboxes.forEach(cb => {
+            cb.checked = false;
+        });
+        actualizarAparienciaCheckboxes();
+        
+        // Agregar efecto hover sutil
+        const labels = document.querySelectorAll('.checkbox-label-modern');
+        labels.forEach(label => {
+            label.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-1px)';
+            });
+            label.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0)';
+            });
+        });
+    }
+    
+    function obtenerFormaPagoSeleccionada() {
+        const checkboxes = document.querySelectorAll('input[name="forma-pago"]:checked');
+        if (checkboxes.length === 0) {
+            return null; // No hay forma de pago seleccionada
+        }
+        return checkboxes[0].value; // Retornar el valor del checkbox seleccionado
+    }
+    
+    // Guardar la venta en la base de datos a través de la comunicación con Python
+    async function guardarVenta() {
+        console.log('=== INICIANDO GUARDADO DE VENTA ===');
+        console.log('Consecutivo actual:', consecutivoActual);
+        console.log('Punto de venta:', obtenerPuntoVentaSeleccionado());
+        
+        if (!consecutivoActual) {
+            console.error('Error: No hay consecutivo generado');
+            alert('Error: No hay consecutivo generado');
+            return false;
+        }
+        
+        const total = obtenerTotalNumerico();
+        const productos = obtenerProductos();
+        console.log('Total calculado:', total);
+        console.log('Productos encontrados:', productos.length);
+        
+        if (productos.length === 0) {
+            alert('Debe agregar productos antes de realizar la venta');
+            return false;
+        }
+        
+        const cliente_id = clienteSeleccionado ? clienteSeleccionado.id_cliente : 1;
+        const puntoVenta = obtenerPuntoVentaSeleccionado();
+        
+        // Obtener tipo de pago y forma de pago seleccionados
+        const tipoPago = document.getElementById('tipo-pago')?.value || 'CONTADO';
+        
+        // NUEVO: Obtener forma de pago de los checkboxes
+        const formaPago = obtenerFormaPagoSeleccionada();
+        
+        // Validar que se haya seleccionado una forma de pago
+        if (!formaPago) {
+            // Ventana emergente clara para el usuario
+            alert('⚠️ POR FAVOR SELECCIONE UNA FORMA DE PAGO\n\nDebe seleccionar un método de pago antes de continuar:\n• EFECTIVO\n• QR\n• TARJETA\n• NEQUI\n• DAVIPLATA\n• TRANSFERENCIA');
+            
+            // Mostrar mensaje más estético además de la alerta
+            const checkboxesContainer = document.querySelector('.forma-pago-checkboxes');
+            checkboxesContainer.style.animation = 'shake 0.5s ease-in-out';
+            checkboxesContainer.style.borderColor = '#dc3545';
+            
+            setTimeout(() => {
+                checkboxesContainer.style.animation = '';
+                // No quitar el borde rojo - se quitará cuando seleccionen un método de pago
+            }, 1500);
+            
+            // Añadir clase de error para mantener el borde rojo
+            checkboxesContainer.classList.add('error-pago');
+            
+            // Mensaje temporal
+            const mensaje = document.createElement('div');
+            mensaje.textContent = 'Por favor, seleccione un método de pago';
+            mensaje.style.cssText = `
+                position: absolute;
+                top: -25px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: #dc3545;
+                color: white;
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-size: 10px;
+                white-space: nowrap;
+                z-index: 1000;
+                opacity: 0;
+                transition: opacity 0.3s ease;
+            `;
+            checkboxesContainer.style.position = 'relative';
+            checkboxesContainer.appendChild(mensaje);
+            
+            setTimeout(() => mensaje.style.opacity = '1', 10);
+            setTimeout(() => {
+                mensaje.style.opacity = '0';
+                setTimeout(() => mensaje.remove(), 300);
+            }, 2000);
+            
+            return false;
+        }
+        
+        try {
+            console.log('Intentando guardar venta con bridge...');
+            console.log('Parámetros:', { consecutivo: consecutivoActual, cliente_id, total, puntoVenta, tipoPago, formaPago });
+            
+            // Verificar que el bridge esté disponible
+            if (!bridge) {
+                throw new Error('Bridge no está inicializado');
+            }
+            
+            if (typeof bridge.guardarVenta !== 'function') {
+                throw new Error('Método guardarVenta no encontrado en Bridge');
+            }
+            
+            // Asegurar que el consecutivo provenga del backend (único) antes de guardar
+            if (!consecutivoOrigenBridge) {
+                console.warn('⚠️ Consecutivo local detectado antes de guardar. Intentando obtener del backend...');
+                try {
+                    await generarConsecutivo();
+                } catch (e) {
+                    console.error('❌ Falló la obtención de consecutivo del backend:', e);
+                }
+            }
+            if (!consecutivoOrigenBridge || !consecutivoActual) {
+                alert('No se pudo obtener un consecutivo válido del sistema. Intente de nuevo.');
+                return false;
+            }
+
+            // Guardar el consecutivo de la venta actual ANTES de generar uno nuevo
+            const consecutivoDeEstaVenta = consecutivoActual;
+            
+            // Convertir productos a JSON para enviar al backend
+            const productosJson = JSON.stringify(productos);
+            
+            // Obtener el usuario_id del Bridge
+            const usuario_id = await bridge.obtenerUsuarioId();
+            
+            // Guardar la venta con los nuevos parámetros incluyendo productos
+            await bridge.guardarVenta(consecutivoDeEstaVenta, usuario_id, cliente_id, total, puntoVenta, tipoPago, formaPago, productosJson);
+            ventaGuardada = true;
+            console.log('Venta guardada exitosamente con consecutivo:', consecutivoDeEstaVenta);
+            
+            // Asegurar que consecutivoVenta mantenga el valor correcto de la venta guardada
+            consecutivoVenta = consecutivoDeEstaVenta;
+            console.log('consecutivoVenta asignado:', consecutivoVenta);
+            
+            // NO generar nuevo consecutivo aún.
+            // Se generará DESPUÉS de imprimir para evitar desincronización
+            // entre el consecutivo del PDF y el consecutivo mostrado/guardado.
+            
+            return true;
+        } catch (error) {
+            console.error('Error guardando venta:', error);
+            console.error('Tipo de error:', error.name);
+            console.error('Mensaje de error:', error.message);
+            alert('Error guardando la venta: ' + error.message);
+            return false;
+        }
+    }
+
+    // Obtener los productos de la tabla para enviar al backend si es necesario
+    function obtenerProductos() {
+        const productos = [];
+        tabla.querySelectorAll('tr').forEach(fila => {
+            const cant = fila.querySelector('.cant')?.innerText.trim();
+            const descripcion = fila.cells[1]?.textContent.trim();
+            const valorU = fila.querySelector('.valor-u')?.innerText.replace(/[^\d]/g, '') || '0';
+            
+            if (cant && descripcion && parseInt(cant) > 0) {
+                productos.push({
+                    cantidad: parseInt(cant),
+                    descripcion: descripcion,
+                    valor_unitario: parseInt(valorU),
+                    valor_total: parseInt(cant) * parseInt(valorU)
+                });
+            }
+        });
+        return productos;
+    }
+
+    // Obtener el total numérico de la tabla
+    function obtenerTotalNumerico() {
+        const totalText = document.getElementById('total-general').textContent;
+        return parseInt(totalText.replace(/[^\d]/g, '') || '0');
+    }
+
+    // Mostrar el modal de venta después de guardar
+    async function mostrarModalVenta() {
+        const total = obtenerTotalNumerico();
+        if (total <= 0) {
+            alert('Debe agregar productos antes de realizar la venta');
+            return;
+        }
+        
+        // El consecutivoVenta se asignará dentro de guardarVenta() con el valor correcto
+        
+        const guardado = await guardarVenta();
+        if (guardado) {
+            console.log('=== ACTUALIZANDO MODAL DESPUÉS DE GUARDAR ===');
+            console.log('consecutivoVenta después de guardar:', consecutivoVenta);
+            console.log('consecutivoActual después de guardar:', consecutivoActual);
+            
+            document.getElementById('consecutivo-modal').textContent = consecutivoVenta;
+            document.getElementById('punto-modal').textContent = obtenerPuntoVentaSeleccionado().toUpperCase();
+            document.getElementById('modal-venta').style.display = 'block';
+            
+            console.log('Modal actualizado con consecutivo:', consecutivoVenta);
+            
+            // El consecutivo corto se actualizará automáticamente cuando se genere uno nuevo
+            
+            // NO limpiar la tabla aquí - se limpiará después de imprimir
+            // La tabla debe mantener los datos para que la impresión los capture
+        }
+    }
+
+    // Cerrar el modal
+    function cerrarModal() {
+        document.getElementById('modal-venta').style.display = 'none';
+    }
+    
+    // Cerrar modal y generar nuevo consecutivo
+    async function cerrarModalYGenerarNuevo() {
+        cerrarModal();
+        
+        // Si no estamos en proceso de impresión, generar nuevo consecutivo inmediatamente
+        if (!enProcesoImpresion) {
+            try {
+                await limpiarTabla();
+                await generarConsecutivo();
+                console.log('✅ Nuevo consecutivo generado al cerrar modal');
+            } catch (error) {
+                console.error('❌ Error generando nuevo consecutivo:', error);
+            }
+        }
+    }
+
+    // Activar la impresión desde el modal
+    function imprimirDesdeModal() {
+        // Flag para confirmar impresión por señal desde Python
+        impresionConfirmada = false;
+        const puntoVenta = obtenerPuntoVentaSeleccionado();
+        const elementoModal = document.getElementById('consecutivo-modal');
+        
+        console.log('=== INICIANDO IMPRESIÓN DESDE MODAL ===');
+        console.log('Punto de venta:', puntoVenta);
+        console.log('consecutivoVenta (variable):', consecutivoVenta);
+        console.log('consecutivoActual (NO debe usarse):', consecutivoActual);
+        console.log('Elemento modal consecutivo (DOM):', elementoModal ? elementoModal.textContent : 'ELEMENTO NO ENCONTRADO');
+        console.log('¿consecutivoVenta === elemento modal?', consecutivoVenta === (elementoModal ? elementoModal.textContent : null));
+        
+        // USAR EL VALOR DEL ELEMENTO MODAL EN LUGAR DE LA VARIABLE
+        const consecutivoParaImprimir = elementoModal ? elementoModal.textContent : consecutivoVenta;
+
+        // Congelar el DOM con el consecutivo correcto ANTES de imprimir
+        const numLargo = document.getElementById('numero-consecutivo');
+        const numCorto = document.getElementById('numero-consecutivo-corto');
+        if (numLargo) numLargo.textContent = consecutivoParaImprimir;
+        if (numCorto) numCorto.textContent = consecutivoParaImprimir;
+        console.log('Consecutivo que se enviará a imprimir:', consecutivoParaImprimir);
+        
+        // Marcar que estamos en proceso de impresión para evitar limpiar/generar consecutivo prematuramente
+        enProcesoImpresion = true;
+
+        // Cerrar el modal PERO mantener los datos en la tabla para la impresión
+        cerrarModal();
+        
+        try {
+            // Verificar que el bridge esté disponible
+            if (!bridge) {
+                throw new Error('Bridge no está inicializado');
+            }
+            
+            if (typeof bridge.imprimirTicketDesdePython !== 'function') {
+                throw new Error('Método imprimirTicketDesdePython no encontrado en Bridge');
+            }
+            
+            // Imprimir inmediatamente mientras los datos están en la tabla
+            bridge.imprimirTicketDesdePython(false, consecutivoParaImprimir, puntoVenta);
+            console.log('Comando de impresión enviado con consecutivo:', consecutivoParaImprimir);
+        } catch (error) {
+            console.error('Error en impresión:', error);
+            alert('Error en la impresión: ' + error.message);
+        }
+        
+        // Fallback: si no llega señal en 8s, proceder con limpieza/generación
+        setTimeout(async () => {
+            if (!impresionConfirmada) {
+                console.warn('⏱️ Fallback post-impresión: no llegó señal, limpiando...');
+                try {
+                    await limpiarTabla();
+                    await generarConsecutivo();
+                    
+                    // Abrir nueva ventana automáticamente después de imprimir
+                    console.log('🔄 Abriendo nueva ventana de venta...');
+                    // Forzar apertura de nueva ventana
+                    setTimeout(() => {
+                        window.open(window.location.href, '_blank');
+                    }, 500);
+                    
+                } catch (error) {
+                    console.error('❌ Error en fallback post-impresión:', error);
+                } finally {
+                    enProcesoImpresion = false;
+                }
+            } else {
+                // Si llegó la señal, también abrir nueva ventana
+                console.log('✅ Impresión confirmada, abriendo nueva ventana...');
+                setTimeout(() => {
+                    window.open(window.location.href, '_blank');
+                }, 500);
+            }
+        }, 3000); // Reducido a 3 segundos para mejor respuesta
+    }
+
+    function imprimirCotizacion() {
+        const puntoVenta = obtenerPuntoVentaSeleccionado();
+        bridge.imprimirTicketDesdePython(true, '', puntoVenta);
+    }
+
+    // Formatear valores a formato de pesos
+    function formatearPesos(valor) {
+        const numero = parseInt(valor);
+        if (isNaN(numero)) return '$ 0';
+        return '$ ' + numero.toLocaleString('es-CO');
+    }
+
+    // Actualizar los totales de la tabla
+    function actualizarTotales() {
+        let totalGeneral = 0;
+        tabla.querySelectorAll('tr').forEach(fila => {
+            const cant = parseInt(fila.querySelector('.cant')?.innerText || 0);
+            const valorUCell = fila.querySelector('.valor-u');
+            const valorUTxt = valorUCell?.innerText.replace(/[^\d]/g, '') || '0';
+            const valorU = parseInt(valorUTxt);
+
+            const totalFila = cant * valorU;
+            const totalCelda = fila.querySelector('.valor-t');
+            if (totalCelda) totalCelda.innerText = formatearPesos(totalFila);
+
+            if (!isNaN(totalFila)) totalGeneral += totalFila;
+        });
+        document.getElementById('total-general').innerText = 'TOTAL: ' + formatearPesos(totalGeneral);
+    }
+
+    // Manejar la edición de celdas y la navegación con el teclado
+    tabla.addEventListener('click', e => {
+        const celda = e.target.closest('td');
+        if (!celda || celda.classList.contains('valor-t')) return;
+        celda.setAttribute('contenteditable', 'true');
+        celda.focus();
+        celdaActiva = celda;
+    });
+
+    tabla.addEventListener('dblclick', e => {
+        const celda = e.target.closest('td');
+        if (celda && !celda.classList.contains('valor-t')) {
+            celda.setAttribute('contenteditable', 'true');
+            celda.focus();
+        }
+    });
+
+    tabla.addEventListener('keydown', e => {
+        if (!celdaActiva) return;
+        const fila = celdaActiva.parentElement;
+        const columnas = Array.from(fila.children);
+        const colIndex = columnas.indexOf(celdaActiva);
+        let nuevaCelda;
+        switch (e.key) {
+            case 'ArrowRight':
+                nuevaCelda = fila.children[colIndex + 1];
+                break;
+            case 'ArrowLeft':
+                nuevaCelda = fila.children[colIndex - 1];
+                break;
+            case 'ArrowDown':
+                if (fila.nextElementSibling) nuevaCelda = fila.nextElementSibling.children[colIndex];
+                break;
+            case 'ArrowUp':
+                if (fila.previousElementSibling) nuevaCelda = fila.previousElementSibling.children[colIndex];
+                break;
+            case 'Enter':
+                e.preventDefault();
+                if (fila.nextElementSibling) nuevaCelda = fila.nextElementSibling.children[colIndex];
+                break;
+        }
+        if (nuevaCelda && !nuevaCelda.classList.contains('valor-t')) {
+            nuevaCelda.setAttribute('contenteditable', 'true');
+            nuevaCelda.focus();
+            celdaActiva = nuevaCelda;
+        }
+    });
+
+    tabla.addEventListener('blur', e => {
+        const celda = e.target.closest('td');
+        if (celda && !celda.classList.contains('valor-t')) celda.removeAttribute('contenteditable');
+    }, true);
+
+    // Agregar y eliminar filas
+    function agregarFila() {
+        const nuevaFila = document.createElement('tr');
+        nuevaFila.innerHTML = `
+            <td contenteditable="true" class="cant"></td>
+            <td contenteditable="true"></td>
+            <td contenteditable="true" class="valor-u"></td>
+            <td class="valor-t"></td>
+        `;
+        tabla.appendChild(nuevaFila);
+        actualizarTotales();
+    }
+
+    function eliminarFila() {
+        const filas = tabla.querySelectorAll('tr');
+        if (filas.length > 1) {
+            tabla.removeChild(filas[filas.length - 1]);
+            actualizarTotales();
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+    // Función corregida para el checkbox de cotización
+    document.getElementById('check-cotizacion').addEventListener('change', function() {
+        const mensajeDiv = document.querySelector('.mensaje');
+        const logos = document.querySelectorAll('.logo-grande');
+        const consecutivo = document.getElementById('consecutivo-display');
+        const botonCotizacion = document.getElementById('boton-cotizacion');
+        const botonVender = document.getElementById('boton-vender');
+
+        if (this.checked) {
+            consecutivo.style.display = 'none';
+            botonCotizacion.style.display = 'block';
+            botonVender.style.display = 'none';
+            mensajeDiv.innerHTML = `<p style="font-size:22px;font-weight:bold;text-align:center;margin-top:40px;">COTIZACIÓN - NO VÁLIDO COMO COMPROBANTE DE COMPRA</p>`;
+            logos.forEach(l => l.style.display = 'none');
+        } else {
+            consecutivo.style.display = 'block';
+            botonCotizacion.style.display = 'none';
+            botonVender.style.display = 'inline-block';
+            mensajeDiv.innerHTML = mensajeOriginal;
+            logos.forEach(l => l.style.display = 'block');
+        }
+    });
+
+    // Actualizar fecha y hora
+    function actualizarFechaHora() {
+        const ahora = new Date();
+        const opciones = { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' };
+        const fechaFormateada = ahora.toLocaleString('es-CO', opciones).replace('.', '');
+        
+        const fechaElement = document.getElementById('fecha-actual');
+        if (fechaElement) {
+            fechaElement.innerHTML = `<strong>FECHA:</strong> ${fechaFormateada}`;
+        }
+        
+        // Actualizar fecha corta en el encabezado
+        const opcionesCortas = { day: '2-digit', month: '2-digit', year: 'numeric' };
+        const fechaCorta = ahora.toLocaleDateString('es-CO', opcionesCortas);
+        const fechaCortaElement = document.getElementById('fecha-corta');
+        if (fechaCortaElement) {
+            fechaCortaElement.textContent = fechaCorta;
+        }
+    }
+
+    // Cerrar modal al hacer clic fuera
+    window.onclick = function(event) {
+        const modal = document.getElementById('modal-venta');
+        if (event.target == modal) cerrarModal();
+    }
+    
+    // Limpiar tabla
+    function limpiarTabla() {
+        tabla.querySelectorAll('tr').forEach(fila => {
+            fila.querySelectorAll('td').forEach(celda => {
+                if (!celda.classList.contains('valor-t')) {
+                    celda.textContent = '';
+                } else {
+                    celda.innerText = '';
+                }
+            });
+        });
+
+        actualizarTotales();
+
+
+        
+        // Actualizar fecha y hora solo una vez al final
+        actualizarFechaHora();
+        // Generar nuevo consecutivo solo si no estamos en proceso de impresión
+        if (!enProcesoImpresion) {
+            generarConsecutivo();
+        }
+    }
+
+    // ===== AUTOCOMPLETADO DE PRODUCTOS =====
+    let productoDropdown = null;
+    let celdaProductoActiva = null;
+
+
+    // Función para buscar productos
+    async function buscarProductos(termino) {
+        try {
+            const resultadoJson = await bridge.buscarProductos(termino);
+            const productos = JSON.parse(resultadoJson);
+            return productos;
+        } catch (error) {
+            console.error('Error buscando productos:', error);
+            return [];
+        }
+    }
+
+    // Función para buscar producto por código de barras
+    async function buscarProductoPorCodigo(codigo) {
+        try {
+            const resultadoJson = await bridge.buscarProductoPorCodigo(codigo);
+            const producto = JSON.parse(resultadoJson);
+            return Object.keys(producto).length > 0 ? producto : null;
+        } catch (error) {
+            console.error('Error buscando producto por código:', error);
+            return null;
+        }
+    }
+
+    // Determina el precio según el tipo de cliente seleccionado
+    function precioPorCliente(producto) {
+        try {
+            const tipo = (clienteSeleccionado && clienteSeleccionado.tipo_cliente) ? String(clienteSeleccionado.tipo_cliente).toLowerCase() : '';
+            const esMayorista = tipo.includes('mayor'); // coincide con "Cliente al por mayor"
+            const precio = esMayorista ? producto.precio_mayorista : producto.precio_final;
+            return Number(precio || 0);
+        } catch (e) {
+            return Number(producto.precio_final || 0);
+        }
+    }
+
+    // Función para mostrar dropdown de productos
+    // Variable global para la celda activa
+    let celdaActivaProducto = null;
+
+    function mostrarDropdownProductos(productos, celda) {
+        const dropdown = document.getElementById('producto-autocomplete-dropdown');
+        const panel = document.getElementById('panel-sugerencias');
+        
+        // Guardar referencia a la celda activa
+        celdaActivaProducto = celda;
+        
+        dropdown.innerHTML = '';
+
+        if (productos.length === 0) {
+            dropdown.innerHTML = '<div class="no-productos">No se encontraron productos que coincidan con la búsqueda.</div>';
+            panel.style.display = 'block';
+            return;
+        }
+
+        productos.forEach((producto, index) => {
+            const item = document.createElement('div');
+            item.className = 'producto-item';
+            if (index === 0) item.classList.add('selected');
+            
+            const precioElegido = precioPorCliente(producto);
+            item.innerHTML = `
+                <div class="producto-nombre">${producto.nombre}</div>
+                <div class="producto-info">Código: ${producto.codigo_barras || 'N/A'} | Precio: $${formatearPesos(precioElegido)} | Stock: ${producto.stock}</div>
+            `;
+
+            item.addEventListener('click', function() {
+                seleccionarProducto(producto, celda);
+            });
+
+            dropdown.appendChild(item);
+        });
+
+        // Mostrar el panel lateral
+        panel.style.display = 'block';
+    }
+
+    // Función para cerrar el panel de sugerencias
+    function cerrarPanelSugerencias() {
+        const panel = document.getElementById('panel-sugerencias');
+        panel.style.display = 'none';
+        celdaActivaProducto = null;
+    }
+
+    // Función para abrir el panel de sugerencias
+    function abrirPanelSugerencias() {
+        const panel = document.getElementById('panel-sugerencias');
+        const dropdown = document.getElementById('producto-autocomplete-dropdown');
+        dropdown.innerHTML = '<div class="no-productos">Escribe en el campo de producto para ver sugerencias...</div>';
+        panel.style.display = 'block';
+    }
+
+    // Función para seleccionar un producto
+    function seleccionarProducto(producto, celda) {
+        // Llenar la descripción
+        celda.textContent = producto.nombre;
+        
+
+        
+        // Obtener la fila y llenar precio
+        const fila = celda.parentElement;
+        const celdas = Array.from(fila.children);
+        const indiceCelda = celdas.indexOf(celda);
+        
+        // Si es la celda de descripción (índice 1), llenar el precio (índice 2)
+        if (indiceCelda === 1) {
+            const celdaPrecio = celdas[2];
+            if (celdaPrecio) {
+                const precioElegido = precioPorCliente(producto);
+                celdaPrecio.textContent = formatearPesos(precioElegido);
+            }
+        }
+        
+        // Cerrar panel de sugerencias
+        cerrarPanelSugerencias();
+        
+        // Actualizar totales
+        actualizarTotales();
+        
+        // Mover a la siguiente celda (cantidad si estamos en descripción)
+        if (indiceCelda === 1) {
+            const celdaCantidad = celdas[0];
+            if (celdaCantidad) {
+                celdaCantidad.setAttribute('contenteditable', 'true');
+                celdaCantidad.focus();
+                celdaActiva = celdaCantidad;
+            }
+        }
+    }
+
+    // Función para ocultar dropdown (mantener compatibilidad)
+    function ocultarDropdownProductos() {
+        cerrarPanelSugerencias();
+        celdaProductoActiva = null;
+    }
+
+    // Función para verificar si es código de barras (solo números, longitud típica)
+    function esCodigoBarras(texto) {
+        return /^\d{8,}$/.test(texto.trim());
+    }
+
+
+
+    // Modificar el event listener de input para agregar autocompletado
+    tabla.addEventListener('input', async function(e) {
+        const celda = e.target;
+        
+        // Actualizar totales para cantidad y precio
+        if (celda.classList.contains('cant') || celda.classList.contains('valor-u')) {
+            actualizarTotales();
+        }
+        
+        // Autocompletado para celdas de descripción (segunda columna, sin clase específica)
+        const fila = celda.parentElement;
+        const celdas = Array.from(fila.children);
+        const indiceCelda = celdas.indexOf(celda);
+        
+        if (indiceCelda === 1) { // Celda de descripción
+            const texto = celda.textContent.trim();
+            celdaProductoActiva = celda;
+            
+            if (texto.length === 0) {
+                ocultarDropdownProductos();
+                return;
+            }
+            
+            // Verificar si es código de barras
+            if (esCodigoBarras(texto)) {
+                const producto = await buscarProductoPorCodigo(texto);
+                if (producto) {
+                    seleccionarProducto(producto, celda);
+                    return;
+                }
+            }
+            
+            // Buscar productos
+            if (texto.length >= 2) {
+                const productos = await buscarProductos(texto);
+                mostrarDropdownProductos(productos, celda);
+            }
+        }
+    });
+
+    // Manejar navegación con teclado en dropdown
+    document.addEventListener('keydown', async function(e) {
+        const dropdown = document.getElementById('producto-autocomplete-dropdown');
+        if (dropdown.style.display === 'none') return;
+        
+        const items = dropdown.querySelectorAll('.producto-item');
+        const selected = dropdown.querySelector('.producto-item.selected');
+        
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (selected && selected.nextElementSibling) {
+                selected.classList.remove('selected');
+                selected.nextElementSibling.classList.add('selected');
+            } else if (items.length > 0) {
+                if (selected) selected.classList.remove('selected');
+                items[0].classList.add('selected');
+            }
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (selected && selected.previousElementSibling) {
+                selected.classList.remove('selected');
+                selected.previousElementSibling.classList.add('selected');
+            } else if (items.length > 0) {
+                if (selected) selected.classList.remove('selected');
+                items[items.length - 1].classList.add('selected');
+            }
+        } else if (e.key === 'Enter' && celdaProductoActiva) {
+            e.preventDefault();
+            if (selected) {
+                const nombreProducto = selected.querySelector('.producto-nombre').textContent;
+                const infoProducto = selected.querySelector('.producto-info').textContent;
+                
+                // Buscar el producto en la lista para obtener datos completos
+                const codigo = infoProducto.match(/Código: ([^|]+)/)?.[1]?.trim();
+                if (codigo && codigo !== 'N/A') {
+                    const producto = await buscarProductoPorCodigo(codigo);
+                    if (producto) {
+                        seleccionarProducto(producto, celdaProductoActiva);
+                    }
+                }
+            }
+        } else if (e.key === 'Escape') {
+            ocultarDropdownProductos();
+        }
+    });
+
+    // Ocultar panel al hacer clic fuera
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.contenedor-tabla') && 
+            !e.target.closest('#panel-sugerencias') && 
+            !e.target.closest('#producto-autocomplete-dropdown')) {
+            cerrarPanelSugerencias();
+        }
+    });
+
+    // Inicialización al cargar la página
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('=== INICIALIZANDO PÁGINA ===');
+        
+
+        // Actualizar fecha y hora
+        actualizarFechaHora();
+        
+        // Inicializar punto de venta inmediatamente
+        inicializarPuntoVenta();
+        
+        // Asegurar que el punto de venta esté configurado correctamente
+        actualizarPuntoVenta();
+        
+        // Inicializar checkboxes de forma de pago
+        inicializarCheckboxesFormaPago();
+        
+        // Inicializar funciones adicionales si no hay bridge disponible aún
+        setTimeout(() => {
+            if (!bridge) {
+                console.log('Bridge no disponible en DOMContentLoaded, generando consecutivo temporal...');
+                
+                // Generar consecutivo local temporal
+                if (!consecutivoActual) {
+                    consecutivoActual = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
+                    document.getElementById('numero-consecutivo').textContent = consecutivoActual;
+                    if (document.getElementById('numero-consecutivo-corto')) {
+                        document.getElementById('numero-consecutivo-corto').textContent = consecutivoActual;
+                    }
+                    consecutivoOrigenBridge = false;
+                    console.log('Consecutivo temporal generado:', consecutivoActual);
+                }
+            } else {
+                console.log('Bridge disponible, verificando inicialización...');
+                if (!consecutivoActual) {
+                    console.log('Generando consecutivo desde bridge...');
+                    generarConsecutivo();
+                }
+            }
+        }, 100);
+        
+        // Generar consecutivo inicial inmediatamente si no existe
+        if (!consecutivoActual) {
+            consecutivoActual = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
+            document.getElementById('numero-consecutivo').textContent = consecutivoActual;
+            if (document.getElementById('numero-consecutivo-corto')) {
+                document.getElementById('numero-consecutivo-corto').textContent = consecutivoActual;
+            }
+            consecutivoOrigenBridge = false;
+            console.log('Consecutivo inicial generado inmediatamente:', consecutivoActual);
+        }
+        
+        console.log('Inicialización de página completada');
+    });
+    
+    // Función adicional para verificar estado de inicialización
+    function verificarEstadoInicializacion() {
+        console.log('=== ESTADO DE INICIALIZACIÓN ===');
+        console.log('Bridge disponible:', !!bridge);
+        console.log('Consecutivo actual:', consecutivoActual);
+        console.log('Punto de venta seleccionado:', obtenerPuntoVentaSeleccionado());
+        console.log('Cliente seleccionado:', clienteSeleccionado);
+    }
+    
+    // Verificar estado cada 5 segundos durante los primeros 30 segundos
+    let verificacionesRealizadas = 0;
+    const intervalVerificacion = setInterval(() => {
+        verificacionesRealizadas++;
+        verificarEstadoInicializacion();
+        
+        if (verificacionesRealizadas >= 6) { // 6 verificaciones = 30 segundos
+            clearInterval(intervalVerificacion);
+            console.log('Verificaciones de estado completadas');
+        }
+    }, 5000);
+
+    // Transporte functions removed
+</script>
+
+</body>
+</html>

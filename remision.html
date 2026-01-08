@@ -56,6 +56,9 @@
 
 <body>
 
+  <div id="conn-status" class="conn-status">Comprobando conexión…</div>
+  <div class="conn-spacer"></div>
+
   <div class="report-toggle" onclick="toggleReportePanel()">Reporte ▼</div>
 
   <div class="contenedor-principal" id="contenido-factura">
@@ -410,7 +413,7 @@
       window.print();
     }
 
-    function imprimirVenta() {
+    async function imprimirVenta() {
       const metodo = getSelectedMetodoPago();
       if (!metodo) {
         alert('Seleccione un método de pago (Efectivo, Tarjeta o QR)');
@@ -418,6 +421,9 @@
       }
       aplicarVentaUI();
       agregarVentaReporte(metodo);
+      try {
+        await guardarVentaBD(metodo);
+      } catch (e) {}
       window.print();
     }
 
@@ -436,6 +442,34 @@
         return false;
       }
     });
+    let dbHost = null
+    async function loadDbInfo() {
+      try {
+        const r = await fetch('/api/db-info')
+        const data = await r.json()
+        dbHost = data?.host || null
+      } catch {}
+    }
+    async function checkConexion() {
+      const el = document.getElementById('conn-status')
+      try {
+        const c = new AbortController()
+        const t = setTimeout(() => c.abort(), 4000)
+        const r = await fetch('/api/db-ping', { signal: c.signal })
+        clearTimeout(t)
+        const data = await r.json()
+        const ok = !!data?.ok
+        el.classList.toggle('conn-ok', ok)
+        el.classList.toggle('conn-bad', !ok)
+        const hostTxt = dbHost ? ` ${dbHost}` : ''
+        el.textContent = ok ? `Conexión a BD${hostTxt} ✔` : `Conexión a BD${hostTxt} ✖`
+      } catch (e) {
+        el.classList.add('conn-bad')
+        el.classList.remove('conn-ok')
+        const hostTxt = dbHost ? ` ${dbHost}` : ''
+        el.textContent = `Conexión a BD${hostTxt} ✖`
+      }
+    }
     let reporteVentas = [];
     let filtroMetodo = 'todos';
     function checkResetReporte() {
@@ -499,6 +533,8 @@
         if (def) def.classList.add('active');
       }
       setInterval(checkResetReporte, 60000);
+      loadDbInfo().then(checkConexion);
+      setInterval(checkConexion, 20000);
     });
     function agregarVentaReporte(metodo) {
       const totalEl = document.getElementById('total-general');
@@ -558,6 +594,44 @@
       if (esTa) return 'tarjeta';
       if (esQr) return 'qr';
       return null;
+    }
+    function obtenerTotalNumerico() {
+      const totalText = document.getElementById('total-general')?.textContent || ''
+      return parseInt(totalText.replace(/[^\d]/g, '')) || 0
+    }
+    function obtenerItemsBD() {
+      const items = []
+      tabla.querySelectorAll('tr').forEach(fila => {
+        const cantTxt = fila.querySelector('.cant')?.innerText || ''
+        const cant = parseInt(cantTxt.replace(/[^\d]/g, '')) || 0
+        const desc = fila.cells[1]?.textContent.trim() || ''
+        const vuTxt = fila.querySelector('.valor-u')?.innerText || ''
+        const vu = parseInt(vuTxt.replace(/[^\d]/g, '')) || 0
+        if (cant > 0 && desc) {
+          items.push({
+            descripcion: desc,
+            cantidad: cant,
+            valor_unitario: vu,
+            valor_total: cant * vu
+          })
+        }
+      })
+      return items
+    }
+    async function guardarVentaBD(metodo) {
+      const items = obtenerItemsBD()
+      if (items.length === 0) return false
+      const total = obtenerTotalNumerico()
+      const cliente = document.getElementById('nombre-cliente')?.innerText.trim() || ''
+      const payload = { cliente_nombre: cliente, metodo_pago: metodo, total, items }
+      const resp = await fetch('/api/ventas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      if (!resp.ok) return false
+      const data = await resp.json()
+      return !!data?.ok
     }
 // Seleccionar todo el contenido de la celda activa al presionar Shift
 tabla.addEventListener('keydown', (e) => {

@@ -423,6 +423,51 @@ th, td {
   transform-origin: top left;
   width: 250%; /* Compensar el escalado */
 }
+/* Formatos de página */
+@page {
+  size: 80mm auto;
+  margin: 0;
+}
+@page bodega {
+  size: A5 portrait;
+  margin: 1cm;
+}
+@media print {
+  body.formato-bodega {
+    page: bodega;
+    width: 21cm !important;
+    max-width: 21cm !important;
+    font-size: 14px !important;
+    padding: 1cm !important;
+    margin: 0 auto !important;
+  }
+  .formato-bodega .contenedor-principal {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  .formato-bodega table {
+    width: 100% !important;
+    font-size: 12px !important;
+  }
+  .formato-bodega th,
+  .formato-bodega td {
+    padding: 8px 4px !important;
+    font-size: 12px !important;
+  }
+  .formato-bodega .total {
+    font-size: 18px !important;
+  }
+  .formato-bodega .logo-grande {
+    width: 150px !important;
+    max-width: 150px !important;
+  }
+  .formato-bodega .encabezado .titulo {
+    font-size: 1.8em !important;
+  }
+  .formato-bodega .encabezado .subtitulo {
+    font-size: 1.4em !important;
+  }
+}
 @media print {
   @page {
     size: 80mm auto; /* ancho fijo, alto automático */
@@ -550,4 +595,26 @@ th, td {
   border-radius: 8px;
   padding: 6px 10px;
   cursor: pointer;
+}
+/* Estado de conexión */
+.conn-status {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 8px 12px;
+  font-weight: 600;
+  text-align: center;
+  z-index: 10001;
+}
+.conn-ok {
+  background: #16a34a;
+  color: #fff;
+}
+.conn-bad {
+  background: #ef4444;
+  color: #fff;
+}
+.conn-spacer {
+  height: 36px;
 }
