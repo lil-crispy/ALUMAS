@@ -443,9 +443,19 @@
       }
     });
     let dbHost = null
+    function getApiBase() {
+      const qs = new URLSearchParams(window.location.search)
+      const manual = qs.get('api_base') || localStorage.getItem('API_BASE')
+      if (manual) return manual
+      const host = window.location.hostname
+      if (host === 'localhost' || host === '127.0.0.1') return window.location.origin
+      const parts = host.split('.')
+      const root = parts.length >= 2 ? parts.slice(-2).join('.') : host
+      return `${window.location.protocol}//api.${root}`
+    }
     async function loadDbInfo() {
       try {
-        const r = await fetch('/api/db-info')
+        const r = await fetch(getApiBase() + '/api/db-info')
         const data = await r.json()
         dbHost = data?.host || null
       } catch {}
@@ -455,7 +465,7 @@
       try {
         const c = new AbortController()
         const t = setTimeout(() => c.abort(), 4000)
-        const r = await fetch('/api/db-ping', { signal: c.signal })
+        const r = await fetch(getApiBase() + '/api/db-ping', { signal: c.signal })
         clearTimeout(t)
         const data = await r.json()
         const ok = !!data?.ok
@@ -624,7 +634,7 @@
       const total = obtenerTotalNumerico()
       const cliente = document.getElementById('nombre-cliente')?.innerText.trim() || ''
       const payload = { cliente_nombre: cliente, metodo_pago: metodo, total, items }
-      const resp = await fetch('/api/ventas', {
+      const resp = await fetch(getApiBase() + '/api/ventas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
