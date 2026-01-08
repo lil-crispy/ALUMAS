@@ -83,6 +83,75 @@ app.get('/api/db-info', (req, res) => {
   res.json({ host: process.env.DB_HOST || null, port: Number(process.env.DB_PORT || 3306) })
 })
 
+// Generar consecutivo único de 4 dígitos validando en tabla ventas
+app.post('/api/consecutivo', async (req, res) => {
+  try {
+    let intentos = 0
+    let numero = null
+    while (intentos < 100) {
+      const n = Math.floor(1000 + Math.random() * 9000)
+      const [[row]] = await pool.query('SELECT 1 AS ex FROM ventas WHERE id_consecutivo = ? LIMIT 1', [n])
+      if (!row || !row.ex) {
+        numero = n
+        break
+      }
+      intentos++
+    }
+    if (!numero) return res.status(409).json({ ok: false, error: 'no_consecutivo', msg: 'No se pudo generar un consecutivo único' })
+    res.json({ ok: true, id_consecutivo: numero })
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message })
+  }
+})
+
+// Guardar encabezado de venta en tabla ventas y descontar stock en productos
+app.post('/api/venta', async (req, res) => {
+  const conn = await pool.getConnection()
+  try {
+    const {
+      id_consecutivo,
+      usuario_id,
+      cliente_id,
+      total,
+      tipo_pago, // 'CREDITO' | 'CONTADO'
+      forma_pago, // 'EFECTIVO' | 'QR' | 'TARJETA' | etc
+      punto_venta, // 'ferreteria' | 'bodega'
+      items = [],
+    } = req.body || {}
+
+    if (!id_consecutivo || !usuario_id || !cliente_id) {
+      return res.status(400).json({ ok: false, error: 'faltan_campos' })
+    }
+    const t = Number(total || 0)
+    await conn.beginTransaction()
+    await conn.query(
+      'INSERT INTO ventas (id_consecutivo, usuario_id, cliente_id, total, tipo_pago, forma_pago, punto_venta) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [Number(id_consecutivo), Number(usuario_id), Number(cliente_id), t, String(tipo_pago || 'CONTADO'), String(forma_pago || ''), String(punto_venta || 'ferreteria')]
+    )
+
+    // Descontar stock
+    for (const it of items) {
+      const cantidad = Number(it.cantidad || 0)
+      const descripcion = String(it.descripcion || '')
+      if (!cantidad || !descripcion) continue
+      // Intento 1: exacto
+      const [exRes] = await conn.query('UPDATE productos SET stock = GREATEST(0, stock - ?) WHERE nombre = ? LIMIT 1', [cantidad, descripcion])
+      if (exRes.affectedRows === 0) {
+        // Intento 2: LIKE
+        await conn.query('UPDATE productos SET stock = GREATEST(0, stock - ?) WHERE nombre LIKE ? LIMIT 1', [cantidad, `%${descripcion}%`])
+      }
+    }
+
+    await conn.commit()
+    res.json({ ok: true, id_consecutivo })
+  } catch (err) {
+    try { await conn.rollback() } catch {}
+    res.status(500).json({ ok: false, error: err.message })
+  } finally {
+    conn.release()
+  }
+})
+
 app.post('/api/ventas', async (req, res) => {
   try {
     const { cliente_nombre, metodo_pago, total, items } = req.body || {}

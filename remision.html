@@ -271,7 +271,9 @@
         const y = (pageHeight - imgHeight) / 2;
   
         pdf.addImage(imgData, 'JPEG', x, y, imgWidth, imgHeight);
-        pdf.save("remision_alumas.pdf");
+        const pv = getPuntoVenta()
+        const nombre = (lastConsecutivo ? `${lastConsecutivo}_${pv}.pdf` : `remision_${pv}.pdf`)
+        pdf.save(nombre);
       });
     }
   
@@ -628,13 +630,43 @@
       })
       return items
     }
+    function getPuntoVenta() {
+      const esBodega = document.body.classList.contains('formato-bodega') || document.getElementById('contenido-factura')?.classList.contains('formato-bodega')
+      return esBodega ? 'bodega' : 'ferreteria'
+    }
+    function getTipoPago() { return 'CONTADO' }
+    function getIds() {
+      const u = parseInt(localStorage.getItem('USUARIO_ID') || '1') || 1
+      const c = parseInt(localStorage.getItem('CLIENTE_ID') || '1') || 1
+      return { usuario_id: u, cliente_id: c }
+    }
+    let lastConsecutivo = null
+    async function solicitarConsecutivo() {
+      const resp = await fetch(getApiBase() + '/api/consecutivo', { method: 'POST' })
+      if (!resp.ok) throw new Error('no consecutivo')
+      const data = await resp.json()
+      return data?.id_consecutivo
+    }
     async function guardarVentaBD(metodo) {
       const items = obtenerItemsBD()
       if (items.length === 0) return false
       const total = obtenerTotalNumerico()
       const cliente = document.getElementById('nombre-cliente')?.innerText.trim() || ''
-      const payload = { cliente_nombre: cliente, metodo_pago: metodo, total, items }
-      const resp = await fetch(getApiBase() + '/api/ventas', {
+      const { usuario_id, cliente_id } = getIds()
+      const id_consecutivo = await solicitarConsecutivo()
+      lastConsecutivo = id_consecutivo
+      const payload = {
+        id_consecutivo,
+        usuario_id,
+        cliente_id,
+        total,
+        tipo_pago: getTipoPago(),
+        forma_pago: (metodo || '').toUpperCase(),
+        punto_venta: getPuntoVenta(),
+        items,
+        cliente_nombre: cliente
+      }
+      const resp = await fetch(getApiBase() + '/api/venta', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
