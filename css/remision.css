@@ -649,7 +649,8 @@ th, td {
 body.login-active .contenedor-principal,
 body.login-active .report-toggle,
 body.login-active .conn-status,
-body.login-active .conn-spacer {
+body.login-active .conn-spacer,
+body.login-active .user-bar {
   filter: blur(4px);
   pointer-events: none;
 }
@@ -732,4 +733,28 @@ body.login-active .conn-spacer {
 }
 .conn-spacer {
   height: 36px;
+}
+.user-bar {
+  position: fixed;
+  top: 4px;
+  right: 10px;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  z-index: 10002;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+}
+.user-bar button {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  background: rgba(0,0,0,0.3);
+  color: #ffffff;
+}
+.user-bar button:hover {
+  background: rgba(0,0,0,0.55);
 }

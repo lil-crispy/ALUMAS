@@ -68,6 +68,11 @@
   </div>
 
   <div id="conn-status" class="conn-status">Comprobando conexión…</div>
+  <div id="user-bar" class="user-bar">
+    <span id="user-name-prefix">USUARIO:</span>
+    <span id="user-name"></span>
+    <button type="button" id="logout-btn" onclick="logoutUsuario()">Cerrar sesión</button>
+  </div>
   <div class="conn-spacer"></div>
 
   <div class="report-toggle" onclick="toggleReportePanel()">Reporte ▼</div>
@@ -532,6 +537,25 @@
       if (overlay) overlay.style.display = 'none'
       document.body.classList.remove('login-active')
     }
+    function actualizarUserBar() {
+      const bar = document.getElementById('user-bar')
+      const nameEl = document.getElementById('user-name')
+      if (!bar || !nameEl) return
+      const nombre = localStorage.getItem('USUARIO_NOMBRE') || ''
+      if (nombre) {
+        nameEl.textContent = nombre
+        bar.style.display = 'flex'
+      } else {
+        nameEl.textContent = ''
+        bar.style.display = 'none'
+      }
+    }
+    function logoutUsuario() {
+      localStorage.removeItem('USUARIO_ID')
+      localStorage.removeItem('USUARIO_NOMBRE')
+      actualizarUserBar()
+      mostrarLogin()
+    }
     async function realizarLogin() {
       const usuario = document.getElementById('login-usuario')?.value.trim() || ''
       const contrasena = document.getElementById('login-contrasena')?.value || ''
@@ -561,6 +585,7 @@
         }
         localStorage.setItem('USUARIO_ID', String(data.usuario_id))
         if (data.usuario) localStorage.setItem('USUARIO_NOMBRE', data.usuario)
+        actualizarUserBar()
         if (errorEl) {
           errorEl.style.color = '#16a34a'
           errorEl.textContent = 'BIENVENIDO ' + (data.usuario || usuario)
@@ -624,6 +649,7 @@
       } else {
         ocultarLogin()
       }
+      actualizarUserBar()
     });
     function agregarVentaReporte(metodo) {
       const totalEl = document.getElementById('total-general');
