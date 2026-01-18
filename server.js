@@ -6,6 +6,7 @@ const mysql = require('mysql2/promise')
 const crypto = require('crypto')
 
 const app = express()
+app.set('trust proxy', 1)
 
 const DB_CONFIG = {
   host: process.env.DB_HOST || 'localhost',
@@ -129,8 +130,8 @@ app.post('/api/login', async (req, res) => {
     if (!storedPass || !okPass) {
       return res.status(401).json({ ok: false, error: 'credenciales_invalidas' })
     }
-    const idUsuario = user.id || user.id_usuario || user.usuario_id
-    const nombreUsuario = user.usuario || user.nombre || user.nombre_usuario || usuario
+    const idUsuario = user.id_usuario || user.id || user.usuario_id
+    const nombreUsuario = user.nombre || user.usuario || user.nombre_usuario || usuario
     if (!idUsuario) {
       return res.status(500).json({ ok: false, error: 'id_usuario_invalido' })
     }
