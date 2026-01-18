@@ -776,11 +776,12 @@
       dropdown.style.display = 'block'
       if (input) {
         const rect = input.getBoundingClientRect()
+        const offset = 12
         dropdown.style.position = 'fixed'
         dropdown.style.top = rect.bottom + 4 + 'px'
-        dropdown.style.left = rect.left + 'px'
+        dropdown.style.left = rect.left + offset + 'px'
         dropdown.style.right = ''
-        dropdown.style.width = rect.width + 'px'
+        dropdown.style.width = Math.max(rect.width - offset, 180) + 'px'
       } else {
         dropdown.style.position = 'absolute'
         dropdown.style.top = '100%'
