@@ -773,10 +773,12 @@
         return
       }
       dropdown.style.display = 'block'
-      dropdown.style.position = 'absolute'
-      dropdown.style.top = '100%'
-      dropdown.style.left = '0'
-      dropdown.style.right = '0'
+      dropdown.style.position = 'fixed'
+      dropdown.style.top = '120px'
+      dropdown.style.left = '50%'
+      dropdown.style.transform = 'translateX(-50%)'
+      dropdown.style.width = '80%'
+      dropdown.style.maxWidth = '600px'
       dropdown.style.background = '#fffbe6'
       dropdown.style.border = '2px solid #ef4444'
       dropdown.style.zIndex = '99999'
