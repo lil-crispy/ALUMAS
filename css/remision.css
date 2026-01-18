@@ -653,6 +653,52 @@ body.login-active .conn-spacer {
   filter: blur(4px);
   pointer-events: none;
 }
+.cliente-container {
+  display: inline-block;
+  position: relative;
+  min-width: 260px;
+}
+.cliente-input {
+  width: 100%;
+  padding: 4px 6px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 14px;
+}
+.autocomplete-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  display: none;
+}
+.autocomplete-item {
+  padding: 6px 8px;
+  cursor: pointer;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 13px;
+}
+.autocomplete-item:hover {
+  background-color: #f0fdf4;
+}
+.cliente-nombre {
+  font-weight: 600;
+  color: #111827;
+}
+.cliente-info {
+  font-size: 11px;
+  color: #6b7280;
+}
+.cliente-selected {
+  background-color: #e5f9e7 !important;
+}
 /* Consecutivo en pantalla */
 .consecutivo-display {
   font-size: 18px;

@@ -86,7 +86,13 @@
 
     <div class="info">
       <p id="fecha-actual"><strong>FECHA:</strong></p>
-      <p><strong>CLIENTE:</strong> <span contenteditable="true" id="nombre-cliente" class="editable-linea"></span></p>
+      <p>
+        <strong>CLIENTE:</strong>
+        <span class="cliente-container">
+          <input type="text" id="nombre-cliente" class="cliente-input" placeholder="Buscar cliente por nombre o NIT...">
+          <div id="autocomplete-dropdown" class="autocomplete-dropdown"></div>
+        </span>
+      </p>
       <p><strong>NIT:</strong> 901797743-2</p>
       <p><strong>ATENCIÓN AL CLIENTE:</strong> 3015827791</p>
       <p><strong>CONSULTAR ENVÍOS:</strong> 3197245235</p>
@@ -576,6 +582,7 @@
     }
     document.addEventListener('DOMContentLoaded', () => {
       cargarReporte();
+      inicializarAutocompletadoCliente();
       ['pago-efectivo','pago-tarjeta','pago-qr'].forEach(id => {
         const el = document.getElementById(id);
         if (el) {
@@ -704,6 +711,88 @@
       })
       return items
     }
+    async function buscarClientesRemoto(termino) {
+      try {
+        const url = getApiBase() + '/api/clientes?q=' + encodeURIComponent(termino)
+        const resp = await fetch(url)
+        if (!resp.ok) return []
+        const data = await resp.json()
+        const lista = Array.isArray(data?.clientes) ? data.clientes : []
+        return lista.map(c => ({
+          id: c.id,
+          nombre: c.nombre,
+          nit_cc: c.nit_cc,
+          telefono: c.telefono,
+          direccion: c.direccion,
+        }))
+      } catch {
+        return []
+      }
+    }
+    function renderDropdownClientes(clientes) {
+      const dropdown = document.getElementById('autocomplete-dropdown')
+      if (!dropdown) return
+      dropdown.innerHTML = ''
+      if (!clientes || clientes.length === 0) {
+        dropdown.style.display = 'none'
+        return
+      }
+      clientes.forEach(cliente => {
+        const item = document.createElement('div')
+        item.className = 'autocomplete-item'
+        item.innerHTML = `
+          <div class="cliente-nombre">ID: ${cliente.id} · ${cliente.nombre}</div>
+          <div class="cliente-info">NIT/CC: ${cliente.nit_cc || 'Sin NIT'}${cliente.telefono ? ' · Tel: ' + cliente.telefono : ''}</div>
+        `
+        item.addEventListener('click', () => {
+          seleccionarClienteAutocomplete(cliente)
+        })
+        dropdown.appendChild(item)
+      })
+      dropdown.style.display = 'block'
+    }
+    function seleccionarClienteAutocomplete(cliente) {
+      const input = document.getElementById('nombre-cliente')
+      if (input) {
+        input.value = `${cliente.id} - ${cliente.nit_cc || 'Sin NIT'} - ${cliente.nombre}`
+      }
+      clienteSeleccionado = cliente
+      if (cliente && cliente.id) {
+        localStorage.setItem('CLIENTE_ID', String(cliente.id))
+      }
+      const dropdown = document.getElementById('autocomplete-dropdown')
+      if (dropdown) {
+        dropdown.style.display = 'none'
+        dropdown.innerHTML = ''
+      }
+    }
+    function inicializarAutocompletadoCliente() {
+      const input = document.getElementById('nombre-cliente')
+      const dropdown = document.getElementById('autocomplete-dropdown')
+      if (!input || !dropdown) return
+      input.addEventListener('input', () => {
+        const term = input.value.trim()
+        if (clienteSearchTimer) {
+          clearTimeout(clienteSearchTimer)
+          clienteSearchTimer = null
+        }
+        if (term.length < 2) {
+          dropdown.style.display = 'none'
+          dropdown.innerHTML = ''
+          return
+        }
+        clienteSearchTimer = setTimeout(async () => {
+          const clientes = await buscarClientesRemoto(term)
+          renderDropdownClientes(clientes)
+        }, 250)
+      })
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.cliente-container')) {
+          dropdown.style.display = 'none'
+          dropdown.innerHTML = ''
+        }
+      })
+    }
     function getPuntoVenta() {
       const esBodega = document.body.classList.contains('formato-bodega') || document.getElementById('contenido-factura')?.classList.contains('formato-bodega')
       return esBodega ? 'bodega' : 'ferreteria'
@@ -715,6 +804,8 @@
       return { usuario_id: u, cliente_id: c }
     }
     let lastConsecutivo = null
+    let clienteSeleccionado = null
+    let clienteSearchTimer = null
     async function solicitarConsecutivo() {
       const resp = await fetch(getApiBase() + '/api/consecutivo', { method: 'POST' })
       if (!resp.ok) throw new Error('no consecutivo')

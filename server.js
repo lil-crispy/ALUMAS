@@ -83,6 +83,21 @@ app.get('/api/db-info', (req, res) => {
   res.json({ host: process.env.DB_HOST || null, port: Number(process.env.DB_PORT || 3306) })
 })
 
+app.get('/api/clientes', async (req, res) => {
+  try {
+    const q = String(req.query.q || '').trim()
+    if (!q) return res.json({ ok: true, clientes: [] })
+    const like = `%${q}%`
+    const [rows] = await pool.query(
+      'SELECT id, nombre, nit_cc, telefono, direccion FROM clientes WHERE nombre LIKE ? OR nit_cc LIKE ? ORDER BY nombre LIMIT 20',
+      [like, like]
+    )
+    res.json({ ok: true, clientes: rows || [] })
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message })
+  }
+})
+
 app.post('/api/login', async (req, res) => {
   try {
     const { usuario, contrasena } = req.body || {}
