@@ -56,6 +56,16 @@
 
 <body>
 
+  <div id="login-overlay" class="login-overlay">
+    <div class="login-box">
+      <h2>Acceso al sistema</h2>
+      <input type="text" id="login-usuario" placeholder="Usuario">
+      <input type="password" id="login-contrasena" placeholder="Contraseña">
+      <button onclick="realizarLogin()">Ingresar</button>
+      <div id="login-error" class="login-error"></div>
+    </div>
+  </div>
+
   <div id="conn-status" class="conn-status">Comprobando conexión…</div>
   <div class="conn-spacer"></div>
 
@@ -67,6 +77,10 @@
         <div class="titulo"></div>
         <img src="./img/LOGO4.webp" alt="Logo ALUMAS" style="max-width: 300px; display: block; margin: 0 auto;">
       </div>
+    </div>
+
+    <div class="consecutivo-display" id="consecutivo-display">
+      CONSECUTIVO: <span id="numero-consecutivo">----</span>
     </div>
 
     <div class="info">
@@ -505,9 +519,47 @@
         : [];
       actualizarUIReporte();
     }
+    function mostrarLogin() {
+      const overlay = document.getElementById('login-overlay')
+      if (overlay) overlay.style.display = 'flex'
+    }
+    function ocultarLogin() {
+      const overlay = document.getElementById('login-overlay')
+      if (overlay) overlay.style.display = 'none'
+    }
+    async function realizarLogin() {
+      const usuario = document.getElementById('login-usuario')?.value.trim() || ''
+      const contrasena = document.getElementById('login-contrasena')?.value || ''
+      const errorEl = document.getElementById('login-error')
+      if (errorEl) errorEl.textContent = ''
+      if (!usuario || !contrasena) {
+        if (errorEl) errorEl.textContent = 'Ingrese usuario y contraseña'
+        return
+      }
+      try {
+        const resp = await fetch(getApiBase() + '/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usuario, contrasena })
+        })
+        if (!resp.ok) {
+          if (errorEl) errorEl.textContent = 'Credenciales inválidas'
+          return
+        }
+        const data = await resp.json()
+        if (!data?.ok || !data?.usuario_id) {
+          if (errorEl) errorEl.textContent = 'Credenciales inválidas'
+          return
+        }
+        localStorage.setItem('USUARIO_ID', String(data.usuario_id))
+        if (data.usuario) localStorage.setItem('USUARIO_NOMBRE', data.usuario)
+        ocultarLogin()
+      } catch (e) {
+        if (errorEl) errorEl.textContent = 'Error de conexión con el servidor'
+      }
+    }
     document.addEventListener('DOMContentLoaded', () => {
       cargarReporte();
-      // Exclusividad de método de pago
       ['pago-efectivo','pago-tarjeta','pago-qr'].forEach(id => {
         const el = document.getElementById(id);
         if (el) {
@@ -547,6 +599,12 @@
       setInterval(checkResetReporte, 60000);
       loadDbInfo().then(checkConexion);
       setInterval(checkConexion, 20000);
+      const usuarioId = localStorage.getItem('USUARIO_ID')
+      if (!usuarioId) {
+        mostrarLogin()
+      } else {
+        ocultarLogin()
+      }
     });
     function agregarVentaReporte(metodo) {
       const totalEl = document.getElementById('total-general');
@@ -645,7 +703,13 @@
       const resp = await fetch(getApiBase() + '/api/consecutivo', { method: 'POST' })
       if (!resp.ok) throw new Error('no consecutivo')
       const data = await resp.json()
-      return data?.id_consecutivo
+      const numero = data?.id_consecutivo
+      if (numero) {
+        lastConsecutivo = numero
+        const el = document.getElementById('numero-consecutivo')
+        if (el) el.textContent = numero
+      }
+      return numero
     }
     async function guardarVentaBD(metodo) {
       const items = obtenerItemsBD()

@@ -83,6 +83,30 @@ app.get('/api/db-info', (req, res) => {
   res.json({ host: process.env.DB_HOST || null, port: Number(process.env.DB_PORT || 3306) })
 })
 
+app.post('/api/login', async (req, res) => {
+  try {
+    const { usuario, contrasena } = req.body || {}
+    if (!usuario || !contrasena) {
+      return res.status(400).json({ ok: false, error: 'datos_invalidos' })
+    }
+    const [rows] = await pool.query(
+      'SELECT id, usuario FROM usuarios WHERE usuario = ? AND contrasena = ? LIMIT 1',
+      [String(usuario), String(contrasena)]
+    )
+    if (!rows || rows.length === 0) {
+      return res.status(401).json({ ok: false, error: 'credenciales_invalidas' })
+    }
+    const user = rows[0]
+    res.json({
+      ok: true,
+      usuario_id: user.id,
+      usuario: user.usuario,
+    })
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message })
+  }
+})
+
 // Generar consecutivo único de 4 dígitos validando en tabla ventas
 app.post('/api/consecutivo', async (req, res) => {
   try {
