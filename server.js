@@ -19,20 +19,6 @@ const DB_CONFIG = {
   queueLimit: 0,
 }
 
-let pool
-async function initPool() {
-  pool = mysql.createPool(DB_CONFIG)
-  try {
-    const conn = await pool.getConnection()
-    await conn.ping()
-    conn.release()
-    console.log('Conexión a MySQL inicializada correctamente')
-    await ensureSchema()
-  } catch (err) {
-    console.error('Error inicializando conexión MySQL:', err.message)
-  }
-}
-
 async function ensureSchema() {
   const createVentas = `
     CREATE TABLE IF NOT EXISTS web_ventas (
@@ -57,12 +43,44 @@ async function ensureSchema() {
   await pool.query(createItems)
 }
 
+let pool
+async function createAndTestPool(config, label) {
+  const testPool = mysql.createPool(config)
+  try {
+    const conn = await testPool.getConnection()
+    await conn.ping()
+    conn.release()
+    console.log(`Conexión a MySQL inicializada correctamente (${label})`)
+    pool = testPool
+    await ensureSchema()
+    return true
+  } catch (err) {
+    console.error(`Error inicializando conexión MySQL (${label}):`, err.message)
+    try {
+      await testPool.end()
+    } catch {}
+    return false
+  }
+}
+
+async function initPool() {
+  const okPrimary = await createAndTestPool(DB_CONFIG, 'config principal')
+  if (okPrimary) return
+  if (DB_CONFIG.host !== 'localhost' && DB_CONFIG.host !== '127.0.0.1') {
+    const fallbackConfig = { ...DB_CONFIG, host: 'localhost' }
+    await createAndTestPool(fallbackConfig, 'fallback localhost')
+  }
+}
+
 app.use(cors())
 app.use(express.json())
 
 // Endpoints API
 app.get('/api/db-ping', async (req, res) => {
   try {
+    if (!pool) {
+      return res.status(500).json({ ok: false, error: 'pool_no_inicializado' })
+    }
     const conn = await pool.getConnection()
     await conn.ping()
     conn.release()
