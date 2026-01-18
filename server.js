@@ -105,17 +105,32 @@ app.post('/api/login', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'datos_invalidos' })
     }
     const [rows] = await pool.query(
-      'SELECT id, usuario FROM usuarios WHERE usuario = ? AND contrasena = ? LIMIT 1',
-      [String(usuario), String(contrasena)]
+      'SELECT * FROM usuarios WHERE usuario = ? LIMIT 1',
+      [String(usuario)]
     )
     if (!rows || rows.length === 0) {
       return res.status(401).json({ ok: false, error: 'credenciales_invalidas' })
     }
     const user = rows[0]
+    const storedPass = String(
+      user.contrasena ||
+      user.clave ||
+      user.password ||
+      user.pass ||
+      ''
+    )
+    if (!storedPass || storedPass !== String(contrasena)) {
+      return res.status(401).json({ ok: false, error: 'credenciales_invalidas' })
+    }
+    const idUsuario = user.id || user.id_usuario || user.usuario_id
+    const nombreUsuario = user.usuario || user.nombre || user.nombre_usuario || usuario
+    if (!idUsuario) {
+      return res.status(500).json({ ok: false, error: 'id_usuario_invalido' })
+    }
     res.json({
       ok: true,
-      usuario_id: user.id,
-      usuario: user.usuario,
+      usuario_id: idUsuario,
+      usuario: nombreUsuario,
     })
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message })
