@@ -61,16 +61,17 @@ body {
 
 .autocomplete-dropdown {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 2px);
   left: 0;
   right: 0;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: #fffbe6;
+  border: 2px solid #ef4444;
   border-top: none;
   border-radius: 0 0 4px 4px;
   max-height: 200px;
   overflow-y: auto;
   z-index: 10001;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.2);
   display: none;
 }
 
