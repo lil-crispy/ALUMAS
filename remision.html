@@ -844,7 +844,7 @@
       const items = obtenerItemsBD()
       if (items.length === 0) return false
       const total = obtenerTotalNumerico()
-      const cliente = document.getElementById('nombre-cliente')?.innerText.trim() || ''
+      const cliente = document.getElementById('nombre-cliente')?.value.trim() || ''
       const { usuario_id, cliente_id } = getIds()
       const id_consecutivo = await solicitarConsecutivo()
       lastConsecutivo = id_consecutivo
@@ -891,8 +891,5 @@ actualizarFechaHora();
 
 
   </script>
-  
-  
-</body>
-<script src="js/scripts.js?v=20251209"></script>
+  </body>
 </html>
