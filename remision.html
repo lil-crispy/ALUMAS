@@ -518,14 +518,27 @@
       }
     }
     function cargarReporte() {
-      checkResetReporte();
-      const guardado = localStorage.getItem('reporteVentas');
-      const parsed = guardado ? JSON.parse(guardado) : [];
-      reporteVentas = Array.isArray(parsed) ? parsed
-        .map(item => (typeof item === 'number' ? { v: item, m: 'desconocido' } : item))
-        .filter(item => item && typeof item.v === 'number' && item.v > 0 && typeof item.m === 'string')
-        : [];
-      actualizarUIReporte();
+      try {
+        checkResetReporte();
+        const guardado = localStorage.getItem('reporteVentas');
+        let parsed = [];
+        if (guardado) {
+          try {
+            parsed = JSON.parse(guardado);
+          } catch (e) {
+            localStorage.removeItem('reporteVentas');
+            parsed = [];
+          }
+        }
+        reporteVentas = Array.isArray(parsed) ? parsed
+          .map(item => (typeof item === 'number' ? { v: item, m: 'desconocido' } : item))
+          .filter(item => item && typeof item.v === 'number' && item.v > 0 && typeof item.m === 'string')
+          : [];
+        actualizarUIReporte();
+      } catch (e) {
+        reporteVentas = [];
+        try { actualizarUIReporte(); } catch (_) {}
+      }
     }
     function mostrarLogin() {
       const overlay = document.getElementById('login-overlay')
@@ -602,7 +615,7 @@
       }
     }
     document.addEventListener('DOMContentLoaded', () => {
-      cargarReporte();
+      try { cargarReporte(); } catch (e) {}
       inicializarAutocompletadoCliente();
       ['pago-efectivo','pago-tarjeta','pago-qr'].forEach(id => {
         const el = document.getElementById(id);
