@@ -18,6 +18,32 @@ const DB_CONFIG = {
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
+  }
+}
+
+let cachedClientesMap = null
+async function getClientesMap() {
+  if (cachedClientesMap) return cachedClientesMap
+  const [cols] = await pool.query(
+    'SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?',
+    [DB_CONFIG.database, 'clientes']
+  )
+  const names = cols.map(c => String(c.COLUMN_NAME))
+  const lower = names.map(n => n.toLowerCase())
+  function find(cands) {
+    for (const c of cands) {
+      const i = lower.indexOf(c.toLowerCase())
+      if (i >= 0) return names[i]
+    }
+    return null
+  }
+  const id = find(['id', 'id_cliente', 'cliente_id'])
+  const nombre = find(['nombre', 'nombre_cliente', 'cliente', 'razon_social'])
+  const nit = find(['nit_cc', 'nit', 'cc', 'documento', 'identificacion'])
+  const tel = find(['telefono', 'tel', 'celular', 'telefono1'])
+  const dir = find(['direccion', 'dir', 'direccion1'])
+  cachedClientesMap = { id, nombre, nit, tel, dir }
+  return cachedClientesMap
 }
 
 async function ensureSchema() {
@@ -108,11 +134,31 @@ app.get('/api/clientes', async (req, res) => {
   try {
     const q = String(req.query.q || '').trim()
     if (!q) return res.json({ ok: true, clientes: [] })
+    const map = await getClientesMap()
+    if (!map || (!map.nombre && !map.nit)) {
+      return res.json({ ok: true, clientes: [] })
+    }
+    const selectParts = []
+    selectParts.push(map.id ? `${map.id} AS id` : 'NULL AS id')
+    selectParts.push(map.nombre ? `${map.nombre} AS nombre` : 'NULL AS nombre')
+    selectParts.push(map.nit ? `${map.nit} AS nit_cc` : 'NULL AS nit_cc')
+    selectParts.push(map.tel ? `${map.tel} AS telefono` : 'NULL AS telefono')
+    selectParts.push(map.dir ? `${map.dir} AS direccion` : 'NULL AS direccion')
+    const whereParts = []
+    const params = []
     const like = `%${q}%`
-    const [rows] = await pool.query(
-      'SELECT id, nombre, nit_cc, telefono, direccion FROM clientes WHERE nombre LIKE ? OR nit_cc LIKE ? ORDER BY nombre LIMIT 20',
-      [like, like]
-    )
+    if (map.nombre) {
+      whereParts.push(`${map.nombre} LIKE ?`)
+      params.push(like)
+    }
+    if (map.nit) {
+      whereParts.push(`${map.nit} LIKE ?`)
+      params.push(like)
+    }
+    const whereSql = whereParts.length ? whereParts.join(' OR ') : '1=0'
+    const orderCol = map.nombre || map.id || map.nit
+    const sql = `SELECT ${selectParts.join(', ')} FROM clientes WHERE ${whereSql} ORDER BY ${orderCol} LIMIT 20`
+    const [rows] = await pool.query(sql, params)
     res.json({ ok: true, clientes: rows || [] })
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message })
