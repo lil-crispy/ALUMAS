@@ -3,6 +3,7 @@ const path = require('path')
 const express = require('express')
 const cors = require('cors')
 const mysql = require('mysql2/promise')
+const crypto = require('crypto')
 
 const app = express()
 
@@ -119,7 +120,13 @@ app.post('/api/login', async (req, res) => {
       user.pass ||
       ''
     )
-    if (!storedPass || storedPass !== String(contrasena)) {
+    const inputPass = String(contrasena)
+    let okPass = storedPass === inputPass
+    if (!okPass && /^[a-f0-9]{32}$/i.test(storedPass)) {
+      const md5 = crypto.createHash('md5').update(inputPass).digest('hex')
+      okPass = md5 === storedPass.toLowerCase()
+    }
+    if (!storedPass || !okPass) {
       return res.status(401).json({ ok: false, error: 'credenciales_invalidas' })
     }
     const idUsuario = user.id || user.id_usuario || user.usuario_id
