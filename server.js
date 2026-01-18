@@ -4,6 +4,7 @@ const express = require('express')
 const cors = require('cors')
 const mysql = require('mysql2/promise')
 const crypto = require('crypto')
+const bcrypt = require('bcryptjs')
 
 const app = express()
 app.set('trust proxy', 1)
@@ -142,6 +143,13 @@ app.post('/api/login', async (req, res) => {
     const storedPass = rawStored.trim()
     const inputPass = String(contrasena).trim()
     let okPass = storedPass === inputPass
+    if (!okPass) {
+      if (storedPass.startsWith('$2a$') || storedPass.startsWith('$2b$') || storedPass.startsWith('$2y$')) {
+        try {
+          okPass = await bcrypt.compare(inputPass, storedPass)
+        } catch {}
+      }
+    }
     if (!okPass) {
       const hex = storedPass.toLowerCase()
       const onlyHex = /^[a-f0-9]+$/.test(hex)
