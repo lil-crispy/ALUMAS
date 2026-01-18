@@ -766,6 +766,7 @@
     }
     function renderDropdownClientes(clientes) {
       const dropdown = document.getElementById('autocomplete-dropdown')
+      const input = document.getElementById('nombre-cliente')
       if (!dropdown) return
       dropdown.innerHTML = ''
       if (!clientes || clientes.length === 0) {
@@ -773,12 +774,20 @@
         return
       }
       dropdown.style.display = 'block'
-      dropdown.style.position = 'absolute'
-      dropdown.style.top = '100%'
-      dropdown.style.left = '0'
-      dropdown.style.right = '0'
-      dropdown.style.transform = ''
-      dropdown.style.width = '100%'
+      if (input) {
+        const rect = input.getBoundingClientRect()
+        dropdown.style.position = 'fixed'
+        dropdown.style.top = rect.bottom + 4 + 'px'
+        dropdown.style.left = rect.left + 'px'
+        dropdown.style.right = ''
+        dropdown.style.width = rect.width + 'px'
+      } else {
+        dropdown.style.position = 'absolute'
+        dropdown.style.top = '100%'
+        dropdown.style.left = '0'
+        dropdown.style.right = '0'
+        dropdown.style.width = '100%'
+      }
       dropdown.style.background = '#ffffff'
       dropdown.style.border = '1px solid #d1d5db'
       dropdown.style.borderTop = 'none'
