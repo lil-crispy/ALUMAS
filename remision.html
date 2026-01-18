@@ -58,6 +58,7 @@
 
   <div id="login-overlay" class="login-overlay">
     <div class="login-box">
+      <img src="./img/LOGO5.webp" alt="ALUMAS" class="login-logo">
       <h2>Acceso al sistema</h2>
       <input type="text" id="login-usuario" placeholder="Usuario">
       <input type="password" id="login-contrasena" placeholder="Contraseña">
@@ -522,16 +523,21 @@
     function mostrarLogin() {
       const overlay = document.getElementById('login-overlay')
       if (overlay) overlay.style.display = 'flex'
+      document.body.classList.add('login-active')
     }
     function ocultarLogin() {
       const overlay = document.getElementById('login-overlay')
       if (overlay) overlay.style.display = 'none'
+      document.body.classList.remove('login-active')
     }
     async function realizarLogin() {
       const usuario = document.getElementById('login-usuario')?.value.trim() || ''
       const contrasena = document.getElementById('login-contrasena')?.value || ''
       const errorEl = document.getElementById('login-error')
-      if (errorEl) errorEl.textContent = ''
+      if (errorEl) {
+        errorEl.textContent = ''
+        errorEl.style.color = ''
+      }
       if (!usuario || !contrasena) {
         if (errorEl) errorEl.textContent = 'Ingrese usuario y contraseña'
         return
@@ -553,7 +559,17 @@
         }
         localStorage.setItem('USUARIO_ID', String(data.usuario_id))
         if (data.usuario) localStorage.setItem('USUARIO_NOMBRE', data.usuario)
-        ocultarLogin()
+        if (errorEl) {
+          errorEl.style.color = '#16a34a'
+          errorEl.textContent = 'BIENVENIDO ' + (data.usuario || usuario)
+        }
+        setTimeout(() => {
+          if (errorEl) {
+            errorEl.textContent = ''
+            errorEl.style.color = ''
+          }
+          ocultarLogin()
+        }, 900)
       } catch (e) {
         if (errorEl) errorEl.textContent = 'Error de conexión con el servidor'
       }

@@ -610,14 +610,19 @@ th, td {
 }
 .login-box {
   background: #ffffff;
-  padding: 20px;
-  border-radius: 10px;
-  width: 320px;
+  padding: 28px 30px;
+  border-radius: 12px;
+  width: 380px;
   max-width: 90%;
   box-shadow: 0 10px 20px rgba(0,0,0,0.2);
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+.login-logo {
+  display: block;
+  max-width: 260px;
+  margin: 0 auto 12px auto;
 }
 .login-box input {
   padding: 8px 10px;
@@ -640,6 +645,13 @@ th, td {
   color: #b91c1c;
   font-size: 12px;
   min-height: 16px;
+}
+body.login-active .contenedor-principal,
+body.login-active .report-toggle,
+body.login-active .conn-status,
+body.login-active .conn-spacer {
+  filter: blur(4px);
+  pointer-events: none;
 }
 /* Consecutivo en pantalla */
 .consecutivo-display {
