@@ -772,6 +772,16 @@
         dropdown.style.display = 'none'
         return
       }
+      dropdown.style.display = 'block'
+      dropdown.style.position = 'absolute'
+      dropdown.style.top = '100%'
+      dropdown.style.left = '0'
+      dropdown.style.right = '0'
+      dropdown.style.background = '#fffbe6'
+      dropdown.style.border = '2px solid #ef4444'
+      dropdown.style.zIndex = '99999'
+      dropdown.style.maxHeight = '260px'
+      dropdown.style.overflowY = 'auto'
       clientes.forEach(cliente => {
         const item = document.createElement('div')
         item.className = 'autocomplete-item'
@@ -784,7 +794,6 @@
         })
         dropdown.appendChild(item)
       })
-      dropdown.style.display = 'block'
     }
     function seleccionarClienteAutocomplete(cliente) {
       const input = document.getElementById('nombre-cliente')
