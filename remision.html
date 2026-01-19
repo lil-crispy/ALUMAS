@@ -711,6 +711,7 @@
         document.addEventListener(ev, resetInactividad)
       })
       resetInactividad()
+      cargarReporte()
     });
     function agregarVentaReporte(metodo) {
       // Ya no usamos localStorage local, recargamos desde BD
@@ -745,6 +746,9 @@
       const p = document.getElementById('report-panel');
       if (!p) return;
       p.classList.toggle('open');
+      if (p.classList.contains('open')) {
+        cargarReporte()
+      }
     }
     async function eliminarVentaBD(idConsecutivo) {
       const rol = localStorage.getItem('USUARIO_ROL')
