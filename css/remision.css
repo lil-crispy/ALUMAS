@@ -869,6 +869,11 @@ body.login-active .user-bar {
   color: #4b5563;
 }
 
+.producto-item.selected .producto-nombre,
+.producto-item.selected .producto-info {
+  color: #ffffff;
+}
+
 .no-productos {
   padding: 16px;
   text-align: center;

@@ -202,6 +202,63 @@ app.post('/api/login', async (req, res) => {
   }
 })
 
+app.post('/api/confirmar-pass', async (req, res) => {
+  try {
+    const { usuario_id, contrasena } = req.body || {}
+    if (!usuario_id || !contrasena) {
+      return res.status(400).json({ ok: false, error: 'datos_invalidos' })
+    }
+    const [rows] = await pool.query(
+      'SELECT * FROM usuarios WHERE id_usuario = ? LIMIT 1',
+      [Number(usuario_id)]
+    )
+    if (!rows || rows.length === 0) {
+      return res.status(401).json({ ok: false, error: 'usuario_no_encontrado' })
+    }
+    const user = rows[0]
+    const rawStored = String(
+      user.contrasena ||
+      user.clave ||
+      user.password ||
+      user.pass ||
+      ''
+    )
+    const storedPass = rawStored.trim()
+    const inputPass = String(contrasena).trim()
+    let okPass = storedPass === inputPass
+    if (!okPass) {
+      if (storedPass.startsWith('$2a$') || storedPass.startsWith('$2b$') || storedPass.startsWith('$2y$')) {
+        try {
+          okPass = await bcrypt.compare(inputPass, storedPass)
+        } catch {}
+      }
+    }
+    if (!okPass) {
+      const hex = storedPass.toLowerCase()
+      const onlyHex = /^[a-f0-9]+$/.test(hex)
+      if (onlyHex) {
+        const len = hex.length
+        if (len === 32) {
+          const md5 = crypto.createHash('md5').update(inputPass).digest('hex')
+          okPass = md5 === hex
+        } else if (len === 40) {
+          const sha1 = crypto.createHash('sha1').update(inputPass).digest('hex')
+          okPass = sha1 === hex
+        } else if (len === 64) {
+          const sha256 = crypto.createHash('sha256').update(inputPass).digest('hex')
+          okPass = sha256 === hex
+        }
+      }
+    }
+    if (!storedPass || !okPass) {
+      return res.status(401).json({ ok: false, error: 'credenciales_invalidas' })
+    }
+    res.json({ ok: true })
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message })
+  }
+})
+
 // Generar consecutivo único de 4 dígitos validando en tabla ventas
 app.post('/api/consecutivo', async (req, res) => {
   try {
