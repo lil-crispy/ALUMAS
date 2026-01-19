@@ -310,6 +310,13 @@
   form.style.display = document.getElementById('activar-transporte').checked ? 'block' : 'none';
 
   if (document.getElementById('activar-transporte').checked) {
+    // Si hay un cliente seleccionado, rellenar datos automáticamente
+    if (clienteSeleccionado) {
+      document.getElementById('trans-nombre').value = clienteSeleccionado.nombre || '';
+      document.getElementById('trans-direccion').value = clienteSeleccionado.direccion || '';
+      document.getElementById('trans-telefono').value = clienteSeleccionado.telefono || '';
+    }
+
     if (!mensajeTransporte) {
       const mensaje = document.createElement('div');
       mensaje.id = 'mensaje-transporte';
@@ -818,9 +825,17 @@
       }
       clienteSeleccionado = cliente
       if (cliente && cliente.id) {
-        localStorage.setItem('CLIENTE_ID', String(cliente.id))
-      }
-      const dropdown = document.getElementById('autocomplete-dropdown')
+    localStorage.setItem('CLIENTE_ID', String(cliente.id))
+  }
+
+  // Si el formulario de transporte está activo, actualizar los datos
+  if (document.getElementById('activar-transporte')?.checked) {
+    document.getElementById('trans-nombre').value = cliente.nombre || '';
+    document.getElementById('trans-direccion').value = cliente.direccion || '';
+    document.getElementById('trans-telefono').value = cliente.telefono || '';
+  }
+
+  const dropdown = document.getElementById('autocomplete-dropdown')
       if (dropdown) {
         dropdown.style.display = 'none'
         dropdown.innerHTML = ''
