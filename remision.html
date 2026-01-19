@@ -115,6 +115,14 @@
       <label><input type="checkbox" id="pago-qr"> QR</label>
     </div>
 
+    <div class="punto-venta-selector" style="margin-top: 10px; margin-bottom: 10px;">
+      <label for="select-punto-venta"><strong>Punto de Venta:</strong></label>
+      <select id="select-punto-venta" onchange="actualizarPuntoVenta(this.value)" style="padding: 5px; border-radius: 4px; border: 1px solid #ccc;">
+        <option value="ferreteria">Ferretería</option>
+        <option value="bodega">Bodega</option>
+      </select>
+    </div>
+
     <div id="form-transporte">
       <div class="campo-form">
         <label>Nombre del cliente:</label>
@@ -869,9 +877,26 @@
       })
     }
     function getPuntoVenta() {
+      // Prioridad al selector explícito, fallback a la clase CSS
+      const select = document.getElementById('select-punto-venta');
+      if (select) return select.value;
+
       const esBodega = document.body.classList.contains('formato-bodega') || document.getElementById('contenido-factura')?.classList.contains('formato-bodega')
       return esBodega ? 'bodega' : 'ferreteria'
     }
+
+    function actualizarPuntoVenta(valor) {
+      const body = document.body;
+      const contenido = document.getElementById('contenido-factura');
+      if (valor === 'bodega') {
+        body.classList.add('formato-bodega');
+        if (contenido) contenido.classList.add('formato-bodega');
+      } else {
+        body.classList.remove('formato-bodega');
+        if (contenido) contenido.classList.remove('formato-bodega');
+      }
+    }
+    
     function getTipoPago() { return 'CONTADO' }
     function getIds() {
       const u = parseInt(localStorage.getItem('USUARIO_ID') || '1') || 1
