@@ -663,6 +663,7 @@
         ocultarLogin()
       }
       actualizarUserBar()
+      solicitarConsecutivo().catch(() => {})
     });
     function agregarVentaReporte(metodo) {
       const totalEl = document.getElementById('total-general');
@@ -869,12 +870,11 @@
       const resp = await fetch(getApiBase() + '/api/consecutivo', { method: 'POST' })
       if (!resp.ok) throw new Error('no consecutivo')
       const data = await resp.json()
-      const numero = data?.id_consecutivo
-      if (numero) {
-        lastConsecutivo = numero
-        const el = document.getElementById('numero-consecutivo')
-        if (el) el.textContent = numero
-      }
+      const numero = data && (data.id_consecutivo ?? data.consecutivo ?? data.numero)
+      if (!numero) throw new Error('respuesta sin consecutivo')
+      lastConsecutivo = numero
+      const el = document.getElementById('numero-consecutivo')
+      if (el) el.textContent = numero
       return numero
     }
     async function guardarVentaBD(metodo) {
