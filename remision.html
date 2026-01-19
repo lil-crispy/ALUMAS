@@ -553,6 +553,8 @@
         if (resp.ok) {
           const data = await resp.json()
           if (data.ok && Array.isArray(data.ventas)) {
+            // Log para debug
+            console.log('Ventas cargadas:', data.ventas.length)
             reporteVentas = data.ventas.map(v => ({
               id: v.id_consecutivo,
               v: parseInt(v.total) || 0,
@@ -562,13 +564,15 @@
             actualizarUIReporte()
             return
           }
+        } else {
+            console.error('Error fetch reporte', resp.status)
         }
       } catch (e) {
         console.error('Error cargando reporte BD', e)
       }
       // Fallback a localStorage si falla la BD (opcional, pero mejor usar solo BD como pidió el usuario)
-      reporteVentas = []
-      actualizarUIReporte()
+      // reporteVentas = [] // No borramos si falla, solo logueamos
+      // actualizarUIReporte()
     }
     function mostrarLogin() {
       const overlay = document.getElementById('login-overlay')
