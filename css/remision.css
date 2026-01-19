@@ -582,7 +582,7 @@ th, td {
 }
 .report-panel {
   position: fixed;
-  top: 60px; /* Bajamos para que no lo tape la barra verde */
+  top: 150px; /* Bajamos mucho más (antes 60px) para librar la franja verde */
   left: 10px;
   width: 340px;
   max-height: 60vh;
