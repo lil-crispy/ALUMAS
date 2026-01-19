@@ -546,17 +546,7 @@
     }
     let reporteVentas = [];
     let filtroMetodo = 'todos';
-    function checkResetReporte() {
-      const lastReset = parseInt(localStorage.getItem('reporteLastReset') || '0');
-      const now = Date.now();
-      const doceHoras = 12 * 60 * 60 * 1000;
-      if (!lastReset || now - lastReset > doceHoras) {
-        localStorage.setItem('reporteVentas', JSON.stringify([]));
-        localStorage.setItem('reporteLastReset', String(now));
-        reporteVentas = [];
-        actualizarUIReporte();
-      }
-    }
+    // function checkResetReporte() { ... } eliminada
     async function cargarReporte() {
       try {
         const resp = await fetch(getApiBase() + '/api/reporte-ventas')
@@ -706,7 +696,7 @@
         const def = header.querySelector('.chip[data-metodo="todos"]');
         if (def) def.classList.add('active');
       }
-      setInterval(checkResetReporte, 60000);
+      // setInterval(checkResetReporte, 60000); // Eliminado
       loadDbInfo().then(checkConexion);
       setInterval(checkConexion, 20000);
       const usuarioId = localStorage.getItem('USUARIO_ID')
@@ -723,14 +713,10 @@
       resetInactividad()
     });
     function agregarVentaReporte(metodo) {
-      const totalEl = document.getElementById('total-general');
-      const totalTxt = totalEl ? totalEl.textContent : '';
-      const valorNum = parseInt((totalTxt || '').replace(/[^\d]/g, '')) || 0;
-      if (valorNum <= 0) return;
-      const item = { v: valorNum, m: metodo };
-      reporteVentas.push(item);
-      localStorage.setItem('reporteVentas', JSON.stringify(reporteVentas));
-      actualizarUIReporte();
+      // Ya no usamos localStorage local, recargamos desde BD
+      setTimeout(() => {
+        cargarReporte()
+      }, 500)
     }
     const REPORTE_PASS = '79333587';
     function actualizarUIReporte() {
