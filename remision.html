@@ -561,9 +561,18 @@
         if (resp.ok) {
           const data = await resp.json()
           if (data.ok && Array.isArray(data.ventas)) {
-            // Log para debug
-            console.log('Ventas cargadas:', data.ventas.length)
-            reporteVentas = data.ventas.map(v => ({
+            const hoy = new Date()
+            const y = hoy.getFullYear()
+            const m = hoy.getMonth()
+            const d = hoy.getDate()
+            const soloHoy = data.ventas.filter(v => {
+              if (!v.fecha) return false
+              const fv = new Date(v.fecha)
+              return fv.getFullYear() === y && fv.getMonth() === m && fv.getDate() === d
+            })
+            console.log('Ventas cargadas (todas):', data.ventas.length)
+            console.log('Ventas filtradas hoy:', soloHoy.length)
+            reporteVentas = soloHoy.map(v => ({
               id: v.id_consecutivo,
               v: parseInt(v.total) || 0,
               m: (v.forma_pago || 'desconocido').toLowerCase(),
@@ -574,14 +583,11 @@
             return
           }
         } else {
-            console.error('Error fetch reporte', resp.status)
+          console.error('Error fetch reporte', resp.status)
         }
       } catch (e) {
         console.error('Error cargando reporte BD', e)
       }
-      // Fallback a localStorage si falla la BD (opcional, pero mejor usar solo BD como pidió el usuario)
-      // reporteVentas = [] // No borramos si falla, solo logueamos
-      // actualizarUIReporte()
     }
     function mostrarLogin() {
       const overlay = document.getElementById('login-overlay')
