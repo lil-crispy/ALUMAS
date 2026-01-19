@@ -257,15 +257,16 @@ th, td {
 
 .report-toggle {
   position: fixed;
-  top: 10px;
-  left: 10px;
+  top: 50%;
+  left: 0;
   background: linear-gradient(135deg, #f59e0b, #b45309);
   color: #fff;
-  padding: 8px 12px;
-  border-radius: 8px;
+  padding: 10px 14px;
+  border-radius: 0 10px 10px 0;
   box-shadow: 0 6px 12px rgba(0,0,0,0.15);
   cursor: pointer;
   z-index: 10000;
+  transform: translateY(-50%);
   user-select: none;
 }
 
@@ -582,14 +583,14 @@ th, td {
 }
 .report-panel {
   position: fixed;
-  top: 150px; /* Bajamos mucho más (antes 60px) para librar la franja verde */
-  left: 10px;
+  top: 50%;
+  left: 0;
   width: 340px;
-  max-height: 60vh;
+  max-height: 70vh;
   background: #ffffff;
   box-shadow: 0 12px 24px rgba(0,0,0,0.15);
-  border-radius: 12px;
-  transform: translateY(-120%);
+  border-radius: 0 12px 12px 0;
+  transform: translate(-100%, -50%);
   transition: transform 200ms ease;
   display: flex;
   flex-direction: column;
@@ -597,7 +598,7 @@ th, td {
 }
 
 .report-panel.open {
-  transform: translateY(0);
+  transform: translate(0, -50%);
 }
 
 .report-header {
