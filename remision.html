@@ -478,7 +478,15 @@
         alert('Error guardando la venta');
         return;
       }
-      if (!ok) return;
+      if (!ok) {
+        alert('La venta no se pudo guardar. Intente de nuevo.');
+        return;
+      }
+      const mensaje = lastConsecutivo
+        ? 'La venta se guardó correctamente con consecutivo ' + lastConsecutivo + '. ¿Desea imprimir la remisión?'
+        : 'La venta se guardó correctamente. ¿Desea imprimir la remisión?';
+      const confirmar = window.confirm(mensaje);
+      if (!confirmar) return;
       agregarVentaReporte(metodo);
       window.print();
     }
