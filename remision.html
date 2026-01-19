@@ -354,15 +354,21 @@
       });
     }
     async function buscarProductos(termino) {
-      try {
-        const resp = await fetch(getApiBase() + '/api/productos?q=' + encodeURIComponent(termino));
-        if (!resp.ok) return [];
-        const data = await resp.json();
-        if (!data || !Array.isArray(data.productos)) return [];
-        return data.productos;
-      } catch (e) {
-        return [];
+      const bases = [];
+      const basePrincipal = getApiBase();
+      if (basePrincipal) bases.push(basePrincipal);
+      if (!bases.includes('http://localhost:8080')) {
+        bases.push('http://localhost:8080');
       }
+      for (const base of bases) {
+        try {
+          const resp = await fetch(base.replace(/\/$/, '') + '/api/productos?q=' + encodeURIComponent(termino));
+          if (!resp.ok) continue;
+          const data = await resp.json();
+          if (data && Array.isArray(data.productos)) return data.productos;
+        } catch (e) {}
+      }
+      return [];
     }
     function precioPorCliente(producto) {
       try {
