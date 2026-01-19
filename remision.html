@@ -486,9 +486,11 @@
         ? 'La venta se guardó correctamente con consecutivo ' + lastConsecutivo + '. ¿Desea imprimir la remisión?'
         : 'La venta se guardó correctamente. ¿Desea imprimir la remisión?';
       const confirmar = window.confirm(mensaje);
-      if (!confirmar) return;
-      agregarVentaReporte(metodo);
-      window.print();
+      if (confirmar) {
+        agregarVentaReporte(metodo);
+        window.print();
+      }
+      window.location.reload();
     }
 
     window.addEventListener('afterprint', () => {
@@ -605,6 +607,17 @@
       actualizarUserBar()
       mostrarLogin()
     }
+    let inactivityTimer = null
+    function resetInactividad() {
+      if (inactivityTimer) clearTimeout(inactivityTimer)
+      inactivityTimer = setTimeout(() => {
+        const usuarioId = localStorage.getItem('USUARIO_ID')
+        if (usuarioId) {
+          logoutUsuario()
+          alert('La sesión se cerró por inactividad')
+        }
+      }, 30 * 60 * 1000)
+    }
     async function realizarLogin() {
       const usuario = document.getElementById('login-usuario')?.value.trim() || ''
       const contrasena = document.getElementById('login-contrasena')?.value || ''
@@ -700,6 +713,10 @@
       }
       actualizarUserBar()
       solicitarConsecutivo().catch(() => {})
+      ;['click','keydown','mousemove','touchstart'].forEach(ev => {
+        document.addEventListener(ev, resetInactividad)
+      })
+      resetInactividad()
     });
     function agregarVentaReporte(metodo) {
       const totalEl = document.getElementById('total-general');
