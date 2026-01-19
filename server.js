@@ -300,13 +300,24 @@ app.get('/api/ventas/:id', async (req, res) => {
 // Reporte de ventas del día (o recientes)
 app.get('/api/reporte-ventas', async (req, res) => {
   try {
-    // Solo ventas del día actual
-    // Incluimos punto_venta para separar reportes
+    // Generamos rango de fecha desde JS (hora local del sistema)
+    // para evitar discrepancias de zona horaria con MySQL
+    const now = new Date()
+    const y = now.getFullYear()
+    const m = String(now.getMonth() + 1).padStart(2, '0')
+    const d = String(now.getDate()).padStart(2, '0')
+    const startStr = `${y}-${m}-${d} 00:00:00`
+    const endStr = `${y}-${m}-${d} 23:59:59`
+
+    console.log(`[Reporte] Solicitado para rango: ${startStr} - ${endStr}`)
+
     const [rows] = await pool.query(
-      'SELECT id_consecutivo, total, forma_pago, tipo_pago, fecha, punto_venta FROM ventas WHERE DATE(fecha) = CURDATE() ORDER BY id_consecutivo DESC'
+      'SELECT id_consecutivo, total, forma_pago, tipo_pago, fecha, punto_venta FROM ventas WHERE fecha >= ? AND fecha <= ? ORDER BY id_consecutivo DESC',
+      [startStr, endStr]
     )
     res.json({ ok: true, ventas: rows })
   } catch (err) {
+    console.error('[Reporte] Error:', err.message)
     res.status(500).json({ ok: false, error: err.message })
   }
 })
