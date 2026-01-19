@@ -203,8 +203,16 @@
     </div>
     <div id="report-panel" class="report-panel">
       <div class="report-header">
-        <span>Reporte diario</span>
-        <button class="report-close" onclick="toggleReportePanel()">×</button>
+        <div style="display:flex; flex-direction:column; width:100%;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span>Reporte Ventas</span>
+            <button class="report-close" onclick="toggleReportePanel()">✖</button>
+          </div>
+          <div class="pv-tabs" style="display:flex; gap:10px; margin-bottom:8px; border-bottom:1px solid #eee;">
+            <button id="tab-ferreteria" class="pv-tab active" onclick="setFiltroPuntoVenta('ferreteria')">Ferretería</button>
+            <button id="tab-bodega" class="pv-tab" onclick="setFiltroPuntoVenta('bodega')">Bodega</button>
+          </div>
+        </div>
       </div>
       <div id="reporte-lista" class="report-list"></div>
       <div id="reporte-suma" class="report-total"></div>
@@ -559,6 +567,7 @@
               id: v.id_consecutivo,
               v: parseInt(v.total) || 0,
               m: (v.forma_pago || 'desconocido').toLowerCase(),
+              pv: (v.punto_venta || 'ferreteria').toLowerCase(),
               fecha: v.fecha
             }))
             actualizarUIReporte()
@@ -724,23 +733,50 @@
       }, 500)
     }
     const REPORTE_PASS = '79333587';
+    
+    let filtroPuntoVenta = 'ferreteria'; // Default
+
+    function setFiltroPuntoVenta(pv) {
+      filtroPuntoVenta = pv;
+      const btnF = document.getElementById('tab-ferreteria');
+      const btnB = document.getElementById('tab-bodega');
+      if (btnF && btnB) {
+        if (pv === 'ferreteria') {
+          btnF.classList.add('active');
+          btnB.classList.remove('active');
+        } else {
+          btnF.classList.remove('active');
+          btnB.classList.add('active');
+        }
+      }
+      actualizarUIReporte();
+    }
+
     function actualizarUIReporte() {
       const cont = document.getElementById('reporte-lista');
       const sumEl = document.getElementById('reporte-suma');
       if (!cont || !sumEl) return;
-      const visibles = reporteVentas.filter(it => filtroMetodo === 'todos' ? true : it.m === filtroMetodo);
+      
+      // Filtramos por punto de venta Y por método de pago
+      const visibles = reporteVentas.filter(it => {
+        const mismoPV = (it.pv || 'ferreteria') === filtroPuntoVenta;
+        const mismoMetodo = filtroMetodo === 'todos' ? true : it.m === filtroMetodo;
+        return mismoPV && mismoMetodo;
+      });
+
       cont.innerHTML = visibles.map((it, i) => `
         <div class="report-item">
           <span>#${it.id || '?'} — ${formatearPesos(it.v)} — ${(it.m || '').toUpperCase()}</span>
           <button class="report-del" onclick="eliminarVentaBD(${it.id})">Eliminar</button>
         </div>
       `).join('');
-      const sumaTotal = reporteVentas.reduce((acc, it) => acc + (parseInt(it.v) || 0), 0);
-      const sumaEf = reporteVentas.filter(it => it.m === 'efectivo').reduce((acc, it) => acc + it.v, 0);
-      const sumaTa = reporteVentas.filter(it => it.m === 'tarjeta').reduce((acc, it) => acc + it.v, 0);
-      const sumaQr = reporteVentas.filter(it => it.m === 'qr').reduce((acc, it) => acc + it.v, 0);
+      
+      const sumaTotal = visibles.reduce((acc, it) => acc + (parseInt(it.v) || 0), 0);
+      const sumaEf = visibles.filter(it => it.m === 'efectivo').reduce((acc, it) => acc + it.v, 0);
+      const sumaTa = visibles.filter(it => it.m === 'tarjeta').reduce((acc, it) => acc + it.v, 0);
+      const sumaQr = visibles.filter(it => it.m === 'qr').reduce((acc, it) => acc + it.v, 0);
       sumEl.innerHTML = `
-        <div><strong>Total vendido:</strong> ${formatearPesos(sumaTotal)}</div>
+        <div><strong>Total (${filtroPuntoVenta.toUpperCase()}):</strong> ${formatearPesos(sumaTotal)}</div>
         <div><strong>Efectivo:</strong> ${formatearPesos(sumaEf)}</div>
         <div><strong>Tarjeta:</strong> ${formatearPesos(sumaTa)}</div>
         <div><strong>QR:</strong> ${formatearPesos(sumaQr)}</div>
@@ -756,6 +792,13 @@
     }
     async function eliminarVentaBD(idConsecutivo) {
       const rol = localStorage.getItem('USUARIO_ROL')
+      console.log('Intentando eliminar venta:', idConsecutivo, 'Rol actual:', rol);
+      
+      if (!rol) {
+        alert('No se detectó rol de usuario. Por favor cierre sesión e ingrese nuevamente.')
+        return
+      }
+
       if (rol !== 'admin') {
         alert('Solo los usuarios administradores pueden eliminar ventas.')
         return

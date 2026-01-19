@@ -300,10 +300,10 @@ app.get('/api/ventas/:id', async (req, res) => {
 // Reporte de ventas del día (o recientes)
 app.get('/api/reporte-ventas', async (req, res) => {
   try {
-    // Por defecto las últimas 50 ventas
-    // Queremos mostrar: valor (total), forma_pago, consecutivo
+    // Solo ventas del día actual
+    // Incluimos punto_venta para separar reportes
     const [rows] = await pool.query(
-      'SELECT id_consecutivo, total, forma_pago, tipo_pago, fecha FROM ventas ORDER BY id_consecutivo DESC LIMIT 50'
+      'SELECT id_consecutivo, total, forma_pago, tipo_pago, fecha, punto_venta FROM ventas WHERE DATE(fecha) = CURDATE() ORDER BY id_consecutivo DESC'
     )
     res.json({ ok: true, ventas: rows })
   } catch (err) {
