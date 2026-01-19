@@ -115,6 +115,14 @@
       <label><input type="checkbox" id="pago-qr"> QR</label>
     </div>
 
+    <div class="tipo-pago-selector" style="margin-top: 10px; margin-bottom: 10px;">
+      <label for="select-tipo-pago"><strong>Tipo de pago:</strong></label>
+      <select id="select-tipo-pago" style="padding: 5px; border-radius: 4px; border: 1px solid #ccc;">
+        <option value="CONTADO" selected>Contado</option>
+        <option value="CREDITO">Crédito</option>
+      </select>
+    </div>
+
     <div class="punto-venta-selector" style="margin-top: 10px; margin-bottom: 10px;">
       <label for="select-punto-venta"><strong>Punto de Venta:</strong></label>
       <select id="select-punto-venta" onchange="actualizarPuntoVenta(this.value)" style="padding: 5px; border-radius: 4px; border: 1px solid #ccc;">
@@ -463,10 +471,15 @@
         return;
       }
       aplicarVentaUI();
-      agregarVentaReporte(metodo);
+      let ok = false
       try {
-        await guardarVentaBD(metodo);
-      } catch (e) {}
+        ok = await guardarVentaBD(metodo);
+      } catch (e) {
+        alert('Error guardando la venta');
+        return;
+      }
+      if (!ok) return;
+      agregarVentaReporte(metodo);
       window.print();
     }
 
@@ -855,6 +868,8 @@
       if (!input || !dropdown) return
       input.addEventListener('input', () => {
         const term = input.value.trim()
+        clienteSeleccionado = null
+        localStorage.removeItem('CLIENTE_ID')
         if (clienteSearchTimer) {
           clearTimeout(clienteSearchTimer)
           clienteSearchTimer = null
@@ -877,14 +892,11 @@
       })
     }
     function getPuntoVenta() {
-      // Prioridad al selector explícito, fallback a la clase CSS
       const select = document.getElementById('select-punto-venta');
       if (select) return select.value;
-
       const esBodega = document.body.classList.contains('formato-bodega') || document.getElementById('contenido-factura')?.classList.contains('formato-bodega')
       return esBodega ? 'bodega' : 'ferreteria'
     }
-
     function actualizarPuntoVenta(valor) {
       const body = document.body;
       const contenido = document.getElementById('contenido-factura');
@@ -897,7 +909,11 @@
       }
     }
     
-    function getTipoPago() { return 'CONTADO' }
+    function getTipoPago() {
+      const select = document.getElementById('select-tipo-pago')
+      const val = select ? select.value : 'CONTADO'
+      return val === 'CREDITO' ? 'CREDITO' : 'CONTADO'
+    }
     function getIds() {
       const u = parseInt(localStorage.getItem('USUARIO_ID') || '1') || 1
       const c = parseInt(localStorage.getItem('CLIENTE_ID') || '1') || 1
@@ -921,8 +937,15 @@
       const items = obtenerItemsBD()
       if (items.length === 0) return false
       const total = obtenerTotalNumerico()
-      const cliente = document.getElementById('nombre-cliente')?.value.trim() || ''
+      const clienteTexto = document.getElementById('nombre-cliente')?.value.trim() || ''
+      const tipo_pago = getTipoPago()
       const { usuario_id, cliente_id } = getIds()
+      if (tipo_pago === 'CREDITO') {
+        if (!clienteSeleccionado || !clienteSeleccionado.id) {
+          alert('No se puede financiar facturas a clientes no registrados en la base de datos')
+          return false
+        }
+      }
       const id_consecutivo = await solicitarConsecutivo()
       lastConsecutivo = id_consecutivo
       const payload = {
@@ -930,11 +953,11 @@
         usuario_id,
         cliente_id,
         total,
-        tipo_pago: getTipoPago(),
+        tipo_pago,
         forma_pago: (metodo || '').toUpperCase(),
         punto_venta: getPuntoVenta(),
         items,
-        cliente_nombre: cliente
+        cliente_nombre: clienteTexto
       }
       const resp = await fetch(getApiBase() + '/api/venta', {
         method: 'POST',
