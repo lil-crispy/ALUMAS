@@ -465,8 +465,9 @@
     }
 
     async function imprimirVenta() {
+      const tipo = getTipoPago();
       const metodo = getSelectedMetodoPago();
-      if (!metodo) {
+      if (tipo !== 'CREDITO' && !metodo) {
         alert('Seleccione un método de pago (Efectivo, Tarjeta o QR)');
         return;
       }
@@ -487,7 +488,8 @@
         : 'La venta se guardó correctamente. ¿Desea imprimir la remisión?';
       const confirmar = window.confirm(mensaje);
       if (confirmar) {
-        agregarVentaReporte(metodo);
+        const metodoReporte = metodo || (tipo === 'CREDITO' ? 'credito' : null);
+        if (metodoReporte) agregarVentaReporte(metodoReporte);
         window.print();
       }
       window.location.reload();
@@ -555,28 +557,28 @@
         actualizarUIReporte();
       }
     }
-    function cargarReporte() {
+    async function cargarReporte() {
       try {
-        checkResetReporte();
-        const guardado = localStorage.getItem('reporteVentas');
-        let parsed = [];
-        if (guardado) {
-          try {
-            parsed = JSON.parse(guardado);
-          } catch (e) {
-            localStorage.removeItem('reporteVentas');
-            parsed = [];
+        const resp = await fetch(getApiBase() + '/api/reporte-ventas')
+        if (resp.ok) {
+          const data = await resp.json()
+          if (data.ok && Array.isArray(data.ventas)) {
+            reporteVentas = data.ventas.map(v => ({
+              id: v.id_consecutivo,
+              v: parseInt(v.total) || 0,
+              m: (v.forma_pago || 'desconocido').toLowerCase(),
+              fecha: v.fecha
+            }))
+            actualizarUIReporte()
+            return
           }
         }
-        reporteVentas = Array.isArray(parsed) ? parsed
-          .map(item => (typeof item === 'number' ? { v: item, m: 'desconocido' } : item))
-          .filter(item => item && typeof item.v === 'number' && item.v > 0 && typeof item.m === 'string')
-          : [];
-        actualizarUIReporte();
       } catch (e) {
-        reporteVentas = [];
-        try { actualizarUIReporte(); } catch (_) {}
+        console.error('Error cargando reporte BD', e)
       }
+      // Fallback a localStorage si falla la BD (opcional, pero mejor usar solo BD como pidió el usuario)
+      reporteVentas = []
+      actualizarUIReporte()
     }
     function mostrarLogin() {
       const overlay = document.getElementById('login-overlay')
@@ -604,6 +606,7 @@
     function logoutUsuario() {
       localStorage.removeItem('USUARIO_ID')
       localStorage.removeItem('USUARIO_NOMBRE')
+      localStorage.removeItem('USUARIO_ROL')
       actualizarUserBar()
       mostrarLogin()
     }
@@ -647,6 +650,7 @@
         }
         localStorage.setItem('USUARIO_ID', String(data.usuario_id))
         if (data.usuario) localStorage.setItem('USUARIO_NOMBRE', data.usuario)
+        localStorage.setItem('USUARIO_ROL', data.rol || 'vendedor')
         actualizarUserBar()
         if (errorEl) {
           errorEl.style.color = '#16a34a'
@@ -736,8 +740,8 @@
       const visibles = reporteVentas.filter(it => filtroMetodo === 'todos' ? true : it.m === filtroMetodo);
       cont.innerHTML = visibles.map((it, i) => `
         <div class="report-item">
-          <span>${formatearPesos(it.v)} — ${it.m.toUpperCase()}</span>
-          <button class="report-del" onclick="eliminarVenta(${i})">Eliminar</button>
+          <span>#${it.id || '?'} — ${formatearPesos(it.v)} — ${(it.m || '').toUpperCase()}</span>
+          <button class="report-del" onclick="eliminarVentaBD(${it.id})">Eliminar</button>
         </div>
       `).join('');
       const sumaTotal = reporteVentas.reduce((acc, it) => acc + (parseInt(it.v) || 0), 0);
@@ -756,17 +760,29 @@
       if (!p) return;
       p.classList.toggle('open');
     }
-    function eliminarVenta(index) {
-      const input = window.prompt('Ingrese contraseña para eliminar');
-      if (input !== REPORTE_PASS) return;
-      const visibles = reporteVentas.filter(it => filtroMetodo === 'todos' ? true : it.m === filtroMetodo);
-      if (index < 0 || index >= visibles.length) return;
-      const item = visibles[index];
-      const pos = reporteVentas.findIndex(it => it === item);
-      if (pos === -1) return;
-      reporteVentas.splice(pos, 1);
-      localStorage.setItem('reporteVentas', JSON.stringify(reporteVentas));
-      actualizarUIReporte();
+    async function eliminarVentaBD(idConsecutivo) {
+      const rol = localStorage.getItem('USUARIO_ROL')
+      if (rol !== 'admin') {
+        alert('Solo los usuarios administradores pueden eliminar ventas.')
+        return
+      }
+      const confirmar = window.confirm('¿Está seguro de eliminar la venta #' + idConsecutivo + '? Esta acción no se puede deshacer.')
+      if (!confirmar) return
+
+      try {
+        const resp = await fetch(getApiBase() + '/api/venta/' + idConsecutivo, { method: 'DELETE' })
+        if (resp.ok) {
+          const data = await resp.json()
+          if (data.ok) {
+            alert('Venta eliminada correctamente')
+            cargarReporte() // Recargar lista desde BD
+            return
+          }
+        }
+        alert('Error al eliminar la venta')
+      } catch (e) {
+        alert('Error de conexión al eliminar')
+      }
     }
     function getSelectedMetodoPago() {
       const esEf = document.getElementById('pago-efectivo')?.checked;

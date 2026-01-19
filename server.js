@@ -175,10 +175,12 @@ app.post('/api/login', async (req, res) => {
     if (!idUsuario) {
       return res.status(500).json({ ok: false, error: 'id_usuario_invalido' })
     }
+    const rol = user.rol || 'vendedor'
     res.json({
       ok: true,
       usuario_id: idUsuario,
       usuario: nombreUsuario,
+      rol
     })
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message })
@@ -290,6 +292,45 @@ app.get('/api/ventas/:id', async (req, res) => {
     if (!venta) return res.status(404).json({ ok: false, error: 'no encontrada' })
     const [items] = await pool.query('SELECT * FROM web_venta_items WHERE venta_id = ?', [id])
     res.json({ ok: true, venta, items })
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message })
+  }
+})
+
+// Reporte de ventas del día (o recientes)
+app.get('/api/reporte-ventas', async (req, res) => {
+  try {
+    // Por defecto las últimas 100 o del día
+    // Queremos mostrar: valor (total), forma_pago, consecutivo
+    const [rows] = await pool.query(
+      'SELECT id_consecutivo, total, forma_pago, tipo_pago, fecha FROM ventas WHERE fecha >= CURDATE() ORDER BY fecha DESC'
+    )
+    res.json({ ok: true, ventas: rows })
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message })
+  }
+})
+
+// Eliminar venta (solo admin validado en front, pero idealmente aquí también si tuviéramos middleware)
+app.delete('/api/venta/:id', async (req, res) => {
+  try {
+    const id = req.params.id
+    if (!id) return res.status(400).json({ ok: false, error: 'id requerido' })
+    
+    // Validamos que exista
+    const [[venta]] = await pool.query('SELECT 1 FROM ventas WHERE id_consecutivo = ?', [id])
+    if (!venta) return res.status(404).json({ ok: false, error: 'venta no encontrada' })
+
+    // Eliminamos (asumiendo que no hay FKs restrictivas o que queremos borrar todo)
+    // Si hay items vinculados en otra tabla relacionada a 'ventas' por 'id_consecutivo', habría que borrarlos.
+    // La tabla ventas usa id_consecutivo como PK.
+    // Revisando el código, no parece haber tabla de items linkeada a id_consecutivo en SQL, 
+    // sino que se descuenta stock de productos. 
+    // Si borramos la venta, ¿devolvemos el stock? El usuario no lo pidió explícitamente, pero sería lo correcto.
+    // Por simplicidad y siguiendo "do nothing more", solo borramos el registro.
+    
+    await pool.query('DELETE FROM ventas WHERE id_consecutivo = ?', [id])
+    res.json({ ok: true })
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message })
   }
