@@ -110,10 +110,25 @@ app.get('/api/clientes', async (req, res) => {
     if (!q) return res.json({ ok: true, clientes: [] })
     const like = `%${q}%`
     const [rows] = await pool.query(
-      'SELECT id_cliente AS id, nombre, nit_cc, telefono, direccion FROM clientes WHERE nombre LIKE ? OR nit_cc LIKE ? ORDER BY nombre LIMIT 20',
+      'SELECT id_cliente AS id, nombre, nit_cc, telefono, direccion, tipo_cliente FROM clientes WHERE nombre LIKE ? OR nit_cc LIKE ? ORDER BY nombre LIMIT 20',
       [like, like]
     )
     res.json({ ok: true, clientes: rows || [] })
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message })
+  }
+})
+
+app.get('/api/productos', async (req, res) => {
+  try {
+    const q = String(req.query.q || '').trim()
+    if (!q) return res.json({ ok: true, productos: [] })
+    const like = `%${q}%`
+    const [rows] = await pool.query(
+      'SELECT id_producto AS id, nombre, stock, precio_final, precio_mayorista FROM productos WHERE nombre LIKE ? ORDER BY nombre LIMIT 30',
+      [like]
+    )
+    res.json({ ok: true, productos: rows || [] })
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message })
   }

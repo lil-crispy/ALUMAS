@@ -77,6 +77,18 @@
 
   <div class="report-toggle" onclick="toggleReportePanel()">Reporte ▼</div>
 
+  <div class="panel-sugerencias" id="panel-sugerencias">
+    <div class="panel-header">
+      <span>Sugerencias de productos</span>
+      <button class="panel-close" onclick="cerrarPanelSugerencias()">×</button>
+    </div>
+    <div class="panel-content">
+      <div id="producto-autocomplete-dropdown" class="producto-dropdown">
+        <div class="no-productos">Escribe en la columna descripción para ver sugerencias…</div>
+      </div>
+    </div>
+  </div>
+
   <div class="contenedor-principal" id="contenido-factura">
     <div class="encabezado">
       <div>
@@ -222,6 +234,7 @@
   <script>
     const tabla = document.getElementById('tabla-productos');
     let celdaActiva = null;
+    let celdaProductoActiva = null;
   
     function formatearPesos(valor) {
       const numero = parseInt(valor);
@@ -248,10 +261,24 @@
       document.getElementById('total-general').innerText = 'TOTAL: ' + formatearPesos(totalGeneral);
     }
   
-    tabla.addEventListener('input', (e) => {
-      const target = e.target;
-      if (target.classList.contains('cant') || target.classList.contains('valor-u')) {
+    tabla.addEventListener('input', async (e) => {
+      const celda = e.target;
+      if (celda.classList.contains('cant') || celda.classList.contains('valor-u')) {
         actualizarTotales();
+      }
+      const fila = celda.parentElement;
+      if (!fila) return;
+      const celdas = Array.from(fila.children);
+      const indiceCelda = celdas.indexOf(celda);
+      if (indiceCelda === 1) {
+        const texto = celda.textContent.trim();
+        celdaProductoActiva = celda;
+        if (texto.length < 2) {
+          ocultarDropdownProductos();
+          return;
+        }
+        const productos = await buscarProductos(texto);
+        mostrarDropdownProductos(productos, celda);
       }
     });
   
@@ -326,7 +353,81 @@
         pdf.save(nombre);
       });
     }
-  
+    async function buscarProductos(termino) {
+      try {
+        const resp = await fetch(getApiBase() + '/api/productos?q=' + encodeURIComponent(termino));
+        if (!resp.ok) return [];
+        const data = await resp.json();
+        if (!data || !Array.isArray(data.productos)) return [];
+        return data.productos;
+      } catch (e) {
+        return [];
+      }
+    }
+    function precioPorCliente(producto) {
+      try {
+        const tipo = (clienteSeleccionado && clienteSeleccionado.tipo_cliente) ? String(clienteSeleccionado.tipo_cliente).toLowerCase() : '';
+        const esMayorista = tipo.includes('mayor');
+        const precio = esMayorista ? producto.precio_mayorista : producto.precio_final;
+        return Number(precio || 0);
+      } catch (e) {
+        return Number(producto.precio_final || 0);
+      }
+    }
+    function mostrarDropdownProductos(productos, celda) {
+      const dropdown = document.getElementById('producto-autocomplete-dropdown');
+      const panel = document.getElementById('panel-sugerencias');
+      if (!dropdown || !panel) return;
+      celdaProductoActiva = celda;
+      dropdown.innerHTML = '';
+      if (!productos || productos.length === 0) {
+        dropdown.innerHTML = '<div class="no-productos">No se encontraron productos que coincidan con la búsqueda.</div>';
+        panel.style.display = 'block';
+        return;
+      }
+      productos.forEach((producto, index) => {
+        const item = document.createElement('div');
+        item.className = 'producto-item';
+        if (index === 0) item.classList.add('selected');
+        const precioFinal = Number(producto.precio_final || 0);
+        const precioMayor = Number(producto.precio_mayorista || 0);
+        item.innerHTML = `
+          <div class="producto-nombre">${producto.nombre}</div>
+          <div class="producto-info">ID: ${producto.id || ''} | Stock: ${producto.stock || 0}</div>
+          <div class="producto-info">Final: ${formatearPesos(precioFinal)} | Mayor: ${formatearPesos(precioMayor)}</div>
+        `;
+        item.addEventListener('click', () => {
+          seleccionarProducto(producto, celda);
+        });
+        dropdown.appendChild(item);
+      });
+      panel.style.display = 'block';
+    }
+    function cerrarPanelSugerencias() {
+      const panel = document.getElementById('panel-sugerencias');
+      if (panel) panel.style.display = 'none';
+      celdaProductoActiva = null;
+    }
+    function ocultarDropdownProductos() {
+      cerrarPanelSugerencias();
+      celdaProductoActiva = null;
+    }
+    function seleccionarProducto(producto, celda) {
+      celda.textContent = producto.nombre;
+      const fila = celda.parentElement;
+      if (!fila) return;
+      const celdas = Array.from(fila.children);
+      const indiceCelda = celdas.indexOf(celda);
+      if (indiceCelda === 1) {
+        const celdaPrecio = celdas[2];
+        if (celdaPrecio) {
+          const precio = precioPorCliente(producto);
+          celdaPrecio.textContent = String(precio);
+        }
+      }
+      cerrarPanelSugerencias();
+      actualizarTotales();
+    }
   function toggleTransporte() {
   const form = document.getElementById('form-transporte');
   const mensajeTransporte = document.getElementById('mensaje-transporte');
@@ -441,6 +542,13 @@
         celda.removeAttribute('contenteditable');
       }
     }, true);
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.contenedor-tabla') &&
+          !e.target.closest('#panel-sugerencias') &&
+          !e.target.closest('#producto-autocomplete-dropdown')) {
+        cerrarPanelSugerencias();
+      }
+    });
     let originalMensajeHTML = '';
     document.addEventListener('DOMContentLoaded', () => {
       const mensajeDiv = document.querySelector('.mensaje');
