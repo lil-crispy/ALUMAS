@@ -1,0 +1,358 @@
+body {
+  font-family: Arial, sans-serif;
+  background-color: #fff;
+  margin: 0;
+  padding: 20px;
+}
+
+.contenedor-principal {
+  width: 90%;
+  max-width: 800px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.encabezado .titulo {
+  font-family: 'Bauhaus', sans-serif;
+  font-size: 2.5em;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.encabezado .subtitulo {
+  font-family: 'Bauhaus', sans-serif;
+  font-size: 2em;
+  line-height: 1;
+}
+
+.info {
+  text-align: left;
+  margin-top: 10px;
+}
+
+.editable-linea {
+  border-bottom: 1px solid #000;
+  padding: 2px 5px;
+  min-width: 200px;
+  display: inline-block;
+  text-transform: uppercase;
+}
+
+.contenedor-tabla {
+  margin-top: 20px;
+  overflow-x: auto;
+}
+
+.acciones-tabla {
+  text-align: right;
+  margin-bottom: 5px;
+}
+
+.acciones-tabla button {
+  margin-left: 5px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+th, td {
+  border: 1px solid #000;
+  padding: 5px;
+  text-align: center;
+  word-wrap: break-word;
+  text-transform: uppercase;
+}
+
+td[contenteditable="true"] {
+  direction: ltr;
+  text-align: left;
+}
+
+.col-cant {
+  width: 5%;
+  text-align: left;
+  direction: ltr;
+}
+
+.col-desc {
+  width: 40%;
+  text-align: left;
+}
+
+.col-valor {
+  width: 12%;
+}
+
+.valor-u input {
+  text-align: left;
+  direction: ltr;
+  padding-left: 5px;
+}
+
+.valor-t {
+  background-color: #f0f0f0;
+  font-weight: bold;
+}
+
+.total {
+  font-size: 1.5em;
+  margin-top: 10px;
+  text-align: center;
+}
+
+.logo-grande {
+  width: 250px;
+  max-width: 550px;
+  margin: 20px auto;
+  display: block;
+}
+
+.mensaje {
+  margin-top: 10px;
+  font-size: 0.9em;
+  text-align: center;
+  line-height: 1.1;
+}
+
+.mensaje p,
+.mensaje small {
+  margin: 0;
+  padding: 0;
+}
+
+.boton-imprimir {
+  margin-top: 15px;
+}
+
+/* Responsive */
+@media screen and (max-width: 600px) {
+  .encabezado .titulo {
+    font-size: 1.8em;
+  }
+  .encabezado .subtitulo {
+    font-size: 1.5em;
+  }
+  th, td {
+    font-size: 0.8em;
+    padding: 3px;
+    text-transform: uppercase;
+  }
+  td[contenteditable="true"] {
+    direction: ltr;
+    text-align: left;
+  }
+  .acciones-tabla button {
+    padding: 4px 6px;
+    font-size: 0.8em;
+  }
+  .logo-grande {
+    width: 80px;
+  }
+  .total {
+    font-size: 1em;
+  }
+}
+
+/* ---------- FORMATOS DE IMPRESIÓN ---------- */
+
+/* Para impresión ferretería (80mm) - Por defecto */
+@page {
+  size: 80mm auto;
+  margin: 0;
+}
+
+/* Para impresión bodega (A5) */
+@page bodega {
+  size: A5 portrait;
+  margin: 1cm;
+}
+
+@media print {
+  body {
+    width: 80mm;
+    max-width: 80mm;
+    font-size: 10px;
+    padding: 0;
+    margin: 0 auto;
+    background: white;
+  }
+
+  .contenedor-principal {
+    width: 100%;
+    max-width: 100%;
+    padding: 0;
+    margin: 0 auto;
+    text-align: left;
+  }
+
+  .encabezado .titulo {
+    font-size: 1.2em;
+    text-align: center;
+  }
+
+  .encabezado .subtitulo {
+    font-size: 1em;
+    text-align: center;
+  }
+
+  .punto-venta-container,
+  .acciones-tabla,
+  .acciones-tabla button {
+    display: none !important;
+  }
+
+  /* Ocultar controles solo al imprimir */
+  @media print {
+    .boton-imprimir {
+      display: none !important;
+    }
+  }
+
+  /* Mostrar y estilizar la sección de botones en pantalla */
+  .boton-imprimir {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+    margin: 10px 0;
+  }
+
+  .boton-imprimir button {
+    background-color: #0078d7;
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .boton-imprimir button:hover {
+    background-color: #005a9e;
+  }
+
+  .boton-imprimir label {
+    font-weight: 600;
+  }
+
+  .contenedor-tabla {
+    width: 100%;
+    overflow: visible;
+  }
+
+  table {
+    width: 96%;
+    table-layout: fixed;
+    font-size: 9px;
+    border-collapse: collapse;
+    margin: 0 auto;
+    page-break-inside: auto;
+  }
+
+  thead { display: table-header-group; }
+  tfoot { display: table-footer-group; }
+
+  tr { page-break-inside: avoid; page-break-after: auto; }
+  th, td {
+    padding: 2px 3px;
+    font-size: 9px;
+    word-break: break-word;
+    border: 1px solid #000;
+  }
+
+  td[contenteditable="true"] {
+    direction: ltr;
+    text-align: left;
+  }
+
+  .col-cant {
+    width: 10%;
+  }
+
+  .col-desc {
+    width: 45%;
+  }
+
+  .col-valor {
+    width: 10%;
+  }
+
+  .logo-grande {
+    width: 60%;
+    max-width: 60%;
+    height: auto;
+    display: block;
+    margin: 10px auto;
+  }
+
+  .total {
+    font-size: 2em;
+    text-align: center;
+    margin-top: 10px;
+  }
+
+  /* ---------- Estilos específicos para formato bodega ---------- */
+  body.formato-bodega {
+    page: bodega; /* Se aplica el @page bodega */
+    width: 21cm !important;
+    max-width: 21cm !important;
+    font-size: 14px !important;
+    padding: 1cm !important;
+    margin: 0 auto !important;
+  }
+
+  .formato-bodega .contenedor-principal {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .formato-bodega table {
+    width: 100% !important;
+    font-size: 12px !important;
+  }
+
+  .formato-bodega th,
+  .formato-bodega td {
+    padding: 8px 4px !important;
+    font-size: 12px !important;
+  }
+
+  .formato-bodega .total {
+    font-size: 18px !important;
+  }
+
+  .formato-bodega .logo-grande {
+    width: 150px !important;
+    max-width: 150px !important;
+  }
+
+  .formato-bodega .encabezado .titulo {
+    font-size: 1.8em !important;
+  }
+
+  .formato-bodega .encabezado .subtitulo {
+    font-size: 1.4em !important;
+  }
+
+  .formato-bodega .encabezado img {
+    max-width: 250px !important;
+  }
+}
+
+/* Corrección de dirección de escritura y cursor */
+.cant, .valor-u {
+  direction: ltr;
+  text-align: left;
+  unicode-bidi: plaintext;
+}
+
+.pdf-scale {
+  transform: scale(0.4);
+  transform-origin: top left;
+  width: 250%;
+}
