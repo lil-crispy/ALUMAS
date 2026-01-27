@@ -312,6 +312,13 @@ app.post('/api/venta', async (req, res) => {
     if (!id_consecutivo || !usuario_id || !cliente_id) {
       return res.status(400).json({ ok: false, error: 'faltan_campos' })
     }
+
+    // Doble validación en backend antes de insertar
+    const [[existente]] = await conn.query('SELECT 1 FROM ventas WHERE id_consecutivo = ?', [Number(id_consecutivo)]);
+    if (existente) {
+        return res.status(409).json({ ok: false, error: 'consecutivo_duplicado', msg: 'El consecutivo ya existe' });
+    }
+
     const t = Number(total || 0)
     await conn.beginTransaction()
     await conn.query(

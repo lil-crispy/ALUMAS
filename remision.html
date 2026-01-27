@@ -1897,7 +1897,37 @@
           return false
         }
       }
-      const id_consecutivo = await solicitarConsecutivo()
+      
+      // Validar consecutivo actual antes de enviar
+      let id_consecutivo = document.getElementById('numero-consecutivo').innerText.trim();
+      id_consecutivo = parseInt(id_consecutivo);
+      
+      if (!id_consecutivo || isNaN(id_consecutivo) || id_consecutivo < 1000) {
+          // Si no es válido, intentar obtener uno nuevo
+          try {
+            id_consecutivo = await solicitarConsecutivo();
+          } catch (e) {
+            alert("No se pudo obtener un consecutivo válido.");
+            return false;
+          }
+      } else {
+          // Validar que no exista ya (doble chequeo de seguridad)
+          try {
+            const check = await fetch(getApiBase() + '/api/check-consecutivo/' + id_consecutivo);
+            const checkData = await check.json();
+            if (checkData.exists) {
+                alert(`El consecutivo ${id_consecutivo} YA EXISTE en la base de datos. Por favor edítelo o genere uno nuevo.`);
+                return false;
+            }
+          } catch (e) {
+             console.error("Error validando consecutivo previo al guardado", e);
+             // Permitimos continuar bajo riesgo o bloqueamos? Mejor bloquear para seguridad
+             if(!confirm("No se pudo verificar si el consecutivo existe. ¿Desea intentar guardarlo de todos modos?")) {
+                 return false;
+             }
+          }
+      }
+
       lastConsecutivo = id_consecutivo
       const payload = {
         id_consecutivo,
@@ -1915,6 +1945,14 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       })
+      
+      if (resp.status === 409) { // Conflicto / Duplicado
+          const errData = await resp.json();
+          alert(`Error: El consecutivo ${id_consecutivo} ya fue registrado por otra venta hace un instante. Por favor intente de nuevo con otro número.`);
+          await solicitarConsecutivo(); // Generar uno nuevo automáticamente
+          return false;
+      }
+
       if (!resp.ok) return false
       const data = await resp.json()
       return !!data?.ok
