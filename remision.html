@@ -51,7 +51,20 @@
   <script>
     window.jsPDF = window.jspdf.jsPDF;
   </script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <div id="debug-log" style="position:fixed; bottom:0; right:0; width:300px; height:150px; background:rgba(0,0,0,0.8); color:lime; font-family:monospace; font-size:10px; overflow-y:scroll; z-index:9999; padding:5px; display:none;"></div>
+  <script>
+    function logDebug(msg) {
+      const d = document.getElementById('debug-log');
+      if (d) {
+        d.style.display = 'block';
+        const line = document.createElement('div');
+        line.textContent = new Date().toLocaleTimeString() + ': ' + msg;
+        d.appendChild(line);
+        d.scrollTop = d.scrollHeight;
+      }
+      console.log(msg);
+    }
+  </script>
 </head>
 
 <body>
@@ -261,6 +274,8 @@
       document.getElementById('total-general').innerText = 'TOTAL: ' + formatearPesos(totalGeneral);
     }
   
+    let inputDebounceTimer = null;
+
     tabla.addEventListener('input', async (e) => {
       const celda = e.target;
       if (celda.classList.contains('cant') || celda.classList.contains('valor-u')) {
@@ -277,8 +292,12 @@
           ocultarDropdownProductos();
           return;
         }
-        const productos = await buscarProductos(texto);
-        mostrarDropdownProductos(productos, celda);
+        
+        if (inputDebounceTimer) clearTimeout(inputDebounceTimer);
+        inputDebounceTimer = setTimeout(async () => {
+             const productos = await buscarProductos(texto);
+             mostrarDropdownProductos(productos, celda);
+        }, 200);
       }
     });
   
@@ -355,12 +374,21 @@
     }
     async function buscarProductos(termino) {
       try {
-        const resp = await fetch(getApiBase() + '/api/productos?q=' + encodeURIComponent(termino));
-        if (!resp.ok) return [];
+        const url = getApiBase() + '/api/productos?q=' + encodeURIComponent(termino);
+        // logDebug('Fetch URL: ' + url);
+        const resp = await fetch(url);
+        if (!resp.ok) {
+            logDebug('Error API: ' + resp.status);
+            return [];
+        }
         const data = await resp.json();
-        if (!data || !Array.isArray(data.productos)) return [];
+        if (!data || !Array.isArray(data.productos)) {
+            logDebug('API sin productos');
+            return [];
+        }
         return data.productos;
       } catch (e) {
+        logDebug('Excepcion buscarProductos: ' + e.message);
         return [];
       }
     }
@@ -509,6 +537,10 @@
     tabla.addEventListener('keydown', async (e) => {
       const celda = e.target.closest('td');
       if (celda) celdaActiva = celda;
+      
+      // Debug key
+      // logDebug('Key: ' + e.key + ' Code: ' + e.code);
+
       if (!celdaActiva) return;
   
       const fila = celdaActiva.parentElement;
@@ -537,11 +569,13 @@
           // Lógica para autocompletar con código de barras en columna Descripción (índice 1)
           if (colIndex === 1) {
             const termino = celdaActiva.textContent.trim();
+            logDebug('Enter en Descripcion. Termino: "' + termino + '"');
+            
             if (termino) {
               // Buscar producto (asumiendo que el término es el código)
-              console.log('Buscando producto con término:', termino);
+              logDebug('Buscando: ' + termino);
               const productos = await buscarProductos(termino);
-              console.log('Productos encontrados:', productos);
+              logDebug('Encontrados: ' + productos.length);
               
               // Buscar coincidencia exacta
               const encontrado = productos.find(p => 
@@ -553,6 +587,7 @@
               );
 
               if (encontrado) {
+                logDebug('Producto exacto: ' + encontrado.nombre);
                 seleccionarProducto(encontrado, celdaActiva);
 
                 // Si es la última fila, agregar una nueva
@@ -573,6 +608,8 @@
                   celdaActiva = nuevaCelda;
                 }
                 return; 
+              } else {
+                logDebug('No se encontró coincidencia exacta para: ' + termino);
               }
             }
           }
@@ -673,6 +710,13 @@
     });
 
     window.addEventListener('keydown', (e) => {
+      // Toggle debug con Ctrl+D
+      if (e.ctrlKey && e.key === 'd') {
+          e.preventDefault();
+          const d = document.getElementById('debug-log');
+          if (d) d.style.display = (d.style.display === 'none' ? 'block' : 'none');
+      }
+
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
         e.preventDefault();
         e.stopPropagation();
