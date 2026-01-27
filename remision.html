@@ -499,7 +499,7 @@
       }
     });
   
-    tabla.addEventListener('keydown', (e) => {
+    tabla.addEventListener('keydown', async (e) => {
       if (!celdaActiva) return;
   
       const fila = celdaActiva.parentElement;
@@ -524,6 +524,48 @@
           break;
         case 'Enter':
           e.preventDefault();
+
+          // Lógica para autocompletar con código de barras en columna Descripción (índice 1)
+          if (colIndex === 1) {
+            const termino = celdaActiva.textContent.trim();
+            if (termino) {
+              // Buscar producto (asumiendo que el término es el código)
+              const productos = await buscarProductos(termino);
+              
+              // Buscar coincidencia exacta
+              const encontrado = productos.find(p => 
+                String(p.id) === termino || 
+                String(p.codigo || '').toLowerCase() === termino.toLowerCase() ||
+                String(p.codigo_barras || '').toLowerCase() === termino.toLowerCase() ||
+                String(p.referencia || '').toLowerCase() === termino.toLowerCase() ||
+                p.nombre.toLowerCase() === termino.toLowerCase()
+              );
+
+              if (encontrado) {
+                seleccionarProducto(encontrado, celdaActiva);
+
+                // Si es la última fila, agregar una nueva
+                if (!fila.nextElementSibling) {
+                  agregarFila();
+                }
+
+                // Saltar a la siguiente línea (columna descripción)
+                const siguienteFila = fila.nextElementSibling;
+                if (siguienteFila) {
+                  // Apuntar a la columna descripción (índice 1)
+                  nuevaCelda = siguienteFila.children[1];
+                }
+                
+                if (nuevaCelda) {
+                  nuevaCelda.setAttribute('contenteditable', 'true');
+                  nuevaCelda.focus();
+                  celdaActiva = nuevaCelda;
+                }
+                return; 
+              }
+            }
+          }
+
           const siguienteFila = fila.nextElementSibling;
           if (siguienteFila) nuevaCelda = siguienteFila.children[colIndex];
           break;
