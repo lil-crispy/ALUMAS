@@ -483,6 +483,13 @@
       actualizarTotales();
     }
   
+    tabla.addEventListener('focusin', (e) => {
+      const celda = e.target.closest('td');
+      if (celda && !celda.classList.contains('valor-t')) {
+        celdaActiva = celda;
+      }
+    });
+
     tabla.addEventListener('click', (e) => {
       const celda = e.target.closest('td');
       if (!celda || celda.classList.contains('valor-t')) return;
@@ -500,6 +507,8 @@
     });
   
     tabla.addEventListener('keydown', async (e) => {
+      const celda = e.target.closest('td');
+      if (celda) celdaActiva = celda;
       if (!celdaActiva) return;
   
       const fila = celdaActiva.parentElement;
@@ -530,7 +539,9 @@
             const termino = celdaActiva.textContent.trim();
             if (termino) {
               // Buscar producto (asumiendo que el término es el código)
+              console.log('Buscando producto con término:', termino);
               const productos = await buscarProductos(termino);
+              console.log('Productos encontrados:', productos);
               
               // Buscar coincidencia exacta
               const encontrado = productos.find(p => 
