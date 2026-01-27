@@ -872,6 +872,115 @@
         template.style.display = 'none';
       }
     }
+    async function guardarPDFAutoServer() {
+      // Reutiliza la lógica de generación pero envía al servidor
+      const template = document.getElementById('pdf-template');
+      const tbody = document.getElementById('pdf-table-body');
+      
+      // Fecha header
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      document.getElementById('pdf-header-date').textContent = `FEC ${dateStr}`;
+      
+      // Consecutivo
+      const consecutivo = document.getElementById('numero-consecutivo').textContent;
+      document.getElementById('pdf-header-rem').textContent = `REM ${consecutivo}`;
+      
+      // Fecha Info
+      const fullDateStr = now.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + 
+                          now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }).toLowerCase();
+      document.getElementById('pdf-info-fecha').innerHTML = `<strong>FECHA:</strong> ${fullDateStr}`;
+      
+      // Cliente
+      const clienteVal = document.getElementById('nombre-cliente').value || '';
+      document.getElementById('pdf-info-cliente').textContent = clienteVal;
+      
+      // Tabla
+      tbody.innerHTML = '';
+      const filas = document.querySelectorAll('#tabla-productos tr');
+      
+      let totalFilas = 0;
+      filas.forEach(fila => {
+        const cels = fila.querySelectorAll('td');
+        const cant = cels[0]?.innerText || '';
+        const desc = cels[1]?.innerText || '';
+        const vuni = cels[2]?.innerText || '';
+        const vtot = cels[3]?.innerText || '';
+        
+        if (cant || desc || vuni || vtot) {
+             const tr = document.createElement('tr');
+             tr.innerHTML = `
+                <td style="border: 1px solid #999; padding: 6px; text-align: center;">${cant}</td>
+                <td style="border: 1px solid #999; padding: 6px; text-align: left;">${desc}</td>
+                <td style="border: 1px solid #999; padding: 6px; text-align: right;">${vuni}</td>
+                <td style="border: 1px solid #999; padding: 6px; text-align: right; font-weight: bold;">${vtot}</td>
+             `;
+             tbody.appendChild(tr);
+             totalFilas++;
+        }
+      });
+      
+      while (totalFilas < 8) {
+             const tr = document.createElement('tr');
+             tr.innerHTML = `
+                <td style="border: 1px solid #999; padding: 6px; height: 18px;"></td>
+                <td style="border: 1px solid #999; padding: 6px;"></td>
+                <td style="border: 1px solid #999; padding: 6px;"></td>
+                <td style="border: 1px solid #999; padding: 6px;"></td>
+             `;
+             tbody.appendChild(tr);
+             totalFilas++;
+      }
+      
+      const totalTxt = document.getElementById('total-general').innerText;
+      document.getElementById('pdf-total').innerText = totalTxt;
+
+      template.style.display = 'block';
+      
+      try {
+        const canvas = await html2canvas(template, {
+            scale: 2,
+            useCORS: true
+        });
+        
+        const imgData = canvas.toDataURL('image/jpeg', 1.0);
+        const pdf = new jsPDF({ 
+          orientation: 'portrait', 
+          unit: 'mm', 
+          format: 'a5' 
+        });
+        
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+        
+        const pv = getPuntoVenta();
+        const nombre = (lastConsecutivo ? `${lastConsecutivo}_${pv}.pdf` : `remision_${pv}.pdf`);
+        
+        // Convertir a base64 para enviar
+        const pdfBase64 = pdf.output('datauristring').split(',')[1];
+        
+        // Enviar al servidor
+        const resp = await fetch(getApiBase() + '/api/save-pdf', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filename: nombre, data: pdfBase64 })
+        });
+        
+        if (resp.ok) {
+            console.log("PDF guardado en servidor correctamente");
+        } else {
+            console.error("Error guardando PDF en servidor");
+        }
+
+      } catch (e) {
+        console.error('Error generando/guardando PDF auto:', e);
+      } finally {
+        template.style.display = 'none';
+      }
+    }
+
     async function buscarProductos(termino) {
       try {
         const url = getApiBase() + '/api/productos?q=' + encodeURIComponent(termino);
@@ -1189,6 +1298,21 @@
         alert('La venta no se pudo guardar. Intente de nuevo.');
         return;
       }
+
+      // Guardar PDF automáticamente si es Bodega
+      if (getPuntoVenta() === 'bodega') {
+          // Mostrar indicador visual breve (opcional, pero buena práctica)
+          const btnVender = document.querySelector('.btn-vender');
+          if (btnVender) {
+              const originalText = btnVender.textContent;
+              btnVender.textContent = 'Guardando PDF...';
+              await guardarPDFAutoServer();
+              btnVender.textContent = originalText;
+          } else {
+              await guardarPDFAutoServer();
+          }
+      }
+
       const mensaje = lastConsecutivo
         ? 'La venta se guardó correctamente con consecutivo ' + lastConsecutivo + '. ¿Desea imprimir la remisión?'
         : 'La venta se guardó correctamente. ¿Desea imprimir la remisión?';
@@ -1577,6 +1701,7 @@
           nit_cc: c.nit_cc,
           telefono: c.telefono,
           direccion: c.direccion,
+          tipo_cliente: c.tipo_cliente
         }))
       } catch {
         return []
