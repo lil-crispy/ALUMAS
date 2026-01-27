@@ -282,6 +282,18 @@ app.post('/api/consecutivo', async (req, res) => {
   }
 })
 
+app.get('/api/check-consecutivo/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!id || isNaN(id)) return res.json({ exists: false });
+    
+    const [[row]] = await pool.query('SELECT 1 FROM ventas WHERE id_consecutivo = ?', [id]);
+    res.json({ exists: !!row });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Guardar encabezado de venta en tabla ventas y descontar stock en productos
 app.post('/api/venta', async (req, res) => {
   const conn = await pool.getConnection()

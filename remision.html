@@ -332,10 +332,15 @@
       unicode-bidi: plaintext;
     }
 
-    .pdf-scale {
-      transform: scale(0.4);
-      transform-origin: top left;
-      width: 250%;
+    .edit-consecutivo {
+      cursor: pointer;
+      font-size: 14px;
+      margin-left: 8px;
+      opacity: 0.5;
+      transition: opacity 0.2s;
+    }
+    .edit-consecutivo:hover {
+      opacity: 1;
     }
   </style>
   <link rel="stylesheet" href="./css/remision.css?v=20251209">
@@ -379,7 +384,7 @@
   <!-- Librerías para PDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <div id="pdf-template" style="display:none; width: 21cm; background: white; padding: 1cm; box-sizing: border-box; font-family: Arial, sans-serif; letter-spacing: 0.5px; position: absolute; top: 0; left: 0; z-index: -1000; color: black;">
+  <div id="pdf-template" style="display:none; width: 21cm; background: white; padding: 1cm; box-sizing: border-box; font-family: Arial, sans-serif; position: absolute; top: 0; left: 0; z-index: -1000; color: black;">
     <!-- Header -->
     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
         <!-- Logos -->
@@ -421,10 +426,10 @@
     <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 11px;">
         <thead>
             <tr style="background: #f0f0f0;">
-                <th style="border: 1px solid #333; padding: 6px; width: 8%;">CANT</th>
-                <th style="border: 1px solid #333; padding: 6px; width: 52%; text-align: left;">PRODUCTO</th>
-                <th style="border: 1px solid #333; padding: 6px; width: 20%; text-align: right;">V.UNI</th>
-                <th style="border: 1px solid #333; padding: 6px; width: 20%; text-align: right;">V. TOTAL</th>
+                <th style="border: 1px solid #777; padding: 6px; width: 8%;">CANT</th>
+                <th style="border: 1px solid #777; padding: 6px; width: 52%; text-align: left;">PRODUCTO</th>
+                <th style="border: 1px solid #777; padding: 6px; width: 20%; text-align: right;">V.UNI</th>
+                <th style="border: 1px solid #777; padding: 6px; width: 20%; text-align: right;">V. TOTAL</th>
             </tr>
         </thead>
         <tbody id="pdf-table-body">
@@ -504,6 +509,7 @@
 
     <div class="consecutivo-display" id="consecutivo-display">
       CONSECUTIVO: <span id="numero-consecutivo">----</span>
+      <span class="edit-consecutivo" onclick="editarConsecutivo()" title="Editar consecutivo">✏️</span>
     </div>
 
     <div class="info">
@@ -807,10 +813,10 @@
         if (cant || desc || vuni || vtot) {
              const tr = document.createElement('tr');
              tr.innerHTML = `
-                <td style="border: 1px solid #333; padding: 6px; text-align: center;">${cant}</td>
-                <td style="border: 1px solid #333; padding: 6px; text-align: left;">${desc}</td>
-                <td style="border: 1px solid #333; padding: 6px; text-align: right;">${vuni}</td>
-                <td style="border: 1px solid #333; padding: 6px; text-align: right; font-weight: bold;">${vtot}</td>
+                <td style="border: 1px solid #777; padding: 6px; text-align: center;">${cant}</td>
+                <td style="border: 1px solid #777; padding: 6px; text-align: left;">${desc}</td>
+                <td style="border: 1px solid #777; padding: 6px; text-align: right;">${vuni}</td>
+                <td style="border: 1px solid #777; padding: 6px; text-align: right; font-weight: bold;">${vtot}</td>
              `;
              tbody.appendChild(tr);
              totalFilas++;
@@ -821,10 +827,10 @@
       while (totalFilas < 8) {
              const tr = document.createElement('tr');
              tr.innerHTML = `
-                <td style="border: 1px solid #333; padding: 6px; height: 18px;"></td>
-                <td style="border: 1px solid #333; padding: 6px;"></td>
-                <td style="border: 1px solid #333; padding: 6px;"></td>
-                <td style="border: 1px solid #333; padding: 6px;"></td>
+                <td style="border: 1px solid #777; padding: 6px; height: 18px;"></td>
+                <td style="border: 1px solid #777; padding: 6px;"></td>
+                <td style="border: 1px solid #777; padding: 6px;"></td>
+                <td style="border: 1px solid #777; padding: 6px;"></td>
              `;
              tbody.appendChild(tr);
              totalFilas++;
@@ -1705,6 +1711,37 @@
     let lastConsecutivo = null
     let clienteSeleccionado = null
     let clienteSearchTimer = null
+    async function editarConsecutivo() {
+      const actual = document.getElementById('numero-consecutivo').innerText;
+      const nuevo = prompt("Ingrese el nuevo número de consecutivo (4 dígitos):", actual);
+      
+      if (nuevo === null) return; // Cancelado
+      
+      const num = parseInt(nuevo);
+      if (isNaN(num) || num < 1000 || num > 9999) {
+        alert("El consecutivo debe ser un número de 4 dígitos.");
+        return;
+      }
+      
+      try {
+        const resp = await fetch(getApiBase() + '/api/check-consecutivo/' + num);
+        const data = await resp.json();
+        
+        if (data.exists) {
+          alert("Este número de consecutivo YA EXISTE en la base de datos. Por favor elija otro.");
+          return;
+        }
+        
+        // Si es válido y no existe
+        lastConsecutivo = num;
+        document.getElementById('numero-consecutivo').innerText = num;
+        
+      } catch (e) {
+        console.error(e);
+        alert("Error al verificar el consecutivo.");
+      }
+    }
+
     async function solicitarConsecutivo() {
       const resp = await fetch(getApiBase() + '/api/consecutivo', { method: 'POST' })
       if (!resp.ok) throw new Error('no consecutivo')
