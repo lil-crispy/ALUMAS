@@ -5,6 +5,7 @@ const cors = require('cors')
 const mysql = require('mysql2/promise')
 const crypto = require('crypto')
 const bcrypt = require('bcryptjs')
+const fs = require('fs')
 
 const app = express()
 app.set('trust proxy', 1)
@@ -74,7 +75,8 @@ async function initPool() {
 }
 
 app.use(cors())
-app.use(express.json())
+// Aumenta límite para admitir PDFs en base64
+app.use(express.json({ limit: '20mb' }))
 
 // Endpoints API
 app.get('/api/db-ping', async (req, res) => {
@@ -125,8 +127,8 @@ app.get('/api/productos', async (req, res) => {
     if (!q) return res.json({ ok: true, productos: [] })
     const like = `%${q}%`
     const [rows] = await pool.query(
-      'SELECT id_producto AS id, nombre, stock, precio_final, precio_mayorista FROM productos WHERE nombre LIKE ? ORDER BY nombre LIMIT 30',
-      [like]
+      'SELECT id_producto AS id, codigo_barras, nombre, stock, precio_final, precio_mayorista FROM productos WHERE nombre LIKE ? OR codigo_barras LIKE ? ORDER BY nombre LIMIT 30',
+      [like, like]
     )
     res.json({ ok: true, productos: rows || [] })
   } catch (err) {
@@ -197,6 +199,63 @@ app.post('/api/login', async (req, res) => {
       usuario: nombreUsuario,
       rol
     })
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message })
+  }
+})
+
+app.post('/api/confirmar-pass', async (req, res) => {
+  try {
+    const { usuario_id, contrasena } = req.body || {}
+    if (!usuario_id || !contrasena) {
+      return res.status(400).json({ ok: false, error: 'datos_invalidos' })
+    }
+    const [rows] = await pool.query(
+      'SELECT * FROM usuarios WHERE id_usuario = ? LIMIT 1',
+      [Number(usuario_id)]
+    )
+    if (!rows || rows.length === 0) {
+      return res.status(401).json({ ok: false, error: 'usuario_no_encontrado' })
+    }
+    const user = rows[0]
+    const rawStored = String(
+      user.contrasena ||
+      user.clave ||
+      user.password ||
+      user.pass ||
+      ''
+    )
+    const storedPass = rawStored.trim()
+    const inputPass = String(contrasena).trim()
+    let okPass = storedPass === inputPass
+    if (!okPass) {
+      if (storedPass.startsWith('$2a$') || storedPass.startsWith('$2b$') || storedPass.startsWith('$2y$')) {
+        try {
+          okPass = await bcrypt.compare(inputPass, storedPass)
+        } catch {}
+      }
+    }
+    if (!okPass) {
+      const hex = storedPass.toLowerCase()
+      const onlyHex = /^[a-f0-9]+$/.test(hex)
+      if (onlyHex) {
+        const len = hex.length
+        if (len === 32) {
+          const md5 = crypto.createHash('md5').update(inputPass).digest('hex')
+          okPass = md5 === hex
+        } else if (len === 40) {
+          const sha1 = crypto.createHash('sha1').update(inputPass).digest('hex')
+          okPass = sha1 === hex
+        } else if (len === 64) {
+          const sha256 = crypto.createHash('sha256').update(inputPass).digest('hex')
+          okPass = sha256 === hex
+        }
+      }
+    }
+    if (!storedPass || !okPass) {
+      return res.status(401).json({ ok: false, error: 'credenciales_invalidas' })
+    }
+    res.json({ ok: true })
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message })
   }
@@ -372,3 +431,40 @@ initPool().then(() => {
     console.log(`Servidor web en http://localhost:${PORT}`)
   })
 })
+
+// Directorio de guardado para PDFs (debe existir y ser accesible por el servidor)
+const SAVE_DIR = 'G:\\Mi unidad\\FERREDISTRIBUCIONES ALUMAS SAS\\bodega';
+
+app.post('/api/save-pdf', async (req, res) => {
+  try {
+    const { filename, data } = req.body || {};
+    if (!filename || !data) {
+      return res.status(400).json({ ok: false, error: 'datos_invalidos' });
+    }
+
+    // Saneamiento básico de nombre
+    const safeName = String(filename).replace(/[\\\/]+/g, '_');
+    const finalName = safeName.toLowerCase().endsWith('.pdf') ? safeName : (safeName + '.pdf');
+
+    // Asegurar dir
+    try {
+      if (!fs.existsSync(SAVE_DIR)) {
+        fs.mkdirSync(SAVE_DIR, { recursive: true });
+      }
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: 'crear_directorio_fallo:' + e.message });
+    }
+
+    // Decodificar base64 y escribir
+    const buf = Buffer.from(data, 'base64');
+    const fullPath = path.join(SAVE_DIR, finalName);
+    fs.writeFile(fullPath, buf, (err) => {
+      if (err) {
+        return res.status(500).json({ ok: false, error: 'write_file_error:' + err.message });
+      }
+      res.json({ ok: true, path: fullPath });
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
