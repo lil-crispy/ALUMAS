@@ -971,7 +971,9 @@
         if (resp.ok) {
             console.log("PDF guardado en servidor correctamente");
         } else {
-            console.error("Error guardando PDF en servidor");
+            const errInfo = await resp.json();
+            console.error("Error guardando PDF en servidor:", errInfo);
+            alert("Error del servidor al guardar PDF: " + (errInfo.error || 'Desconocido'));
         }
 
       } catch (e) {
@@ -1301,15 +1303,19 @@
 
       // Guardar PDF automáticamente si es Bodega
       if (getPuntoVenta() === 'bodega') {
-          // Mostrar indicador visual breve (opcional, pero buena práctica)
-          const btnVender = document.querySelector('.btn-vender');
-          if (btnVender) {
-              const originalText = btnVender.textContent;
-              btnVender.textContent = 'Guardando PDF...';
-              await guardarPDFAutoServer();
-              btnVender.textContent = originalText;
-          } else {
-              await guardarPDFAutoServer();
+          try {
+              const btnVender = document.querySelector('.btn-vender');
+              if (btnVender) {
+                  const originalText = btnVender.textContent;
+                  btnVender.textContent = 'Guardando PDF...';
+                  await guardarPDFAutoServer();
+                  btnVender.textContent = originalText;
+              } else {
+                  await guardarPDFAutoServer();
+              }
+          } catch (e) {
+              console.error("Error al intentar guardar PDF automático:", e);
+              alert("⚠️ La venta se guardó, pero hubo un error guardando el PDF en el servidor.");
           }
       }
 

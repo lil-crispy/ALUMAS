@@ -858,6 +858,11 @@ body.login-active .user-bar {
   color: #ffffff;
 }
 
+.producto-item.selected .producto-nombre,
+.producto-item.selected .producto-info {
+  color: #ffffff;
+}
+
 .producto-nombre {
   font-weight: 600;
   font-size: 14px;
