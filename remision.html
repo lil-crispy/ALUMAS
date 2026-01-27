@@ -871,7 +871,41 @@
         
         const pv = getPuntoVenta();
         const nombre = (lastConsecutivo ? `${lastConsecutivo}_${pv}.pdf` : `remision_${pv}.pdf`);
-        pdf.save(nombre);
+        
+        // Si es BODEGA, guardar SOLO en el servidor (G:\...)
+        if (pv === 'bodega') {
+            const btnPdf = document.querySelector('.btn-pdf');
+            const originalText = btnPdf ? btnPdf.textContent : 'Descargar PDF';
+            if (btnPdf) btnPdf.textContent = 'Guardando en G:...';
+
+            try {
+                // Convertir a base64
+                const pdfBase64 = pdf.output('datauristring').split(',')[1];
+                
+                const resp = await fetch(getApiBase() + '/api/save-pdf', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filename: nombre, data: pdfBase64 })
+                });
+
+                if (resp.ok) {
+                    alert("✅ PDF guardado correctamente en la unidad G (Bodega).");
+                } else {
+                    const err = await resp.json();
+                    alert("⚠️ Error al guardar en G:. Se descargará una copia local por seguridad.\nError: " + (err.error || 'Desconocido'));
+                    pdf.save(nombre); // Fallback: descarga local si falla el servidor
+                }
+            } catch (e) {
+                console.error("Error enviando PDF al servidor:", e);
+                alert("⚠️ Error de conexión con el servidor. Se descargará una copia local.");
+                pdf.save(nombre); // Fallback: descarga local si falla conexión
+            } finally {
+                if (btnPdf) btnPdf.textContent = originalText;
+            }
+        } else {
+            // Si es FERRETERÍA u otro, descarga local normal
+            pdf.save(nombre);
+        }
         
       } catch (e) {
         console.error(e);
@@ -1309,23 +1343,12 @@
         return;
       }
 
-      // Guardar PDF automáticamente si es Bodega
+      // Guardar PDF automáticamente si es Bodega (ELIMINADO POR SOLICITUD DE MANUALIDAD)
+      /* 
       if (getPuntoVenta() === 'bodega') {
-          try {
-              const btnVender = document.querySelector('.btn-vender');
-              if (btnVender) {
-                  const originalText = btnVender.textContent;
-                  btnVender.textContent = 'Guardando PDF...';
-                  await guardarPDFAutoServer();
-                  btnVender.textContent = originalText;
-              } else {
-                  await guardarPDFAutoServer();
-              }
-          } catch (e) {
-              console.error("Error al intentar guardar PDF automático:", e);
-              alert("⚠️ La venta se guardó, pero hubo un error guardando el PDF en el servidor.");
-          }
+          ...
       }
+      */
 
       const mensaje = lastConsecutivo
         ? 'La venta se guardó correctamente con consecutivo ' + lastConsecutivo + '. ¿Desea imprimir la remisión?'
