@@ -426,10 +426,10 @@
     <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 11px;">
         <thead>
             <tr style="background: #f0f0f0;">
-                <th style="border: 1px solid #777; padding: 6px; width: 8%;">CANT</th>
-                <th style="border: 1px solid #777; padding: 6px; width: 52%; text-align: left;">PRODUCTO</th>
-                <th style="border: 1px solid #777; padding: 6px; width: 20%; text-align: right;">V.UNI</th>
-                <th style="border: 1px solid #777; padding: 6px; width: 20%; text-align: right;">V. TOTAL</th>
+                <th style="border: 1px solid #999; padding: 6px; width: 8%;">CANT</th>
+                <th style="border: 1px solid #999; padding: 6px; width: 52%; text-align: left;">PRODUCTO</th>
+                <th style="border: 1px solid #999; padding: 6px; width: 20%; text-align: right;">V.UNI</th>
+                <th style="border: 1px solid #999; padding: 6px; width: 20%; text-align: right;">V. TOTAL</th>
             </tr>
         </thead>
         <tbody id="pdf-table-body">
@@ -813,10 +813,10 @@
         if (cant || desc || vuni || vtot) {
              const tr = document.createElement('tr');
              tr.innerHTML = `
-                <td style="border: 1px solid #777; padding: 6px; text-align: center;">${cant}</td>
-                <td style="border: 1px solid #777; padding: 6px; text-align: left;">${desc}</td>
-                <td style="border: 1px solid #777; padding: 6px; text-align: right;">${vuni}</td>
-                <td style="border: 1px solid #777; padding: 6px; text-align: right; font-weight: bold;">${vtot}</td>
+                <td style="border: 1px solid #999; padding: 6px; text-align: center;">${cant}</td>
+                <td style="border: 1px solid #999; padding: 6px; text-align: left;">${desc}</td>
+                <td style="border: 1px solid #999; padding: 6px; text-align: right;">${vuni}</td>
+                <td style="border: 1px solid #999; padding: 6px; text-align: right; font-weight: bold;">${vtot}</td>
              `;
              tbody.appendChild(tr);
              totalFilas++;
@@ -827,10 +827,10 @@
       while (totalFilas < 8) {
              const tr = document.createElement('tr');
              tr.innerHTML = `
-                <td style="border: 1px solid #777; padding: 6px; height: 18px;"></td>
-                <td style="border: 1px solid #777; padding: 6px;"></td>
-                <td style="border: 1px solid #777; padding: 6px;"></td>
-                <td style="border: 1px solid #777; padding: 6px;"></td>
+                <td style="border: 1px solid #999; padding: 6px; height: 18px;"></td>
+                <td style="border: 1px solid #999; padding: 6px;"></td>
+                <td style="border: 1px solid #999; padding: 6px;"></td>
+                <td style="border: 1px solid #999; padding: 6px;"></td>
              `;
              tbody.appendChild(tr);
              totalFilas++;
@@ -1725,6 +1725,12 @@
       
       try {
         const resp = await fetch(getApiBase() + '/api/check-consecutivo/' + num);
+        
+        if (resp.status === 404) {
+            alert("⚠️ El servidor no se ha actualizado. Por favor reinicie 'server.js' en la terminal para activar esta función.");
+            return;
+        }
+
         const data = await resp.json();
         
         if (data.exists) {
