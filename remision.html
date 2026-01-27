@@ -296,6 +296,29 @@
         if (inputDebounceTimer) clearTimeout(inputDebounceTimer);
         inputDebounceTimer = setTimeout(async () => {
              const productos = await buscarProductos(texto);
+             
+             // Auto-seleccionar si hay coincidencia exacta de código de barras
+             const exacto = productos.find(p => String(p.codigo_barras || '').trim().toLowerCase() === texto.toLowerCase());
+             if (exacto) {
+                seleccionarProducto(exacto, celda);
+                
+                // Lógica para preparar siguiente línea (similar a Enter)
+                const fila = celda.parentElement;
+                if (!fila.nextElementSibling) {
+                  agregarFila();
+                }
+                const siguienteFila = fila.nextElementSibling;
+                if (siguienteFila) {
+                   const nuevaCelda = siguienteFila.children[1]; // Columna descripción
+                   if (nuevaCelda) {
+                      nuevaCelda.setAttribute('contenteditable', 'true');
+                      nuevaCelda.focus();
+                      celdaActiva = nuevaCelda;
+                   }
+                }
+                return;
+             }
+
              mostrarDropdownProductos(productos, celda);
         }, 200);
       }
