@@ -451,39 +451,34 @@ initPool().then(() => {
   })
 })
 
-// Directorio de guardado para PDFs (debe existir y ser accesible por el servidor)
-const SAVE_DIR = 'G:\\Mi unidad\\FERREDISTRIBUCIONES ALUMAS SAS\\bodega';
+const PDF_BODEGA_PATH = 'G:\\Mi unidad\\FERREDISTRIBUCIONES ALUMAS SAS\\bodega';
 
 app.post('/api/save-pdf', async (req, res) => {
   try {
-    const { filename, data } = req.body || {};
+    const { filename, data } = req.body;
     if (!filename || !data) {
-      return res.status(400).json({ ok: false, error: 'datos_invalidos' });
+        return res.status(400).json({ error: 'missing_fields' });
     }
 
-    // Saneamiento básico de nombre
-    const safeName = String(filename).replace(/[\\\/]+/g, '_');
-    const finalName = safeName.toLowerCase().endsWith('.pdf') ? safeName : (safeName + '.pdf');
-
-    // Asegurar dir
+    // Verificar si el directorio existe, si no, crearlo
     try {
-      if (!fs.existsSync(SAVE_DIR)) {
-        fs.mkdirSync(SAVE_DIR, { recursive: true });
-      }
-    } catch (e) {
-      return res.status(500).json({ ok: false, error: 'crear_directorio_fallo:' + e.message });
+        await fs.promises.access(PDF_BODEGA_PATH);
+    } catch {
+        console.log("Directorio no existe, intentando crear:", PDF_BODEGA_PATH);
+        await fs.promises.mkdir(PDF_BODEGA_PATH, { recursive: true });
     }
 
-    // Decodificar base64 y escribir
-    const buf = Buffer.from(data, 'base64');
-    const fullPath = path.join(SAVE_DIR, finalName);
-    fs.writeFile(fullPath, buf, (err) => {
-      if (err) {
-        return res.status(500).json({ ok: false, error: 'write_file_error:' + err.message });
-      }
-      res.json({ ok: true, path: fullPath });
-    });
-  } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
+    const filePath = path.join(PDF_BODEGA_PATH, filename);
+    const buffer = Buffer.from(data, 'base64');
+    
+    console.log("Intentando guardar PDF en:", filePath); // Log para debug
+
+    await fs.promises.writeFile(filePath, buffer);
+    console.log("PDF guardado exitosamente");
+    
+    res.json({ ok: true, path: filePath });
+  } catch (e) {
+    console.error("Error guardando PDF:", e);
+    res.status(500).json({ error: e.message });
   }
 });

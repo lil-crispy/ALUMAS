@@ -758,19 +758,27 @@
   
       actualizarTotales();
   
+      // Limpiar datos en pantalla
+      document.getElementById('nombre-cliente').value = '';
+      document.getElementById('tipo-pago').value = 'CONTADO';
+      document.getElementById('total-general').innerText = 'TOTAL: $ 0';
+      
+      // Limpiar variable global de cliente
+      clienteSeleccionado = null; 
+      localStorage.removeItem('CLIENTE_ID'); 
+
       // Limpiar transporte
       document.getElementById('trans-nombre').value = '';
       document.getElementById('trans-direccion').value = '';
       document.getElementById('trans-telefono').value = '';
       document.getElementById('trans-costo').value = '';
-      document.getElementById('nombre-cliente').innerText = '';
       document.getElementById('info-transporte').innerHTML = '';
-  
+
       tabla.querySelectorAll('tr').forEach(fila => {
-        const descripcion = fila.cells[1]?.textContent.trim();
-        if (descripcion === 'TRANSPORTE') {
-          tabla.removeChild(fila);
-        }
+          const descripcion = fila.cells[1]?.textContent.trim();
+          if (descripcion === 'TRANSPORTE') {
+            tabla.removeChild(fila);
+          }
       });
     }
   
@@ -1328,6 +1336,9 @@
         if (metodoReporte) agregarVentaReporte(metodoReporte);
         window.print();
       }
+      // Limpiar datos después de imprimir/guardar
+      setTimeout(limpiarTabla, 1000);
+
       window.location.reload();
     }
 
