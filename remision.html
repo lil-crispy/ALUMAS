@@ -379,6 +379,67 @@
   <!-- Librerías para PDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <div id="pdf-template" style="display:none; width: 21cm; background: white; padding: 1cm; box-sizing: border-box; font-family: Arial, sans-serif; position: absolute; top: 0; left: 0; z-index: -1000; color: black;">
+    <!-- Header -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+        <!-- Logos -->
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <img src="./img/LOGO4.webp" style="height: 60px; object-fit: contain;">
+            <img src="./img/LOGO3.webp" style="height: 80px; object-fit: contain;">
+        </div>
+        <!-- Remission Box -->
+        <div style="border: 2px solid #000; padding: 5px; border-radius: 10px; width: 220px; text-align: center; background: #f0f0f0;">
+            <div style="font-size: 14px; font-weight: bold; margin-bottom: 2px;" id="pdf-header-date">FEC --/--/----</div>
+            <div style="font-size: 20px; font-weight: bold; background: #e0e0e0; margin: 2px 0; padding: 4px; border-radius: 5px;" id="pdf-header-rem">REM ----</div>
+            <div style="font-size: 14px; font-weight: bold;" id="pdf-header-cel">CEL 3197245235</div>
+        </div>
+    </div>
+
+    <div style="border-top: 2px solid #000; margin-bottom: 15px;"></div>
+
+    <!-- Info -->
+    <div style="font-size: 11px; margin-bottom: 15px; line-height: 1.4;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+            <div id="pdf-info-fecha" style="font-weight: bold;">FECHA: --</div>
+            <div style="display: flex; align-items: center;">
+                <strong style="margin-right: 5px;">CLIENTE:</strong>
+                <div id="pdf-info-cliente" style="border: 1px solid #ccc; padding: 2px 5px; width: 280px; background: #fff; min-height: 16px;"></div>
+            </div>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+            <div>
+                <div><strong>NIT:</strong> 901797743-2</div>
+                <div><strong>DIR:</strong> CALLE 139#109-46</div>
+            </div>
+            <div style="text-align: right;">
+                <strong>CEL:</strong> 3015827791 / 3197245235
+            </div>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 11px;">
+        <thead>
+            <tr style="background: #f0f0f0;">
+                <th style="border: 2px solid #000; padding: 4px; width: 8%;">CANT</th>
+                <th style="border: 2px solid #000; padding: 4px; width: 52%; text-align: left;">PRODUCTO</th>
+                <th style="border: 2px solid #000; padding: 4px; width: 20%; text-align: right;">V.UNI</th>
+                <th style="border: 2px solid #000; padding: 4px; width: 20%; text-align: right;">V. TOTAL</th>
+            </tr>
+        </thead>
+        <tbody id="pdf-table-body">
+            <!-- Rows will be populated here -->
+        </tbody>
+    </table>
+
+    <!-- Footer -->
+    <div style="text-align: center; margin-top: 10px;">
+        <div style="font-size: 16px; font-weight: bold; margin-bottom: 8px;" id="pdf-total">TOTAL: $ 0</div>
+        <div style="font-size: 10px; font-weight: bold; margin-bottom: 30px;">***GRACIAS POR SU COMPRA***</div>
+        <div style="border-top: 1px solid #000; width: 250px; margin: 0 auto; padding-top: 5px; font-size: 11px;">Firma/Sello de Recibido</div>
+    </div>
+  </div>
+
   <script>
     window.jsPDF = window.jspdf.jsPDF;
   </script>
@@ -707,69 +768,103 @@
       });
     }
   
-    function descargarPDF() {
-      const contenido = document.getElementById("contenido-factura");
-      const esBodega = document.body.classList.contains('formato-bodega');
+    async function descargarPDF() {
+      // 1. Preparar datos en la plantilla oculta
+      const template = document.getElementById('pdf-template');
+      const tbody = document.getElementById('pdf-table-body');
       
-      // Ajustes temporales para PDF
-      const originalWidth = contenido.style.width;
-      const originalMargin = contenido.style.margin;
-      const originalPadding = contenido.style.padding;
-      const originalTransform = contenido.style.transform;
+      // Fecha header
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      document.getElementById('pdf-header-date').textContent = `FEC ${dateStr}`;
       
-      // Aplicar estilos específicos para la captura
-      contenido.style.width = '21cm'; // Ancho A5/Media carta
-      contenido.style.margin = '0';
-      contenido.style.padding = '1cm';
-      contenido.style.background = 'white';
+      // Consecutivo
+      const consecutivo = document.getElementById('numero-consecutivo').textContent;
+      document.getElementById('pdf-header-rem').textContent = `REM ${consecutivo}`;
       
-      // Ocultar elementos no deseados
-      const elementosOcultar = document.querySelectorAll('.boton-imprimir, .acciones-tabla, .report-toggle, #user-bar, .report-panel');
-      elementosOcultar.forEach(el => el.style.display = 'none');
+      // Fecha Info
+      const fullDateStr = now.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + 
+                          now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }).toLowerCase();
+      document.getElementById('pdf-info-fecha').innerHTML = `<strong>FECHA:</strong> ${fullDateStr}`;
       
-      html2canvas(contenido, { 
-        scale: 2, 
-        useCORS: true,
-        windowWidth: 800 // Ancho base para asegurar buen renderizado
-      }).then(canvas => {
-        const imgData = canvas.toDataURL('image/jpeg', 1.0);
+      // Cliente
+      const clienteVal = document.getElementById('nombre-cliente').value || '';
+      document.getElementById('pdf-info-cliente').textContent = clienteVal;
+      
+      // Tabla
+      tbody.innerHTML = '';
+      const filas = document.querySelectorAll('#tabla-productos tr');
+      
+      let totalFilas = 0;
+      filas.forEach(fila => {
+        const cels = fila.querySelectorAll('td');
+        const cant = cels[0]?.innerText || '';
+        const desc = cels[1]?.innerText || '';
+        const vuni = cels[2]?.innerText || '';
+        const vtot = cels[3]?.innerText || '';
         
-        // Configuración para media carta (Statement/Half Letter) o A5
-        // Usaremos A5 que es muy cercano a media carta (148 x 210 mm)
+        // Solo agregar si tiene contenido
+        if (cant || desc || vuni || vtot) {
+             const tr = document.createElement('tr');
+             tr.innerHTML = `
+                <td style="border: 1px solid #000; padding: 4px; text-align: center;">${cant}</td>
+                <td style="border: 1px solid #000; padding: 4px; text-align: left;">${desc}</td>
+                <td style="border: 1px solid #000; padding: 4px; text-align: right;">${vuni}</td>
+                <td style="border: 1px solid #000; padding: 4px; text-align: right; font-weight: bold;">${vtot}</td>
+             `;
+             tbody.appendChild(tr);
+             totalFilas++;
+        }
+      });
+      
+      // Rellenar líneas vacías hasta completar 8 filas visuales
+      while (totalFilas < 8) {
+             const tr = document.createElement('tr');
+             tr.innerHTML = `
+                <td style="border: 1px solid #000; padding: 4px; height: 18px;"></td>
+                <td style="border: 1px solid #000; padding: 4px;"></td>
+                <td style="border: 1px solid #000; padding: 4px;"></td>
+                <td style="border: 1px solid #000; padding: 4px;"></td>
+             `;
+             tbody.appendChild(tr);
+             totalFilas++;
+      }
+      
+      // Total
+      const totalTxt = document.getElementById('total-general').innerText;
+      document.getElementById('pdf-total').innerText = totalTxt;
+
+      // Mostrar temporalmente para html2canvas
+      template.style.display = 'block';
+      
+      try {
+        const canvas = await html2canvas(template, {
+            scale: 2,
+            useCORS: true
+        });
+        
+        const imgData = canvas.toDataURL('image/jpeg', 1.0);
         const pdf = new jsPDF({ 
           orientation: 'portrait', 
           unit: 'mm', 
-          format: 'a5' 
+          format: 'a5' // Media carta aprox
         });
-
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        const pageHeight = pdf.internal.pageSize.getHeight();
         
-        const imgWidth = pageWidth;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
         
-        pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
         
         const pv = getPuntoVenta();
         const nombre = (lastConsecutivo ? `${lastConsecutivo}_${pv}.pdf` : `remision_${pv}.pdf`);
         pdf.save(nombre);
-
-        // Restaurar estilos
-        contenido.style.width = originalWidth;
-        contenido.style.margin = originalMargin;
-        contenido.style.padding = originalPadding;
-        contenido.style.transform = originalTransform;
-        elementosOcultar.forEach(el => el.style.display = '');
         
-      }).catch(err => {
-        console.error('Error generando PDF:', err);
-        // Restaurar estilos en caso de error
-        contenido.style.width = originalWidth;
-        contenido.style.margin = originalMargin;
-        contenido.style.padding = originalPadding;
-        contenido.style.transform = originalTransform;
-        elementosOcultar.forEach(el => el.style.display = '');
-      });
+      } catch (e) {
+        console.error(e);
+        alert('Error generando PDF');
+      } finally {
+        template.style.display = 'none';
+      }
     }
     async function buscarProductos(termino) {
       try {
