@@ -699,6 +699,48 @@
              // Auto-seleccionar si hay coincidencia exacta de código de barras
              const exacto = productos.find(p => String(p.codigo_barras || '').trim().toLowerCase() === texto.toLowerCase());
              if (exacto) {
+                // --- LÓGICA DE UNIFICACIÓN (Barcode - Input) ---
+                let filaExistente = null;
+                const filas = Array.from(tabla.querySelectorAll('tr'));
+                
+                for (let i = 0; i < filas.length; i++) {
+                   const f = filas[i];
+                   const celdaDesc = f.querySelector('td:nth-child(2)');
+                   if (!celdaDesc) continue;
+                   
+                   if (f === fila) continue; 
+                   
+                   const idEnCelda = celdaDesc.dataset.id;
+                   const nombreEnCelda = celdaDesc.textContent.trim();
+                   
+                   const coincideID = idEnCelda && String(idEnCelda) === String(exacto.id);
+                   const coincideNombre = !idEnCelda && nombreEnCelda === exacto.nombre;
+                   
+                   if (coincideID || coincideNombre) {
+                      filaExistente = f;
+                      break;
+                   }
+                }
+                
+                if (filaExistente) {
+                   const celdaCant = filaExistente.querySelector('.cant');
+                   let cantActual = parseInt(celdaCant.innerText) || 0;
+                   cantActual += 1;
+                   celdaCant.innerText = cantActual;
+                   
+                   const celdaValorU = filaExistente.querySelector('.valor-u');
+                   const valorUTxt = celdaValorU?.innerText.replace(/[^\d]/g, '') || '0';
+                   const valorU = parseInt(valorUTxt);
+                   const celdaTotal = filaExistente.querySelector('.valor-t');
+                   if (celdaTotal) celdaTotal.innerText = formatearPesos(cantActual * valorU);
+                   
+                   // Limpiar la celda actual y mantener el foco para siguiente lectura
+                   celda.textContent = '';
+                   delete celda.dataset.id;
+                   actualizarTotales();
+                   return;
+                }
+
                 seleccionarProducto(exacto, celda);
                 
                 // Lógica para preparar siguiente línea (similar a Enter)
