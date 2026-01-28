@@ -1215,7 +1215,70 @@
 
               if (encontrado) {
                 logDebug('Producto exacto: ' + encontrado.nombre);
+                
+                // --- LÓGICA DE UNIFICACIÓN (Barcode) ---
+                // Buscar si este producto YA existe en alguna otra fila (por ID)
+                let filaExistente = null;
+                const filas = Array.from(tabla.querySelectorAll('tr'));
+                
+                for (let i = 0; i < filas.length; i++) {
+                   const f = filas[i];
+                   const celdaDesc = f.querySelector('td:nth-child(2)');
+                   if (!celdaDesc) continue;
+                   
+                   // Si es la misma fila donde estamos escribiendo, ignorar (o tratar como sobreescritura)
+                   if (f === fila) continue; 
+                   
+                   // Verificar por ID (ideal) o Nombre (fallback)
+                   const idEnCelda = celdaDesc.dataset.id;
+                   const nombreEnCelda = celdaDesc.textContent.trim();
+                   
+                   const coincideID = idEnCelda && String(idEnCelda) === String(encontrado.id);
+                   // Fallback nombre exacto si no hay ID (por si acaso)
+                   const coincideNombre = !idEnCelda && nombreEnCelda === encontrado.nombre;
+                   
+                   if (coincideID || coincideNombre) {
+                      filaExistente = f;
+                      break;
+                   }
+                }
+                
+                if (filaExistente) {
+                   // Aumentar cantidad en fila existente
+                   const celdaCant = filaExistente.querySelector('.cant');
+                   let cantActual = parseInt(celdaCant.innerText) || 0;
+                   cantActual += 1;
+                   celdaCant.innerText = cantActual;
+                   
+                   // Recalcular total de esa fila
+                   const celdaValorU = filaExistente.querySelector('.valor-u');
+                   const valorUTxt = celdaValorU?.innerText.replace(/[^\d]/g, '') || '0';
+                   const valorU = parseInt(valorUTxt);
+                   const celdaTotal = filaExistente.querySelector('.valor-t');
+                   if (celdaTotal) celdaTotal.innerText = formatearPesos(cantActual * valorU);
+                   
+                   // Limpiar la celda donde escribimos el código (para dejarla lista para el siguiente)
+                   celdaActiva.textContent = '';
+                   delete celdaActiva.dataset.id;
+                   
+                   // Mantener foco en la celda actual (o ir a la siguiente si se prefiere)
+                   // El usuario dijo: "si se vuelve a leer... suma...". 
+                   // Al limpiar, queda listo para escanear otro.
+                   actualizarTotales();
+                   return;
+                }
+                
+                // Si NO existe, llenar la fila actual
                 seleccionarProducto(encontrado, celdaActiva);
+                
+                // Asignar Cantidad = 1 si está vacía
+                const celdaCant = fila.querySelector('.cant');
+                if (celdaCant && (celdaCant.innerText.trim() === '' || celdaCant.innerText.trim() === '0')) {
+                   celdaCant.innerText = '1';
+                }
+                
+                // Recalcular total fila actual
+                actualizarTotales();
 
                 // Si es la última fila, agregar una nueva
                 if (!fila.nextElementSibling) {
