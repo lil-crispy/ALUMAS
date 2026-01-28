@@ -872,40 +872,13 @@
         const pv = getPuntoVenta();
         const nombre = (lastConsecutivo ? `${lastConsecutivo}_${pv}.pdf` : `remision_${pv}.pdf`);
         
-        // Si es BODEGA, guardar SOLO en el servidor (G:\...)
-        if (pv === 'bodega') {
-            const btnPdf = document.querySelector('.btn-pdf');
-            const originalText = btnPdf ? btnPdf.textContent : 'Descargar PDF';
-            if (btnPdf) btnPdf.textContent = 'Guardando en G:...';
-
-            try {
-                // Convertir a base64
-                const pdfBase64 = pdf.output('datauristring').split(',')[1];
-                
-                const resp = await fetch(getApiBase() + '/api/save-pdf', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ filename: nombre, data: pdfBase64 })
-                });
-
-                if (resp.ok) {
-                    alert("✅ PDF guardado correctamente en la unidad G (Bodega).");
-                } else {
-                    const err = await resp.json();
-                    alert("⚠️ Error al guardar en G:. Se descargará una copia local por seguridad.\nError: " + (err.error || 'Desconocido'));
-                    pdf.save(nombre); // Fallback: descarga local si falla el servidor
-                }
-            } catch (e) {
-                console.error("Error enviando PDF al servidor:", e);
-                alert("⚠️ Error de conexión con el servidor. Se descargará una copia local.");
-                pdf.save(nombre); // Fallback: descarga local si falla conexión
-            } finally {
-                if (btnPdf) btnPdf.textContent = originalText;
-            }
-        } else {
-            // Si es FERRETERÍA u otro, descarga local normal
-            pdf.save(nombre);
-        }
+        // Descarga directa local (El navegador gestionará la ubicación)
+        // Por seguridad, los navegadores no permiten forzar la ruta G:\...
+        // El usuario debe configurar su navegador o elegir la ruta al guardar.
+        alert(`⚠️ Para guardar en la unidad G:, selecciona esa carpeta cuando aparezca la ventana de guardar.\n\nArchivo: ${nombre}`);
+        pdf.save(nombre);
+        
+      } catch (e) {
         
       } catch (e) {
         console.error(e);
