@@ -684,6 +684,7 @@
       const celdas = Array.from(fila.children);
       const indiceCelda = celdas.indexOf(celda);
       if (indiceCelda === 1) {
+        delete celda.dataset.id;
         const texto = celda.textContent.trim();
         celdaProductoActiva = celda;
         if (texto.length < 2) {
@@ -749,6 +750,7 @@
         fila.querySelectorAll('td').forEach(celda => {
           if (!celda.classList.contains('valor-t')) {
             celda.textContent = '';
+            delete celda.dataset.id;
           } else {
             celda.innerText = '';
           }
@@ -1066,6 +1068,7 @@
     }
     function seleccionarProducto(producto, celda) {
       celda.textContent = producto.nombre;
+      celda.dataset.id = producto.id;
       const fila = celda.parentElement;
       if (!fila) return;
       const celdas = Array.from(fila.children);
@@ -1685,11 +1688,14 @@
       tabla.querySelectorAll('tr').forEach(fila => {
         const cantTxt = fila.querySelector('.cant')?.innerText || ''
         const cant = parseInt(cantTxt.replace(/[^\d]/g, '')) || 0
-        const desc = fila.cells[1]?.textContent.trim() || ''
+        const celdaDesc = fila.cells[1];
+        const desc = celdaDesc?.textContent.trim() || ''
+        const idProd = celdaDesc?.dataset?.id || null;
         const vuTxt = fila.querySelector('.valor-u')?.innerText || ''
         const vu = parseInt(vuTxt.replace(/[^\d]/g, '')) || 0
         if (cant > 0 && desc) {
           items.push({
+            id_producto: idProd,
             descripcion: desc,
             cantidad: cant,
             valor_unitario: vu,

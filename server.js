@@ -330,12 +330,27 @@ app.post('/api/venta', async (req, res) => {
     for (const it of items) {
       const cantidad = Number(it.cantidad || 0)
       const descripcion = String(it.descripcion || '')
-      if (!cantidad || !descripcion) continue
-      // Intento 1: exacto
-      const [exRes] = await conn.query('UPDATE productos SET stock = GREATEST(0, stock - ?) WHERE nombre = ? LIMIT 1', [cantidad, descripcion])
-      if (exRes.affectedRows === 0) {
-        // Intento 2: LIKE
-        await conn.query('UPDATE productos SET stock = GREATEST(0, stock - ?) WHERE nombre LIKE ? LIMIT 1', [cantidad, `%${descripcion}%`])
+      const idProducto = it.id_producto ? Number(it.id_producto) : null
+      
+      if (!cantidad) continue
+
+      let updated = false;
+
+      // 1. Try by ID if available
+      if (idProducto) {
+         const [res] = await conn.query('UPDATE productos SET stock = GREATEST(0, stock - ?) WHERE id_producto = ?', [cantidad, idProducto])
+         if (res.affectedRows > 0) updated = true;
+      }
+
+      // 2. Try by exact name
+      if (!updated && descripcion) {
+          const [res] = await conn.query('UPDATE productos SET stock = GREATEST(0, stock - ?) WHERE nombre = ? LIMIT 1', [cantidad, descripcion])
+          if (res.affectedRows > 0) updated = true;
+      }
+
+      // 3. Try by LIKE name
+      if (!updated && descripcion) {
+          await conn.query('UPDATE productos SET stock = GREATEST(0, stock - ?) WHERE nombre LIKE ? LIMIT 1', [cantidad, `%${descripcion}%`])
       }
     }
 
