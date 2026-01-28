@@ -448,17 +448,8 @@
   <script>
     window.jsPDF = window.jspdf.jsPDF;
   </script>
-  <div id="debug-log" style="position:fixed; bottom:0; right:0; width:300px; height:150px; background:rgba(0,0,0,0.8); color:lime; font-family:monospace; font-size:10px; overflow-y:scroll; z-index:9999; padding:5px; display:none;"></div>
   <script>
     function logDebug(msg) {
-      const d = document.getElementById('debug-log');
-      if (d) {
-        d.style.display = 'block';
-        const line = document.createElement('div');
-        line.textContent = new Date().toLocaleTimeString() + ': ' + msg;
-        d.appendChild(line);
-        d.scrollTop = d.scrollHeight;
-      }
       console.log(msg);
     }
   </script>
