@@ -1378,6 +1378,8 @@
         `;
       }
       document.querySelectorAll('.logo-grande').forEach(logo => logo.style.display = 'none');
+      const consecutivoDisplay = document.getElementById('consecutivo-display');
+      if (consecutivoDisplay) consecutivoDisplay.style.visibility = 'hidden';
     }
 
     function aplicarVentaUI() {
@@ -1386,6 +1388,8 @@
         mensajeDiv.innerHTML = originalMensajeHTML;
       }
       document.querySelectorAll('.logo-grande').forEach(logo => logo.style.display = 'block');
+      const consecutivoDisplay = document.getElementById('consecutivo-display');
+      if (consecutivoDisplay) consecutivoDisplay.style.visibility = 'visible';
     }
 
     function imprimirCotizacion() {
