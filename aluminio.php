@@ -91,7 +91,7 @@
           
           // Ruta web relativa para el navegador
           // Asumiendo que las imágenes están en public/img/productos/
-          $ruta_web_imagen = "./public/img/productos/" . $imagen;
+          $ruta_web_imagen = "/public/img/productos/" . $imagen;
 
           // Generar atributo data-ue si existe
           $data_ue_attr = $ue ? 'data-ue="' . htmlspecialchars($ue) . '"' : '';
