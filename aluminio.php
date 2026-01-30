@@ -73,14 +73,14 @@
       // Consulta para obtener los productos del inventario
       // Se asume que la tabla 'inventario' tiene las columnas: nombre, precio_mayor, imagen, unidad_empaque
       // Ajusta los nombres de columnas según tu base de datos real.
-      $sql = "SELECT nombre, precio_mayor, imagen, unidad_empaque FROM inventario";
+      $sql = "SELECT nombre, precio_mayorista, imagen FROM productos";
       $stmt = $pdo->query($sql);
 
       while ($row = $stmt->fetch()) {
           $nombre = $row['nombre'];
-          $precio = $row['precio_mayor'];
+          $precio = $row['precio_mayorista'];
           $imagen = $row['imagen'];
-          $ue = isset($row['unidad_empaque']) ? $row['unidad_empaque'] : '';
+          $ue = '';
 
           // Formatear precio
           $precio_formateado = "$" . number_format($precio, 0, ',', '.');
