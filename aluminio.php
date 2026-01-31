@@ -90,8 +90,10 @@
           // /var/www/html/public/img/productos
           
           // Ruta web relativa para el navegador
-          // Asumiendo que las imágenes están en public/img/productos/
-          $ruta_web_imagen = "/public/img/productos/" . $imagen;
+          // Las imágenes están en /var/www/html/public/img/productos
+          // Si el DocumentRoot es /var/www/html, la URL correcta es /public/img/productos/NOMBRE_ARCHIVO
+          // Se usa rawurlencode para manejar correctamente los espacios y caracteres especiales
+          $ruta_web_imagen = "/public/img/productos/" . rawurlencode($imagen);
 
           // Generar atributo data-ue si existe
           $data_ue_attr = $ue ? 'data-ue="' . htmlspecialchars($ue) . '"' : '';
