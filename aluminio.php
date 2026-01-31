@@ -89,11 +89,14 @@
           // Ruta absoluta en el servidor (como referencia o validación)
           // /var/www/html/public/img/productos
           
+          // Limpiar la ruta absoluta guardada en la BD para obtener solo el nombre del archivo
+          // La BD tiene rutas como "C:\Users\Cc...\img\productos\3_TUBO 58 DORADO.webp"
+          // Usamos basename() para extraer solo "3_TUBO 58 DORADO.webp"
+          $nombre_archivo = basename($imagen);
+
           // Ruta web relativa para el navegador
           // Las imágenes están en /var/www/html/public/img/productos
-          // Si el DocumentRoot es /var/www/html, la URL correcta es /public/img/productos/NOMBRE_ARCHIVO
-          // Se usa rawurlencode para manejar correctamente los espacios y caracteres especiales
-          $ruta_web_imagen = "/public/img/productos/" . rawurlencode($imagen);
+          $ruta_web_imagen = "/public/img/productos/" . rawurlencode($nombre_archivo);
 
           // Generar atributo data-ue si existe
           $data_ue_attr = $ue ? 'data-ue="' . htmlspecialchars($ue) . '"' : '';
