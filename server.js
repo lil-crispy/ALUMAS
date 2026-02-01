@@ -125,11 +125,30 @@ app.get('/api/productos', async (req, res) => {
   try {
     const q = String(req.query.q || '').trim()
     if (!q) return res.json({ ok: true, productos: [] })
-    const like = `%${q}%`
-    const [rows] = await pool.query(
-      'SELECT id_producto AS id, codigo_barras, nombre, stock, precio_final, precio_mayorista FROM productos WHERE nombre LIKE ? OR codigo_barras LIKE ? ORDER BY nombre LIMIT 30',
-      [like, like]
-    )
+
+    // Mejora: Búsqueda por palabras múltiples
+    const words = q.split(/\s+/).filter(w => w.length > 0)
+    
+    if (words.length === 0) {
+      return res.json({ ok: true, productos: [] })
+    }
+
+    const whereParts = []
+    const params = []
+
+    for (const w of words) {
+      whereParts.push('(nombre LIKE ? OR codigo_barras LIKE ?)')
+      const like = `%${w}%`
+      params.push(like, like)
+    }
+
+    const whereClause = whereParts.join(' AND ')
+    const sql = `SELECT id_producto AS id, codigo_barras, nombre, stock, precio_final, precio_mayorista 
+                 FROM productos 
+                 WHERE ${whereClause} 
+                 ORDER BY nombre LIMIT 50`
+
+    const [rows] = await pool.query(sql, params)
     res.json({ ok: true, productos: rows || [] })
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message })
