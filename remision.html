@@ -1100,12 +1100,69 @@
       celdaProductoActiva = null;
     }
     function seleccionarProducto(producto, celda) {
+      // 1. Verificar si el producto ya existe en otra fila (Unificación)
+      let filaExistente = null;
+      const filas = Array.from(tabla.querySelectorAll('tr'));
+      
+      for (let i = 0; i < filas.length; i++) {
+         const f = filas[i];
+         const celdaDesc = f.querySelector('td:nth-child(2)');
+         if (!celdaDesc) continue;
+         
+         // Ignorar la fila actual
+         if (f === celda.parentElement) continue; 
+         
+         const idEnCelda = celdaDesc.dataset.id;
+         const nombreEnCelda = celdaDesc.textContent.trim();
+         
+         // Coincidencia por ID o Nombre exacto
+         const coincideID = idEnCelda && String(idEnCelda) === String(producto.id);
+         const coincideNombre = !idEnCelda && nombreEnCelda === producto.nombre;
+         
+         if (coincideID || coincideNombre) {
+            filaExistente = f;
+            break;
+         }
+      }
+      
+      if (filaExistente) {
+         // --- YA EXISTE: INCREMENTAR ---
+         const celdaCant = filaExistente.querySelector('.cant');
+         let cantActual = parseInt(celdaCant.innerText) || 0;
+         cantActual += 1;
+         celdaCant.innerText = cantActual;
+         
+         // Actualizar total fila
+         const celdaValorU = filaExistente.querySelector('.valor-u');
+         const valorUTxt = celdaValorU?.innerText.replace(/[^\d]/g, '') || '0';
+         const valorU = parseInt(valorUTxt);
+         const celdaTotal = filaExistente.querySelector('.valor-t');
+         if (celdaTotal) celdaTotal.innerText = formatearPesos(cantActual * valorU);
+         
+         // Limpiar celda actual
+         celda.textContent = '';
+         delete celda.dataset.id;
+         
+         cerrarPanelSugerencias();
+         actualizarTotales();
+         celda.focus(); // Mantener foco para seguir escaneando/buscando
+         return;
+      }
+
+      // --- NO EXISTE: LLENAR FILA ACTUAL ---
       celda.textContent = producto.nombre;
       celda.dataset.id = producto.id;
       const fila = celda.parentElement;
       if (!fila) return;
       const celdas = Array.from(fila.children);
       const indiceCelda = celdas.indexOf(celda);
+      
+      // Asignar cantidad 1 si vacía
+      const celdaCant = fila.querySelector('.cant');
+      if (celdaCant && (celdaCant.innerText.trim() === '' || celdaCant.innerText.trim() === '0')) {
+         celdaCant.innerText = '1';
+      }
+
       if (indiceCelda === 1) {
         const celdaPrecio = celdas[2];
         if (celdaPrecio) {
@@ -1115,6 +1172,20 @@
       }
       cerrarPanelSugerencias();
       actualizarTotales();
+
+      // --- PREPARAR SIGUIENTE FILA ---
+      if (!fila.nextElementSibling) {
+        agregarFila();
+      }
+      const siguienteFila = fila.nextElementSibling;
+      if (siguienteFila) {
+         const nuevaCelda = siguienteFila.children[1];
+         if (nuevaCelda) {
+            nuevaCelda.setAttribute('contenteditable', 'true');
+            nuevaCelda.focus();
+            celdaActiva = nuevaCelda;
+         }
+      }
     }
   function toggleTransporte() {
   const form = document.getElementById('form-transporte');
@@ -1195,6 +1266,48 @@
     });
   
     tabla.addEventListener('keydown', async (e) => {
+      // --- MANEJO DE SUGERENCIAS Y NAVEGACIÓN ---
+      const panel = document.getElementById('panel-sugerencias');
+      const dropdown = document.getElementById('producto-autocomplete-dropdown');
+      const sugerenciasVisibles = panel && panel.style.display !== 'none' && dropdown && dropdown.children.length > 0;
+
+      if (sugerenciasVisibles) {
+         const items = Array.from(dropdown.querySelectorAll('.producto-item'));
+         const selectedIndex = items.findIndex(item => item.classList.contains('selected'));
+         
+         if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            const nextIndex = (selectedIndex + 1) % items.length;
+            items.forEach(i => i.classList.remove('selected'));
+            items[nextIndex].classList.add('selected');
+            items[nextIndex].scrollIntoView({ block: 'nearest' });
+            return;
+         }
+         
+         if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            const prevIndex = (selectedIndex - 1 + items.length) % items.length;
+            items.forEach(i => i.classList.remove('selected'));
+            items[prevIndex].classList.add('selected');
+            items[prevIndex].scrollIntoView({ block: 'nearest' });
+            return;
+         }
+
+         if (e.key === 'Enter') {
+            e.preventDefault();
+            if (selectedIndex >= 0) {
+               items[selectedIndex].click(); // Usa la lógica de click que llama a seleccionarProducto
+               return;
+            }
+         }
+         
+         if (e.key === 'Escape') {
+            e.preventDefault();
+            cerrarPanelSugerencias();
+            return;
+         }
+      }
+
       const celda = e.target.closest('td');
       if (celda) celdaActiva = celda;
       
@@ -1226,16 +1339,11 @@
         case 'Enter':
           e.preventDefault();
 
-          // Lógica para autocompletar con código de barras en columna Descripción (índice 1)
+          // Lógica para autocompletar con código de barras (Match Exacto)
           if (colIndex === 1) {
             const termino = celdaActiva.textContent.trim();
-            logDebug('Enter en Descripcion. Termino: "' + termino + '"');
-            
             if (termino) {
-              // Buscar producto (asumiendo que el término es el código)
-              logDebug('Buscando: ' + termino);
               const productos = await buscarProductos(termino);
-              logDebug('Encontrados: ' + productos.length);
               
               // Buscar coincidencia exacta
               const encontrado = productos.find(p => 
@@ -1247,92 +1355,8 @@
               );
 
               if (encontrado) {
-                logDebug('Producto exacto: ' + encontrado.nombre);
-                
-                // --- LÓGICA DE UNIFICACIÓN (Barcode) ---
-                // Buscar si este producto YA existe en alguna otra fila (por ID)
-                let filaExistente = null;
-                const filas = Array.from(tabla.querySelectorAll('tr'));
-                
-                for (let i = 0; i < filas.length; i++) {
-                   const f = filas[i];
-                   const celdaDesc = f.querySelector('td:nth-child(2)');
-                   if (!celdaDesc) continue;
-                   
-                   // Si es la misma fila donde estamos escribiendo, ignorar (o tratar como sobreescritura)
-                   if (f === fila) continue; 
-                   
-                   // Verificar por ID (ideal) o Nombre (fallback)
-                   const idEnCelda = celdaDesc.dataset.id;
-                   const nombreEnCelda = celdaDesc.textContent.trim();
-                   
-                   const coincideID = idEnCelda && String(idEnCelda) === String(encontrado.id);
-                   // Fallback nombre exacto si no hay ID (por si acaso)
-                   const coincideNombre = !idEnCelda && nombreEnCelda === encontrado.nombre;
-                   
-                   if (coincideID || coincideNombre) {
-                      filaExistente = f;
-                      break;
-                   }
-                }
-                
-                if (filaExistente) {
-                   // Aumentar cantidad en fila existente
-                   const celdaCant = filaExistente.querySelector('.cant');
-                   let cantActual = parseInt(celdaCant.innerText) || 0;
-                   cantActual += 1;
-                   celdaCant.innerText = cantActual;
-                   
-                   // Recalcular total de esa fila
-                   const celdaValorU = filaExistente.querySelector('.valor-u');
-                   const valorUTxt = celdaValorU?.innerText.replace(/[^\d]/g, '') || '0';
-                   const valorU = parseInt(valorUTxt);
-                   const celdaTotal = filaExistente.querySelector('.valor-t');
-                   if (celdaTotal) celdaTotal.innerText = formatearPesos(cantActual * valorU);
-                   
-                   // Limpiar la celda donde escribimos el código (para dejarla lista para el siguiente)
-                   celdaActiva.textContent = '';
-                   delete celdaActiva.dataset.id;
-                   
-                   // Mantener foco en la celda actual (o ir a la siguiente si se prefiere)
-                   // El usuario dijo: "si se vuelve a leer... suma...". 
-                   // Al limpiar, queda listo para escanear otro.
-                   actualizarTotales();
-                   return;
-                }
-                
-                // Si NO existe, llenar la fila actual
                 seleccionarProducto(encontrado, celdaActiva);
-                
-                // Asignar Cantidad = 1 si está vacía
-                const celdaCant = fila.querySelector('.cant');
-                if (celdaCant && (celdaCant.innerText.trim() === '' || celdaCant.innerText.trim() === '0')) {
-                   celdaCant.innerText = '1';
-                }
-                
-                // Recalcular total fila actual
-                actualizarTotales();
-
-                // Si es la última fila, agregar una nueva
-                if (!fila.nextElementSibling) {
-                  agregarFila();
-                }
-
-                // Saltar a la siguiente línea (columna descripción)
-                const siguienteFila = fila.nextElementSibling;
-                if (siguienteFila) {
-                  // Apuntar a la columna descripción (índice 1)
-                  nuevaCelda = siguienteFila.children[1];
-                }
-                
-                if (nuevaCelda) {
-                  nuevaCelda.setAttribute('contenteditable', 'true');
-                  nuevaCelda.focus();
-                  celdaActiva = nuevaCelda;
-                }
-                return; 
-              } else {
-                logDebug('No se encontró coincidencia exacta para: ' + termino);
+                return;
               }
             }
           }
