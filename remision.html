@@ -336,6 +336,10 @@
     .edit-consecutivo:hover {
       opacity: 1;
     }
+    .fila-seleccionada {
+      background-color: #e0f7fa !important;
+      outline: 2px solid #00acc1;
+    }
   </style>
   <link rel="stylesheet" href="./css/remision.css?v=20251209">
 
@@ -750,7 +754,38 @@
       }
     });
   
+    // --- LÓGICA DE SELECCIÓN DE FILA (4 CLICKS) ---
+    tabla.addEventListener('click', (e) => {
+      // Manejar selección múltiple con clicks repetidos
+      if (e.detail === 4) { // Detectar 4 clicks
+        const fila = e.target.closest('tr');
+        if (fila) {
+           // Quitar selección previa
+           tabla.querySelectorAll('tr.fila-seleccionada').forEach(f => f.classList.remove('fila-seleccionada'));
+           
+           // Seleccionar nueva
+           fila.classList.add('fila-seleccionada');
+           
+           // Feedback visual temporal
+           fila.style.backgroundColor = '#e0f7fa'; // Color cyan suave
+        }
+      }
+    });
+
+    // Limpiar selección si se hace click fuera (opcional, pero buena UX)
+    document.addEventListener('click', (e) => {
+       if (!e.target.closest('#tabla-productos')) {
+          tabla.querySelectorAll('tr.fila-seleccionada').forEach(f => {
+             f.classList.remove('fila-seleccionada');
+             f.style.backgroundColor = ''; // Restaurar color
+          });
+       }
+    });
+
     function agregarFila() {
+      // Si hay una fila seleccionada, agregar DESPUÉS de ella
+      const seleccionada = tabla.querySelector('tr.fila-seleccionada');
+      
       const nuevaFila = document.createElement('tr');
       nuevaFila.innerHTML = `
         <td class="cant"></td>
@@ -758,12 +793,32 @@
         <td class="valor-u"></td>
         <td class="valor-t"></td>
       `;
-      tabla.appendChild(nuevaFila);
+
+      if (seleccionada && seleccionada.parentNode === tabla) {
+          seleccionada.after(nuevaFila);
+          // Limpiar selección después de agregar
+          seleccionada.classList.remove('fila-seleccionada');
+          seleccionada.style.backgroundColor = '';
+      } else {
+          // Comportamiento normal: al final
+          tabla.appendChild(nuevaFila);
+      }
+      
       actualizarFechaHora();
       actualizarTotales();
     }
   
     function eliminarFila() {
+      // 1. Intentar eliminar fila seleccionada explícitamente
+      const seleccionada = tabla.querySelector('tr.fila-seleccionada');
+      if (seleccionada) {
+         seleccionada.remove();
+         actualizarTotales();
+         actualizarFechaHora();
+         return;
+      }
+
+      // 2. Comportamiento normal: eliminar la última
       const filas = tabla.querySelectorAll('tr');
       if (filas.length > 1) {
         tabla.removeChild(filas[filas.length - 1]);
