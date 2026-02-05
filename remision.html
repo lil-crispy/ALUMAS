@@ -1140,6 +1140,8 @@
       // Volvemos a seleccionar porque pudo perderse referencia o por claridad
       celdaCant = fila.querySelector('.cant'); 
       if (celdaCant) {
+         // Asegurar contenteditable
+         celdaCant.setAttribute('contenteditable', 'true');
          celdaCant.focus();
          // Seleccionar todo el contenido (el "1")
          const range = document.createRange();
@@ -1325,7 +1327,7 @@
           }
 
           // Navegación inteligente
-          if (celdaActiva.classList.contains('cant')) {
+          if (celdaActiva && celdaActiva.classList.contains('cant')) {
               // Si estoy en CANTIDAD -> Ir a la siguiente fila, columna DESCRIPCIÓN
               let sigFila = fila.nextElementSibling;
               if (!sigFila) {
@@ -1334,6 +1336,16 @@
               }
               if (sigFila) {
                   nuevaCelda = sigFila.children[1]; // Descripción es índice 1
+                  // Asegurar que sea editable
+                  if (nuevaCelda) {
+                      nuevaCelda.setAttribute('contenteditable', 'true');
+                      // Pequeño delay para asegurar que el DOM esté listo
+                      setTimeout(() => {
+                          nuevaCelda.focus();
+                          celdaActiva = nuevaCelda;
+                      }, 10);
+                      return; // Salir aquí para evitar conflictos con el foco
+                  }
               }
           } else {
               // Comportamiento default: Bajar a la misma columna de la siguiente fila
