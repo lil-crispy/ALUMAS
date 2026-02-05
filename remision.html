@@ -1131,18 +1131,22 @@
       cerrarPanelSugerencias();
       actualizarTotales();
 
-      // --- PREPARAR SIGUIENTE FILA ---
+      // --- PREPARAR SIGUIENTE FILA (pero quedarse en CANTIDAD) ---
       if (!fila.nextElementSibling) {
         agregarFila();
       }
-      const siguienteFila = fila.nextElementSibling;
-      if (siguienteFila) {
-         const nuevaCelda = siguienteFila.children[1];
-         if (nuevaCelda) {
-            nuevaCelda.setAttribute('contenteditable', 'true');
-            nuevaCelda.focus();
-            celdaActiva = nuevaCelda;
-         }
+      
+      // Mover foco a CANTIDAD de la fila actual y seleccionar
+      const celdaCant = fila.querySelector('.cant');
+      if (celdaCant) {
+         celdaCant.focus();
+         // Seleccionar todo el contenido (el "1")
+         const range = document.createRange();
+         range.selectNodeContents(celdaCant);
+         const sel = window.getSelection();
+         sel.removeAllRanges();
+         sel.addRange(range);
+         celdaActiva = celdaCant;
       }
     }
   function toggleTransporte() {
@@ -1319,8 +1323,22 @@
             }
           }
 
-          const siguienteFila = fila.nextElementSibling;
-          if (siguienteFila) nuevaCelda = siguienteFila.children[colIndex];
+          // Navegación inteligente
+          if (celdaActiva.classList.contains('cant')) {
+              // Si estoy en CANTIDAD -> Ir a la siguiente fila, columna DESCRIPCIÓN
+              let sigFila = fila.nextElementSibling;
+              if (!sigFila) {
+                  agregarFila();
+                  sigFila = fila.nextElementSibling;
+              }
+              if (sigFila) {
+                  nuevaCelda = sigFila.children[1]; // Descripción es índice 1
+              }
+          } else {
+              // Comportamiento default: Bajar a la misma columna de la siguiente fila
+              const siguienteFila = fila.nextElementSibling;
+              if (siguienteFila) nuevaCelda = siguienteFila.children[colIndex];
+          }
           break;
       }
   
