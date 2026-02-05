@@ -1116,7 +1116,7 @@
       const indiceCelda = celdas.indexOf(celda);
       
       // Asignar cantidad 1 si vacía
-      const celdaCant = fila.querySelector('.cant');
+      let celdaCant = fila.querySelector('.cant'); // Cambiado a 'let' o reutilizar variable existente
       if (celdaCant && (celdaCant.innerText.trim() === '' || celdaCant.innerText.trim() === '0')) {
          celdaCant.innerText = '1';
       }
@@ -1137,7 +1137,8 @@
       }
       
       // Mover foco a CANTIDAD de la fila actual y seleccionar
-      const celdaCant = fila.querySelector('.cant');
+      // Volvemos a seleccionar porque pudo perderse referencia o por claridad
+      celdaCant = fila.querySelector('.cant'); 
       if (celdaCant) {
          celdaCant.focus();
          // Seleccionar todo el contenido (el "1")
