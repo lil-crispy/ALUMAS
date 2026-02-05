@@ -278,50 +278,44 @@
       }
 
       /* ---------- Estilos específicos para formato bodega ---------- */
+      /* Cuando se imprime en modo bodega, ocultamos todo y mostramos solo el template PDF */
+      
       body.formato-bodega {
-        page: bodega; /* Se aplica el @page bodega */
-        width: 21cm !important;
-        max-width: 21cm !important;
-        font-size: 14px !important;
-        padding: 1cm !important;
+        page: bodega; 
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
+      }
+
+      body.formato-bodega .contenedor-principal,
+      body.formato-bodega #login-overlay,
+      body.formato-bodega .conn-status,
+      body.formato-bodega .user-bar,
+      body.formato-bodega .report-toggle,
+      body.formato-bodega .panel-sugerencias,
+      body.formato-bodega .report-panel {
+        display: none !important;
+      }
+
+      body.formato-bodega #pdf-template {
+        display: block !important;
+        position: static !important;
+        width: 100% !important; /* Ajustar al ancho del papel (A5) */
         margin: 0 auto !important;
+        padding: 0 !important;
+        box-sizing: border-box !important;
+        z-index: 9999 !important;
+        /* El template original es 21cm, si el papel es A5 (14.8cm), debemos escalar o dejar que fluya.
+           Como el template tiene anchos fijos en px (220px, etc), con 100% width debería ajustarse 
+           siempre y cuando no exceda.
+           Si se ve muy grande, se puede usar zoom o transform.
+        */
+        zoom: 0.7; /* Escalado aproximado para que 21cm quepan en A5 (14.8cm) */
       }
-
-      .formato-bodega .contenedor-principal {
-        width: 100% !important;
-        max-width: 100% !important;
-      }
-
-      .formato-bodega table {
-        width: 100% !important;
-        font-size: 12px !important;
-      }
-
-      .formato-bodega th,
-      .formato-bodega td {
-        padding: 8px 4px !important;
-        font-size: 12px !important;
-      }
-
-      .formato-bodega .total {
-        font-size: 18px !important;
-      }
-
-      .formato-bodega .logo-grande {
-        width: 150px !important;
-        max-width: 150px !important;
-      }
-
-      .formato-bodega .encabezado .titulo {
-        font-size: 1.8em !important;
-      }
-
-      .formato-bodega .encabezado .subtitulo {
-        font-size: 1.4em !important;
-      }
-
-      .formato-bodega .encabezado img {
-        max-width: 250px !important;
+      
+      /* Asegurar que la tabla interna del template se vea bien */
+      body.formato-bodega #pdf-template table {
+         width: 100% !important;
       }
     }
 
@@ -817,71 +811,93 @@
       });
     }
   
-    async function descargarPDF() {
+    function prepararDatosPDF() {
+      // Check context
+      const consecutivoDisplay = document.getElementById('consecutivo-display');
+      const isCotizacion = consecutivoDisplay && consecutivoDisplay.style.visibility === 'hidden';
+
       // 1. Preparar datos en la plantilla oculta
-      const template = document.getElementById('pdf-template');
       const tbody = document.getElementById('pdf-table-body');
       
       // Fecha header
       const now = new Date();
       const dateStr = now.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
-      document.getElementById('pdf-header-date').textContent = `FEC ${dateStr}`;
+      const elDate = document.getElementById('pdf-header-date');
+      if (elDate) elDate.textContent = `FEC ${dateStr}`;
       
-      // Consecutivo
-      const consecutivo = document.getElementById('numero-consecutivo').textContent;
-      document.getElementById('pdf-header-rem').textContent = `REM ${consecutivo}`;
+      // Consecutivo / Titulo
+      const elRem = document.getElementById('pdf-header-rem');
+      if (elRem) {
+          if (isCotizacion) {
+              elRem.textContent = 'COTIZACIÓN';
+          } else {
+              const consecutivo = document.getElementById('numero-consecutivo').textContent;
+              elRem.textContent = `REM ${consecutivo}`;
+          }
+      }
       
       // Fecha Info
       const fullDateStr = now.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + 
                           now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }).toLowerCase();
-      document.getElementById('pdf-info-fecha').innerHTML = `<strong>FECHA:</strong> ${fullDateStr}`;
+      const elInfoFecha = document.getElementById('pdf-info-fecha');
+      if (elInfoFecha) elInfoFecha.innerHTML = `<strong>FECHA:</strong> ${fullDateStr}`;
       
       // Cliente
       const clienteVal = document.getElementById('nombre-cliente').value || '';
-      document.getElementById('pdf-info-cliente').textContent = clienteVal;
+      const elInfoCliente = document.getElementById('pdf-info-cliente');
+      if (elInfoCliente) elInfoCliente.textContent = clienteVal;
       
       // Tabla
-      tbody.innerHTML = '';
-      const filas = document.querySelectorAll('#tabla-productos tr');
-      
-      let totalFilas = 0;
-      filas.forEach(fila => {
-        const cels = fila.querySelectorAll('td');
-        const cant = cels[0]?.innerText || '';
-        const desc = cels[1]?.innerText || '';
-        const vuni = cels[2]?.innerText || '';
-        const vtot = cels[3]?.innerText || '';
+      if (tbody) {
+        tbody.innerHTML = '';
+        const filas = document.querySelectorAll('#tabla-productos tr');
         
-        // Solo agregar si tiene contenido
-        if (cant || desc || vuni || vtot) {
-             const tr = document.createElement('tr');
-             tr.innerHTML = `
-                <td style="border: 1px solid #999; padding: 6px; text-align: center;">${cant}</td>
-                <td style="border: 1px solid #999; padding: 6px; text-align: left;">${desc}</td>
-                <td style="border: 1px solid #999; padding: 6px; text-align: right;">${vuni}</td>
-                <td style="border: 1px solid #999; padding: 6px; text-align: right; font-weight: bold;">${vtot}</td>
-             `;
-             tbody.appendChild(tr);
-             totalFilas++;
+        let totalFilas = 0;
+        filas.forEach(fila => {
+            const cels = fila.querySelectorAll('td');
+            const cant = cels[0]?.innerText || '';
+            const desc = cels[1]?.innerText || '';
+            const vuni = cels[2]?.innerText || '';
+            const vtot = cels[3]?.innerText || '';
+            
+            // Solo agregar si tiene contenido
+            if (cant || desc || vuni || vtot) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="border: 1px solid #999; padding: 6px; text-align: center;">${cant}</td>
+                    <td style="border: 1px solid #999; padding: 6px; text-align: left;">${desc}</td>
+                    <td style="border: 1px solid #999; padding: 6px; text-align: right;">${vuni}</td>
+                    <td style="border: 1px solid #999; padding: 6px; text-align: right; font-weight: bold;">${vtot}</td>
+                `;
+                tbody.appendChild(tr);
+                totalFilas++;
+            }
+        });
+        
+        // Rellenar líneas vacías hasta completar 8 filas visuales
+        while (totalFilas < 8) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="border: 1px solid #999; padding: 6px; height: 18px;"></td>
+                    <td style="border: 1px solid #999; padding: 6px;"></td>
+                    <td style="border: 1px solid #999; padding: 6px;"></td>
+                    <td style="border: 1px solid #999; padding: 6px;"></td>
+                `;
+                tbody.appendChild(tr);
+                totalFilas++;
         }
-      });
-      
-      // Rellenar líneas vacías hasta completar 8 filas visuales
-      while (totalFilas < 8) {
-             const tr = document.createElement('tr');
-             tr.innerHTML = `
-                <td style="border: 1px solid #999; padding: 6px; height: 18px;"></td>
-                <td style="border: 1px solid #999; padding: 6px;"></td>
-                <td style="border: 1px solid #999; padding: 6px;"></td>
-                <td style="border: 1px solid #999; padding: 6px;"></td>
-             `;
-             tbody.appendChild(tr);
-             totalFilas++;
       }
       
       // Total
       const totalTxt = document.getElementById('total-general').innerText;
-      document.getElementById('pdf-total').innerText = totalTxt;
+      const elTotal = document.getElementById('pdf-total');
+      if (elTotal) elTotal.innerText = totalTxt;
+    }
+
+    async function descargarPDF() {
+      // 1. Preparar datos en la plantilla oculta
+      prepararDatosPDF();
+      const template = document.getElementById('pdf-template');
 
       // Mostrar temporalmente para html2canvas
       template.style.display = 'block';
@@ -922,66 +938,8 @@
     }
     async function guardarPDFAutoServer() {
       // Reutiliza la lógica de generación pero envía al servidor
+      prepararDatosPDF();
       const template = document.getElementById('pdf-template');
-      const tbody = document.getElementById('pdf-table-body');
-      
-      // Fecha header
-      const now = new Date();
-      const dateStr = now.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
-      document.getElementById('pdf-header-date').textContent = `FEC ${dateStr}`;
-      
-      // Consecutivo
-      const consecutivo = document.getElementById('numero-consecutivo').textContent;
-      document.getElementById('pdf-header-rem').textContent = `REM ${consecutivo}`;
-      
-      // Fecha Info
-      const fullDateStr = now.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + 
-                          now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }).toLowerCase();
-      document.getElementById('pdf-info-fecha').innerHTML = `<strong>FECHA:</strong> ${fullDateStr}`;
-      
-      // Cliente
-      const clienteVal = document.getElementById('nombre-cliente').value || '';
-      document.getElementById('pdf-info-cliente').textContent = clienteVal;
-      
-      // Tabla
-      tbody.innerHTML = '';
-      const filas = document.querySelectorAll('#tabla-productos tr');
-      
-      let totalFilas = 0;
-      filas.forEach(fila => {
-        const cels = fila.querySelectorAll('td');
-        const cant = cels[0]?.innerText || '';
-        const desc = cels[1]?.innerText || '';
-        const vuni = cels[2]?.innerText || '';
-        const vtot = cels[3]?.innerText || '';
-        
-        if (cant || desc || vuni || vtot) {
-             const tr = document.createElement('tr');
-             tr.innerHTML = `
-                <td style="border: 1px solid #999; padding: 6px; text-align: center;">${cant}</td>
-                <td style="border: 1px solid #999; padding: 6px; text-align: left;">${desc}</td>
-                <td style="border: 1px solid #999; padding: 6px; text-align: right;">${vuni}</td>
-                <td style="border: 1px solid #999; padding: 6px; text-align: right; font-weight: bold;">${vtot}</td>
-             `;
-             tbody.appendChild(tr);
-             totalFilas++;
-        }
-      });
-      
-      while (totalFilas < 8) {
-             const tr = document.createElement('tr');
-             tr.innerHTML = `
-                <td style="border: 1px solid #999; padding: 6px; height: 18px;"></td>
-                <td style="border: 1px solid #999; padding: 6px;"></td>
-                <td style="border: 1px solid #999; padding: 6px;"></td>
-                <td style="border: 1px solid #999; padding: 6px;"></td>
-             `;
-             tbody.appendChild(tr);
-             totalFilas++;
-      }
-      
-      const totalTxt = document.getElementById('total-general').innerText;
-      document.getElementById('pdf-total').innerText = totalTxt;
 
       template.style.display = 'block';
       
@@ -1462,6 +1420,12 @@
 
       window.location.reload();
     }
+
+    window.addEventListener('beforeprint', () => {
+      if (getPuntoVenta() === 'bodega') {
+        prepararDatosPDF();
+      }
+    });
 
     window.addEventListener('afterprint', () => {
       aplicarVentaUI();
