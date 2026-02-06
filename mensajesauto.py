@@ -1,3 +1,10 @@
+import json
+import os
+import sys
+import time
+import datetime
+import urllib.parse
+import logging
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -5,276 +12,68 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
-import urllib.parse
-import datetime
-import time
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
-# Configurar navegador
-opciones = webdriver.ChromeOptions()
-opciones.add_experimental_option("detach", True)
-driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=opciones)
+# Configuración de Logging
+logging.basicConfig(
+    filename='envio_log.txt',
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    encoding='utf-8'
+)
 
-# Obtener día actual en español
-dias = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
-hoy = dias[datetime.datetime.now().weekday()]
-print(f"Hoy es {hoy.upper()}")
+def setup_driver():
+    """Configura el driver de Chrome con persistencia de sesión."""
+    opciones = webdriver.ChromeOptions()
+    
+    # Ruta para el perfil de usuario (para guardar la sesión de WhatsApp)
+    # Se guardará en %LOCALAPPDATA%/AlumasBot/ChromeProfile
+    user_data_dir = os.path.join(os.environ['LOCALAPPDATA'], 'AlumasBot', 'ChromeProfile')
+    if not os.path.exists(user_data_dir):
+        os.makedirs(user_data_dir)
+    
+    opciones.add_argument(f"user-data-dir={user_data_dir}")
+    opciones.add_argument("--start-maximized")
+    opciones.add_experimental_option("detach", True)
+    
+    # Suprimir logs innecesarios de Chrome
+    opciones.add_argument("--log-level=3")
+    
+    try:
+        service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=opciones)
+        return driver
+    except Exception as e:
+        logging.error(f"Error al iniciar el driver: {e}")
+        print(f"❌ Error al iniciar Chrome: {e}")
+        sys.exit(1)
 
-# Diccionario de contactos por día
-mensajes_por_dia = {
+def cargar_datos():
+    """Carga los contactos y promociones desde contactos.json."""
+    json_path = 'contactos.json'
+    
+    # Si se ejecuta como ejecutable congelado
+    if getattr(sys, 'frozen', False):
+        application_path = os.path.dirname(sys.executable)
+        json_path = os.path.join(application_path, 'contactos.json')
+    else:
+        application_path = os.path.dirname(os.path.abspath(__file__))
+        json_path = os.path.join(application_path, 'contactos.json')
 
-"lunes": [
+    try:
+        with open(json_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        print(f"❌ No se encontró el archivo {json_path}. Asegúrese de que esté en la misma carpeta que el programa.")
+        logging.error(f"Archivo no encontrado: {json_path}")
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        print(f"❌ Error al leer el archivo JSON: {e}")
+        logging.error(f"Error JSON: {e}")
+        sys.exit(1)
 
-("573112258058", "Señora Yolanda, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573193874612", "Señor Cristian, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573124484576", "Señor William, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573115000789", "Señor Gilio, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573167959929", "Señora Adiela, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573112592797", "Señor Rodolfo, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre...."),
-("573114586322", "Señor William, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre...."),
-("573115975461", "Señor Fausto, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre...."),
-("573164980202", "Señora Martha, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573212935835", "Señor Andres, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre...."),
-("573132075661", "Señor Hugo, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre...."),
-("573168351271", "Señora Yanira, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573124780676", "Don Oscar, muy buenas tardes. como esta espero este muy bien estoy estoy a su dispocicion si necesita cualquier cosa Dios lo bendiga ."),
-("573138063069", "Caballero, muy buenas tardes. espero que este bien tengo tuberia y accesorios de cortina economicos por si necesiya me avisa ."),
-("573112638688", "Señor Rubén, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre...."),
-("573112216225", "Señor Rafael, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573118887666", "Señor Julio, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573124528334", "Señor Edilberto, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573112184554", "Señora Andrea, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573007690508", "Señor Andrés, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573142630122", "Señora Deysi, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573002991190", "Señor Gabriel, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573113740708", "Señor Deimer, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573123851530", "Señor Plinio, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573203183782", "Señora Adriana, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573112908255", "Señor Sergio, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573125824523", "Señor Ricardo, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573222556800", "Señora Crisanta, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573114417748", "Señor José Alberto, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573112287852", "Señor Marcos, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573215278055", "Señor Fredy, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573132782185", "Como vamos costeño feliz Dia papi me avisas si necesitas algo cualquier cosa estoy para servirte , Dios te bendiga papi"),
-("573136217536", "Señor José, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573115018363", "Señor Jorge, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573103585957", "Señora Martha, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573115061675", "Señora Margarita, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573024014412", "Señora Yenny, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573134673063", "Que hace quinerito feliz inicio de semana , papi. me avisa si esta neceistando merca ! Dios lo bendiga siempre. saludes al niño"),
-("573143070843", "Señor Cesar Barrera, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573177175944", "Señor Miguel Sepulveda, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573212687595", "Señora Yaneth, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573123193647", "Señora Olga, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573112803865", "Señora Maribel, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573014371159", "Duro, muy buenas Dias.Duro por hay tengo tees y win tardcional ya lo extrañamos aca me avisa y le envio usted sabe Dios lo bendiga siempre."),
-("573112908255", "Señor Sergio Hurtado, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573222641914", "Señor Edison, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573142150164", "Mi amigo Giovany, muy buenas Dias. Estoy pendiente cualquier mercancia que neceiste siempre para servire me avisa tengo niples de ducha si necesita o todo lo de tuberia , estoy pendiente Dios lo bendiga"),
-("573168522927", "Señor Juan, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573203730845", "Señor Luis, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573142281013", "Señor Gilberto Pineda, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573163775079", "Señora Luz , muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573112115951", "Señor Hugo, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573107548083", "Señora Claudia, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573223043864", "Señor Olmedo Beltrán, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573186280648", "Don baudelino , muy buenas tardes. espero se encunetre muy bien , don baudelino queria saber si necesitaba algo para esta semana estoy para servirle Dios lo bendiga don baudelino ."),
-
-        ],
-
-
-    "martes": [
-("573154193572", "Señora Nancy, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573143822236", "Señora Dora, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573125571718", "Señor Alfonso, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573115522672", "Señor Eugenio, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573102685388", "Señor Oscar, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573155863172", "Señor Diego, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573112738924", "Señor Jose, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573223108488", "Señora Libia, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573123814397", "Señor Wilmer, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573012813005", "Señora Diana, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573106458384", "Señor Jesus, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573214818833", "Señor Wilman, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573143112042", "Señor Javier, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573192436050", "Muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios le bendiga siempre."),
-("573178444743", "Don Sergio, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573203460465", "Señor Hernando, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573059441800", "Señora Alma, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573212510668", "Señor Alfredo, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573165753599", "Señora Johana, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573212943208", "Como vamos Wilmer, muy buenas tardes. Wilmer para ver si necesitaba mercancia para esta semana cualquier cosa que necesite me avisa ya sabe Dios lo bendiga."),
-("573118095386", "Señor Marco, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573105832329", "Señor Jose, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573188709604", "Señor Francisco, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573158478636", "Señor Yecid, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573154334408", "Señor Ramon, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573204640857", "Señor Fredy, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573108073985", "Señor Albeirot, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573114922335", "Señor Mario, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573004342044", "Señora Araminta, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573205789982", "Señora Claudia, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573202702291", "Señora Romilsa, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573142500945", "Señora Ofelia, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573103347688", "Señor Manuel, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573052839030", "Señor Juan, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573229301358", "Señora Ana, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573118110756", "Buenos Cesar, muy buenas tardes. Espero que este bien me avisa si necesita tuberia de cortina o accesorios para llevarle estoy pediente Dios lo bendiga."),
-("573143202454", "Señora Alcira, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-    ],
-    "miércoles": [
-("573106791903", "Señora Nidia, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573103410523", "Señora yenny, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573124042078", "Don david como esta espero se encuentre muy bioen queria preguntarle si necesitaba algo para esta semana estoy pendiente a cualquier cosa que necesite Dios lo bendiga"),
-("573107835985", "Señor Erenesto, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573112244463", "Señora Yolanda, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573102012384", "Señora Gloria, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573142559149", "Señora Odilia, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573505785080", "Señora Xiomara, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573161333312", "Señor Carlos, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573002099719", "Señor Nelson, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573214258778", "Señor Edwin, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573138037233", "Señor Alfredo, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573005501352", "Señor Sigilfredo, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573017463512", "Señor Luis, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573212641884", "Que mas mi rey como vamos espero que este bien y tenga muchas bendiciones papi cualquier cosa que necesite de merca me llama usted sabe que estoy para servirlo Dios lo cuide y le de mucha bendicion al local saludes a los hermanos "),
-("573112709212", "Señor Andres, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573114665389", "Señor William, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573108305420", "Señor Eduardo, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573224383514", "Señora Laura, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573118647940", "Señor Augusto, muy buenas tardes. Le un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573208773272", "Señor Augusto, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573163270960", "Señora Natalia, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573138554450", "Señor Leonel, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573208907820", "Señor Jaime, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573187545406", "Señora Blanca, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573133307484", "Señor Alfonso, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573133183284", "Señora Esperanza, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573176669772", "Señor Giovanny, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573168351271", "Señor Alfonso, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573152972262", "Señor Alfonso, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573134069213", "Rafita buenos Dias tengo win español a 14.000 me avisa y le envio el paquete Bendiciones"),
-("573114494781", "Señora Maria, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573143563121", "Señora Maria, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573118934535", "Señor Hotman, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573133506059", "Señor Leo, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573188771847", "Señora Diana, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573223651679", "Don jorge, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre. Tengo win español y boquilleras por si necesita"),
-("573118262934", "Señor Alexander, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-    ],
-    "jueves": [
-
-        
-
-    ("573124932864", "Señor Emeterio, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-    ("573108088152", "Señor Jose, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-    ("573172426430", "Señor Eduardo, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-    ("573204608746", "Señor Arturo, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-    ("573043841119", "Señora Gloria, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-    ("573004032319", "Señor Fernando, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-    ("573177484404", "Señora Nubia, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-    ("573132781462", "Señor Pedronel, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-    ("573213747704", "Muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-    ("573057707673", "Señor Rodolfo, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-    ("573125153393", "Muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-    ("573112428907", "Señor Camilo, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-    ("573108115957", "Señora Martha, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-    ("573202345541", "Señor Diego, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-    ("573114750223", "Señor Diego, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-    ("573125660379", "Señor Alonso, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573168433968", "Señora Laura, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573123143365", "Señora Maria, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573132868358", "Señor Jose, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573196758011", "Señor Gregorio, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573143246824", "Señor Ernesto, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573002388825", "Señor Cristian, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573112472789", "Señor Yecid, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573052452957", "Señora Adriana, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573057632439", "Señor Andres, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573203106473", "Señor Pedronel, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573227072052", "Señor Daniel, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573164499734", "Señora Victoria, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573172162137", "Señor Pablo, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573123002442", "Muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573173143056", "Señor Edwin, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573105832999", "Señor Henry, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573108786274", "Señora Martha, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573017196581", "Señora Liana, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573124823696", "Señor Jhon, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573114688653", "Muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573142002388", "Señora Sandra, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573202771711", "Señor Javier, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573195173722", "Señor José, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573132924402", "Muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573134266617", "Señor Ovidio, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573223047675", "Muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573138352174", "Muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573204401823", "Muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573168714018", "Señor Jorge, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. queria saber si necesiba algo de Tee para lavadero esta semana entrega inmediata , no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573132562501", "Muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573223648486", "Señora Tatiana, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573103524823", "Muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573223708997", "Muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573122541198", "Muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573193111176", "Muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573012900733", "Muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573219158649", "Señor Julian, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-       
-    ],
-    "viernes": [
-("573132727190", "Muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573112199587", "Señora Rosa, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573124745769", "Muy buenas tardes Don carlos . Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573116925065", "Señor José, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573102480295", "Señora Mariela, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573107636191", "Señor José, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573002978306", "Señora Alicia, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573007814396", "Señor Alfonso, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573112706169", "Señor Carlos, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573112660246", "Señor Zamir, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573162435350", "Señor Don Segundo, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573167481233", "Señor Jesús, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573183143311", "Señora Sandra, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573103105608", "Señora Luz, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573124135957", "Señora Rosalba, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios la bendiga siempre."),
-("573132727190", "Señor Alcides, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573167037125", "Señor Ricardo, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573012021642", "Señor Álvaro, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573125971418", "Señor Hugo, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573157222323", "Caballero, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573152517275", "Señor Nelson, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573142526189", "Caballero, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573106890760", "Caballero, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573105613702", "Señor Rafael Ramírez, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573023596833", "Caballero, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573125571718", "Caballero, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573237312308", "Señor Sergio Morales, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573212254112", "Señor Fernando Amaya, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573214372165", "Señor Ismael Perdomo, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573204007373", "Caballero, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573138165779", "Señor Jose Munevar, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573214803970", "Señor Gonzalo, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573103086747", "Señor Saul Ayala, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573208341750", "Caballero, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573196827157", "Caballero, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573022449388", "Caballero, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-("573234851730", "Caballero, muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. Solo queríamos recordarle que estamos a su disposición para lo que necesite. Si requiere algún producto o mercancía, no dude en escribirnos. ¡Con mucho gusto le atendemos! Dios lo bendiga siempre..."),
-
-    ],
-     "sábado": [],
-    "domingo": []
-}
-
-# Promociones por semana
-promociones_por_semana = {
-    1: "🎁 Promoción semana : 2% DE DESCUENTO POR COMPRAS SUPERIORES A 300.000 ESTA SEMANA PUEDES VER NUESTROS PRODUCTOS ESPECIALES PARA FERRETERIA AQUI https://ferredistribucionesalumas.com/aluminio.php ",
-    2: "🎉 Promoción semana : DESCUENTO ESPECIAL EN ALUMINIO ,WIN ESPAÑOL , TRADICIONAL,BOQUILLERA Y TUBERIA DIGANOS A COMO SE LO ESTAN DANDO Y LE BAJAMOS EL PRECIO PUEDES VER NUESTROS PRODUCTOS ESPECIALES PARA FERRETERIA AQUI https://ferredistribucionesalumas.com/aluminio.php",
-    3: "🔥 Promoción semana : CINTA DE ENMASCARAR DE 1/2 HASTA 1 PULGADA DESDE 1500 PESOS,REGILLAS Y SIFONES A 1000 PESOS ENTRE OTROS DESCUENTOS PUEDES VER NUESTROS PRODUCTOS ESPECIALES PARA FERRETERIA AQUI https://ferredistribucionesalumas.com/aluminio.php ",
-    4: "💥 Promoción semana : DESCUETNO EN TUBERIA SANITARIA Y DE PRESION SI PIDES POR ESTE MEDIO , POR COMPRAR SUPERIORES A 500.000 RECLAMA UN OBSEQUIO CON EL TRANSPORTADOR PUEDES VER NUESTROS PRODUCTOS ESPECIALES PARA FERRETERIA AQUI https://ferredistribucionesalumas.com/aluminio.php"
-}
-
-# Función para determinar la semana del mes
 def obtener_semana_del_mes(dia):
+    """Determina la semana del mes (1-4)."""
     if 1 <= dia <= 8:
         return 1
     elif 9 <= dia <= 16:
@@ -284,44 +83,156 @@ def obtener_semana_del_mes(dia):
     else:
         return 4
 
-# Función para enviar mensaje con promoción
-def enviar_mensaje(numero, mensaje):
+def esperar_inicio_sesion(driver):
+    """Espera a que el usuario inicie sesión en WhatsApp Web."""
+    print("⏳ Abriendo WhatsApp Web...")
+    driver.get("https://web.whatsapp.com")
+    
+    print("ℹ️  Por favor, inicie sesión escaneando el código QR si es necesario.")
+    print("⏳ Esperando a que cargue la interfaz principal...")
+    
     try:
-        # Obtener el día actual y la promoción de la semana
-        dia_mes = datetime.datetime.now().day
-        semana_actual = obtener_semana_del_mes(dia_mes)
-        promo = promociones_por_semana[semana_actual]
-
-        # Añadir la promoción al final del mensaje
-        mensaje += f"\n\n{promo}"
-
-        # Codificar mensaje para URL de WhatsApp
-        mensaje_encoded = urllib.parse.quote(mensaje)
-        url = f"https://web.whatsapp.com/send?phone={numero}&text={mensaje_encoded}"
-        driver.get(url)
-        print(f"Abriendo WhatsApp Web para el número: {numero}...")
-
-        # Esperar hasta que la caja de texto esté disponible
-        input_xpath = '//div[@contenteditable="true"][@data-tab="10"]'
+        # Esperar a que aparezca el elemento de búsqueda de chat o la lista de chats
+        # Esto confirma que se ha iniciado sesión
         wait = WebDriverWait(driver, 60)
-        input_element = wait.until(EC.presence_of_element_located((By.XPATH, input_xpath)))
+        wait.until(EC.presence_of_element_located((By.XPATH, '//div[@contenteditable="true"][@data-tab="3"]')))
+        print("✅ Sesión iniciada correctamente.")
+        logging.info("Sesión de WhatsApp Web iniciada.")
+        return True
+    except TimeoutException:
+        print("⚠️  No se detectó el inicio de sesión en 60 segundos.")
+        resp = input("¿Ya inició sesión? (s/n): ")
+        if resp.lower() == 's':
+            return True
+        return False
 
-        # Enviar el mensaje
-        input_element.send_keys(Keys.ENTER)
+def enviar_mensaje(driver, numero, mensaje_base, promocion):
+    """Envía un mensaje a un número específico."""
+    full_message = f"{mensaje_base}\n\n{promocion}"
+    mensaje_encoded = urllib.parse.quote(full_message)
+    url = f"https://web.whatsapp.com/send?phone={numero}&text={mensaje_encoded}"
+    
+    try:
+        driver.get(url)
+        
+        # Esperar a que cargue el campo de texto
+        wait = WebDriverWait(driver, 30)
+        
+        # Verificar si el número es inválido (aparece un popup)
+        try:
+            # XPath para el botón de "OK" en el popup de número inválido (puede cambiar)
+            # Una mejor estrategia es esperar al input o al error.
+            # WhatsApp Web suele mostrar un div con texto "El número de teléfono... no es válido"
+            pass 
+        except:
+            pass
 
-        print(f"✅ Mensaje enviado con éxito al   número: {numero}.")
-        time.sleep(5)  # Pausa para permitir que se envíe el mensaje antes de ir al siguiente
-
+        # Esperar al input de mensaje
+        input_box = wait.until(EC.presence_of_element_located((By.XPATH, '//div[@contenteditable="true"][@data-tab="10"]')))
+        
+        # Pequeña pausa para asegurar que el texto se haya cargado (Selenium a veces es muy rápido)
+        time.sleep(1) 
+        
+        input_box.send_keys(Keys.ENTER)
+        
+        # Esperar confirmación visual de envío (opcional, pero recomendado)
+        # Por simplicidad y velocidad, esperamos un poco
+        time.sleep(3) 
+        
+        print(f"✅ Mensaje enviado a: {numero}")
+        logging.info(f"Mensaje enviado a {numero}")
+        return True
+        
+    except TimeoutException:
+        print(f"❌ Tiempo de espera agotado para: {numero} (Posiblemente número inválido o internet lento)")
+        logging.error(f"Timeout al enviar a {numero}")
+        return False
     except Exception as e:
-        print(f"❌ Error al enviar mensaje al número {numero}: {e}")
+        print(f"❌ Error enviando a {numero}: {e}")
+        logging.error(f"Error enviando a {numero}: {e}")
+        return False
 
-# Enviar mensajes solo si hay programados para hoy
-if hoy in mensajes_por_dia and mensajes_por_dia[hoy]:
-    for item in mensajes_por_dia[hoy]:
-        numero, mensaje = item  # Desempaquetar la tupla
-        enviar_mensaje(numero, mensaje)
-else:
-    print("No hay mensajes programados para hoy.")
+def main():
+    print("🤖 Iniciando Bot de WhatsApp ALUMAS...")
+    
+    # Cargar datos
+    datos = cargar_datos()
+    mensajes_por_dia = datos.get("mensajes_por_dia", {})
+    promociones_por_semana = datos.get("promociones_por_semana", {})
+    
+    # Determinar día y promoción
+    dias = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
+    hoy_idx = datetime.datetime.now().weekday()
+    hoy = dias[hoy_idx]
+    
+    print(f"📅 Hoy es: {hoy.upper()}")
+    
+    if hoy not in mensajes_por_dia or not mensajes_por_dia[hoy]:
+        print("ℹ️  No hay mensajes programados para hoy.")
+        input("Presione Enter para salir...")
+        return
 
-# Cerrar el navegador al terminar (opcional)
-driver.quit()
+    dia_mes = datetime.datetime.now().day
+    semana_actual = obtener_semana_del_mes(dia_mes)
+    
+    # Las claves en JSON son strings, así que convertimos la semana a string para buscar
+    promo = promociones_por_semana.get(str(semana_actual), "")
+    if not promo:
+        # Intentar con integer por si acaso
+        promo = promociones_por_semana.get(semana_actual, "")
+        
+    print(f"🎁 Promoción de la semana {semana_actual}: {promo[:50]}...")
+    
+    lista_mensajes = mensajes_por_dia[hoy]
+    print(f"📨 Se enviarán {len(lista_mensajes)} mensajes.")
+    
+    confirm = input("¿Desea continuar? (s/n): ")
+    if confirm.lower() != 's':
+        print("Cancelado por el usuario.")
+        return
+
+    # Iniciar navegador
+    driver = setup_driver()
+    
+    if not esperar_inicio_sesion(driver):
+        print("❌ No se pudo verificar el inicio de sesión. Cerrando.")
+        driver.quit()
+        return
+        
+    print("🚀 Comenzando envío de mensajes...")
+    
+    enviados = 0
+    errores = 0
+    
+    for item in lista_mensajes:
+        # Manejar tanto listas como tuplas (JSON usa listas)
+        numero = item[0]
+        mensaje = item[1]
+        
+        if enviar_mensaje(driver, numero, mensaje, promo):
+            enviados += 1
+        else:
+            errores += 1
+            
+        # Pausa aleatoria para evitar bloqueo de SPAM
+        time.sleep(2)
+        
+    print("\n" + "="*30)
+    print(f"🏁 Finalizado.")
+    print(f"✅ Enviados: {enviados}")
+    print(f"❌ Errores: {errores}")
+    print("="*30)
+    
+    print("El navegador permanecerá abierto. Puede cerrarlo manualmente.")
+    # driver.quit() # No cerramos para dejar ver los chats
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\n🛑 Interrumpido por el usuario.")
+    except Exception as e:
+        print(f"\n❌ Error inesperado: {e}")
+        logging.critical(f"Error fatal: {e}")
+    
+    input("\nPresione Enter para cerrar...")
