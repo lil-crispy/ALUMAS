@@ -635,6 +635,39 @@
     const tabla = document.getElementById('tabla-productos');
     let celdaActiva = null;
     let celdaProductoActiva = null;
+
+    // --- VARIABLES Y FUNCIONES PARA MULTI-SELECCIÓN ---
+    let currentSuggestedProducts = [];
+    let isMouseDown = false;
+
+    function seleccionarProductosMultiples(listaProductos, celdaInicial) {
+       if (!listaProductos || listaProductos.length === 0) return;
+       
+       // 1. Primer producto en la celda actual
+       seleccionarProducto(listaProductos[0], celdaInicial);
+       
+       // 2. Resto de productos
+       for (let i = 1; i < listaProductos.length; i++) {
+           const prod = listaProductos[i];
+           
+           // Buscar última fila o agregar nueva si está llena
+           let filas = tabla.querySelectorAll('tr');
+           let lastFila = filas[filas.length - 1];
+           let descCell = lastFila.querySelector('td:nth-child(2)');
+           
+           // Si la celda de descripción tiene texto o ID, necesitamos nueva fila
+           if (descCell && (descCell.textContent.trim() !== '' || descCell.dataset.id)) {
+               agregarFila();
+               filas = tabla.querySelectorAll('tr');
+               lastFila = filas[filas.length - 1];
+               descCell = lastFila.querySelector('td:nth-child(2)');
+           }
+           
+           if (descCell) {
+               seleccionarProducto(prod, descCell);
+           }
+       }
+    }
   
     function formatearPesos(valor) {
       const numero = parseInt(valor);
@@ -1079,16 +1112,23 @@
       const panel = document.getElementById('panel-sugerencias');
       if (!dropdown || !panel) return;
       celdaProductoActiva = celda;
+      currentSuggestedProducts = productos; // Guardar referencia
       dropdown.innerHTML = '';
       if (!productos || productos.length === 0) {
         dropdown.innerHTML = '<div class="no-productos">No se encontraron productos que coincidan con la búsqueda.</div>';
         panel.style.display = 'block';
         return;
       }
+      
+      isMouseDown = false; // Reset
+
       productos.forEach((producto, index) => {
         const item = document.createElement('div');
         item.className = 'producto-item';
+        item.dataset.index = index;
+        
         if (index === 0) item.classList.add('selected');
+        
         const precioFinal = Number(producto.precio_final || 0);
         const precioMayor = Number(producto.precio_mayorista || 0);
         item.innerHTML = `
@@ -1096,11 +1136,38 @@
           <div class="producto-info">ID: ${producto.id || ''} | Stock: ${producto.stock || 0}</div>
           <div class="producto-info">Final: ${formatearPesos(precioFinal)} | Mayor: ${formatearPesos(precioMayor)}</div>
         `;
-        item.addEventListener('click', () => {
-          seleccionarProducto(producto, celda);
+        
+        // Eventos Mouse para Selección
+        item.addEventListener('mousedown', (e) => {
+             isMouseDown = true;
+             // Si no presiona Ctrl/Shift, limpiar selección previa
+             if (!e.ctrlKey && !e.shiftKey) {
+                 dropdown.querySelectorAll('.producto-item.selected').forEach(el => el.classList.remove('selected'));
+             }
+             item.classList.add('selected');
         });
+        
+        item.addEventListener('mouseenter', () => {
+             if (isMouseDown) {
+                 item.classList.add('selected');
+             }
+        });
+        
+        item.addEventListener('click', (e) => {
+             const selected = dropdown.querySelectorAll('.producto-item.selected');
+             if (selected.length > 1) {
+                 // Si hay varios seleccionados (por arrastre), esperamos ENTER
+                 return; 
+             }
+             seleccionarProducto(producto, celda);
+        });
+
         dropdown.appendChild(item);
       });
+      
+      // Listener para terminar arrastre
+      document.addEventListener('mouseup', () => { isMouseDown = false; }, { once: true });
+
       panel.style.display = 'block';
     }
     function cerrarPanelSugerencias() {
@@ -1293,31 +1360,80 @@
 
       if (sugerenciasVisibles) {
          const items = Array.from(dropdown.querySelectorAll('.producto-item'));
-         const selectedIndex = items.findIndex(item => item.classList.contains('selected'));
          
          if (e.key === 'ArrowDown') {
             e.preventDefault();
-            const nextIndex = (selectedIndex + 1) % items.length;
-            items.forEach(i => i.classList.remove('selected'));
-            items[nextIndex].classList.add('selected');
-            items[nextIndex].scrollIntoView({ block: 'nearest' });
+            if (e.shiftKey) {
+                // Selección múltiple hacia abajo
+                let lastIdx = -1;
+                items.forEach((it, idx) => {
+                    if (it.classList.contains('selected')) lastIdx = idx;
+                });
+                
+                if (lastIdx < items.length - 1) {
+                    const next = items[lastIdx + 1];
+                    next.classList.add('selected');
+                    next.scrollIntoView({ block: 'nearest' });
+                }
+            } else {
+                // Navegación simple
+                let selectedIndex = items.findIndex(item => item.classList.contains('selected'));
+                if (selectedIndex === -1) selectedIndex = 0;
+                
+                const nextIndex = (selectedIndex + 1) % items.length;
+                items.forEach(i => i.classList.remove('selected'));
+                items[nextIndex].classList.add('selected');
+                items[nextIndex].scrollIntoView({ block: 'nearest' });
+            }
             return;
          }
          
          if (e.key === 'ArrowUp') {
             e.preventDefault();
-            const prevIndex = (selectedIndex - 1 + items.length) % items.length;
-            items.forEach(i => i.classList.remove('selected'));
-            items[prevIndex].classList.add('selected');
-            items[prevIndex].scrollIntoView({ block: 'nearest' });
+            if (e.shiftKey) {
+                // Selección múltiple hacia arriba
+                let firstIdx = items.length;
+                items.forEach((it, idx) => {
+                    if (it.classList.contains('selected') && idx < firstIdx) firstIdx = idx;
+                });
+                
+                if (firstIdx > 0) {
+                    const prev = items[firstIdx - 1];
+                    prev.classList.add('selected');
+                    prev.scrollIntoView({ block: 'nearest' });
+                }
+            } else {
+                // Navegación simple
+                let selectedIndex = items.findIndex(item => item.classList.contains('selected'));
+                if (selectedIndex === -1) selectedIndex = 0;
+                
+                const prevIndex = (selectedIndex - 1 + items.length) % items.length;
+                items.forEach(i => i.classList.remove('selected'));
+                items[prevIndex].classList.add('selected');
+                items[prevIndex].scrollIntoView({ block: 'nearest' });
+            }
             return;
          }
 
          if (e.key === 'Enter') {
             e.preventDefault();
-            if (selectedIndex >= 0) {
-               items[selectedIndex].click(); // Usa la lógica de click que llama a seleccionarProducto
-               return;
+            const selectedItems = dropdown.querySelectorAll('.producto-item.selected');
+            if (selectedItems.length > 0) {
+                if (selectedItems.length === 1) {
+                     // Click simple
+                     selectedItems[0].click();
+                } else {
+                     // Múltiples
+                     const selectedProducts = [];
+                     selectedItems.forEach(item => {
+                         const idx = parseInt(item.dataset.index);
+                         if (currentSuggestedProducts[idx]) {
+                             selectedProducts.push(currentSuggestedProducts[idx]);
+                         }
+                     });
+                     seleccionarProductosMultiples(selectedProducts, celdaProductoActiva);
+                }
+                return;
             }
          }
          
