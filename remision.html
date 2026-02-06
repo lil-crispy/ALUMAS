@@ -643,29 +643,59 @@
     function seleccionarProductosMultiples(listaProductos, celdaInicial) {
        if (!listaProductos || listaProductos.length === 0) return;
        
-       // 1. Primer producto en la celda actual
-       seleccionarProducto(listaProductos[0], celdaInicial);
+       let celdaDestino = celdaInicial;
        
-       // 2. Resto de productos
-       for (let i = 1; i < listaProductos.length; i++) {
+       for (let i = 0; i < listaProductos.length; i++) {
            const prod = listaProductos[i];
            
-           // Buscar última fila o agregar nueva si está llena
-           let filas = tabla.querySelectorAll('tr');
-           let lastFila = filas[filas.length - 1];
-           let descCell = lastFila.querySelector('td:nth-child(2)');
+           // Intentar usar la celda destino
+           seleccionarProducto(prod, celdaDestino);
            
-           // Si la celda de descripción tiene texto o ID, necesitamos nueva fila
-           if (descCell && (descCell.textContent.trim() !== '' || descCell.dataset.id)) {
-               agregarFila();
-               filas = tabla.querySelectorAll('tr');
-               lastFila = filas[filas.length - 1];
-               descCell = lastFila.querySelector('td:nth-child(2)');
-           }
+           // Verificar si efectivamente se llenó esta celda (o si se unificó en otra parte)
+           // Si se unificó, celdaDestino estará vacía (porque seleccionarProducto la limpia si unifica)
+           // O mantendrá su valor anterior si falló algo.
+           // Pero seleccionarProducto pone el nombre si inserta.
+           const seInsertoAqui = (celdaDestino.textContent === prod.nombre);
            
-           if (descCell) {
-               seleccionarProducto(prod, descCell);
+           if (seInsertoAqui) {
+               // Si se ocupó esta celda, avanzamos a la siguiente fila para el próximo producto
+               if (i < listaProductos.length - 1) {
+                   let filaActual = celdaDestino.parentElement;
+                   let filaSiguiente = filaActual.nextElementSibling;
+                   
+                   // Si no hay siguiente fila, crearla
+                   if (!filaSiguiente) {
+                       agregarFila();
+                       filaSiguiente = filaActual.nextElementSibling;
+                   }
+                   
+                   // Verificar si la siguiente fila está ocupada
+                   let descSig = filaSiguiente.querySelector('td:nth-child(2)');
+                   if (descSig.textContent.trim() !== '' || descSig.dataset.id) {
+                       // Si está ocupada, insertar una nueva fila en medio para no sobrescribir
+                       const nuevaFila = document.createElement('tr');
+                       nuevaFila.innerHTML = `
+                        <td class="cant"></td>
+                        <td></td>
+                        <td class="valor-u"></td>
+                        <td class="valor-t"></td>
+                       `;
+                       filaActual.after(nuevaFila);
+                       filaSiguiente = nuevaFila;
+                   }
+                   
+                   celdaDestino = filaSiguiente.querySelector('td:nth-child(2)');
+               }
+           } else {
+               // Si NO se insertó aquí (se unificó arriba), reutilizamos celdaDestino para el siguiente
+               // No hacemos nada, el loop continúa con el siguiente producto usando la misma celdaDestino
            }
+       }
+       
+       // Asegurar foco en la última celda usada o la siguiente disponible
+       if (celdaDestino) {
+           // Si quedó vacía (último unificado), intentar ir a la anterior o dejarlo ahí
+           celdaDestino.focus();
        }
     }
   
