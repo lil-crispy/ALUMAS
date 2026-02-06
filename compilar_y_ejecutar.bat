@@ -2,11 +2,16 @@
 setlocal enabledelayedexpansion
 cd /d %~dp0
 
+echo 🛑 Cerrando procesos anteriores...
+taskkill /F /IM mensajesauto.exe 2>nul
+taskkill /F /IM editor_mensajes.exe 2>nul
+
 echo 🧹 Limpiando compilaciones anteriores...
 if exist build rmdir /s /q build
 if exist dist rmdir /s /q dist
 
 echo 📦 Compilando Bot (mensajesauto.py)...
+REM Usamos --noconsole porque ahora usamos ventanas emergentes
 pyinstaller --onefile --noconsole mensajesauto.py
 if errorlevel 1 (
     echo ❌ Error compilando mensajesauto.py
