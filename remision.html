@@ -2671,24 +2671,13 @@ function abrirPdfPedido(id) {
   const filename = (pedido.consecutivo) ? `${pedido.consecutivo}_${pv}.pdf` : `remision_${pv}.pdf`;
   const rutaWindows = `G:\\Mi unidad\\FERREDISTRIBUCIONES ALUMAS SAS\\bodega\\${filename}`;
 
-  // Los navegadores modernos bloquean 'file:///' por seguridad.
-  // Ofrecemos cargar los datos visualmente (funcionalidad original) o copiar la ruta.
-  const opcion = confirm(
-      `⚠️ SEGURIDAD DEL NAVEGADOR:\n` +
-      `No es posible abrir archivos locales (Disco G:) directamente desde la web.\n\n` +
-      `Archivo: ${filename}\n` +
-      `Ubicación: ${rutaWindows}\n\n` +
-      `[ACEPTAR] -> Cargar los datos del pedido en pantalla (Visualización).\n` +
-      `[CANCELAR] -> Copiar la ruta del archivo para buscarlo manualmente.`
-  );
-
-  if (opcion) {
-      cargarPedidoProgramado(id);
-  } else {
+  // Mensaje directo: Ruta y opción de copiar
+  if (confirm(`Ubicación del archivo:\n${rutaWindows}\n\n¿Desea copiar la ruta al portapapeles?`)) {
       navigator.clipboard.writeText(rutaWindows).then(() => {
-          alert("✅ Ruta copiada al portapapeles.\nAbra el Explorador de Archivos (Win+E) y péguela en la barra de direcciones.");
+          // Opcional: Feedback breve o silencioso
+          // alert("Ruta copiada."); 
       }).catch(err => {
-          prompt("No se pudo copiar automáticamente. Copie la ruta aquí:", rutaWindows);
+          prompt("Copie la ruta manualmente:", rutaWindows);
       });
   }
 }
