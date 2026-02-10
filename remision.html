@@ -169,124 +169,70 @@
     }
 
     /* ---------- FORMATOS DE IMPRESIÓN ---------- */
-
-    /* Para impresión ferretería (80mm) - Por defecto */
-    @page {
-      size: 80mm auto;
-      margin: 0;
-    }
-
-    /* Para impresión bodega (A5) */
-    @page bodega {
-      size: A5 portrait;
-      margin: 1cm;
-    }
-
     @media print {
-      body {
-        width: 100%; /* Ajuste a ancho completo */
-        max-width: 100%;
-        font-size: 10px;
-        padding: 0;
-        margin: 0; /* Eliminar márgenes automáticos que centran */
-        background: white;
+      @page {
+        margin: 0; /* Eliminar márgenes del navegador/impresora */
+        size: auto; /* Adaptarse al papel seleccionado */
       }
 
-      /* Forzar ocultamiento del dashboard para que no ocupe espacio layout */
-      #dashboard-programacion {
+      body {
+        width: 100%;
+        max-width: 100%;
+        min-width: 100%;
+        margin: 0;
+        padding: 0;
+        background: white;
+        font-size: 11px; /* Ajuste para legibilidad */
+      }
+
+      /* Ocultar TODO lo que no sea la factura */
+      #dashboard-programacion,
+      .modal-programacion,
+      .boton-imprimir,
+      .acciones-tabla,
+      .acciones-tabla button,
+      .punto-venta-container,
+      .report-toggle,
+      .report-panel,
+      #user-bar,
+      #conn-status,
+      #login-overlay,
+      .panel-sugerencias {
          display: none !important;
-         width: 0 !important;
-         height: 0 !important;
-         position: absolute !important;
-         left: -9999px !important;
       }
 
       .contenedor-principal {
         width: 100%;
         max-width: 100%;
-        padding: 0;
-        margin: 0; /* Eliminar margen izquierdo */
-        text-align: left;
+        margin: 0;
+        padding: 2mm; /* Pequeño margen interno de seguridad */
+        box-sizing: border-box;
       }
 
-      .encabezado .titulo {
-        font-size: 1.2em;
-        text-align: center;
-      }
-
-      .encabezado .subtitulo {
-        font-size: 1em;
-        text-align: center;
-      }
-
-      .punto-venta-container,
-      .acciones-tabla,
-      .acciones-tabla button,
-      #dashboard-programacion,
-      .modal-programacion {
-        display: none !important;
-      }
-
-      /* Ocultar controles solo al imprimir */
-      .boton-imprimir {
-        display: none !important;
-      }
-
-      .contenedor-tabla {
-        width: 100%;
-        overflow: visible;
-      }
-
+      .encabezado .titulo { font-size: 1.4em; }
+      .encabezado .subtitulo { font-size: 1.2em; }
+      
       table {
-        width: 96%;
-        table-layout: fixed;
-        font-size: 9px;
+        width: 100%;
         border-collapse: collapse;
-        margin: 0 auto;
-        page-break-inside: auto;
       }
-
-      thead { display: table-header-group; }
-      tfoot { display: table-footer-group; }
-
-      tr { page-break-inside: avoid; page-break-after: auto; }
+      
       th, td {
-        padding: 2px 3px;
-        font-size: 9px;
-        word-break: break-word;
+        padding: 2px;
+        font-size: 10px;
         border: 1px solid #000;
       }
 
-      td[contenteditable="true"] {
-        direction: ltr;
-        text-align: left;
-      }
-
-      .col-cant {
-        width: 10%;
-      }
-
-      .col-desc {
-        width: 45%;
-      }
-
-      .col-valor {
-        width: 10%;
-      }
-
       .logo-grande {
-        width: 60%;
-        max-width: 60%;
-        height: auto;
-        display: block;
+        width: 50%;
         margin: 10px auto;
       }
 
       .total {
-        font-size: 2em;
-        text-align: center;
+        font-size: 1.5em;
         margin-top: 10px;
       }
+    }
 
       /* ---------- Estilos específicos para formato bodega ---------- */
       /* Cuando se imprime en modo bodega, ocultamos todo y mostramos solo el template PDF */
