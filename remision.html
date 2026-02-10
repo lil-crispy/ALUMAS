@@ -340,6 +340,174 @@
       background-color: #e0f7fa !important;
       outline: 2px solid #00acc1;
     }
+
+    /* --- ESTILOS DASHBOARD PROGRAMACIÓN --- */
+    #dashboard-programacion {
+      position: fixed;
+      right: 0;
+      top: 0;
+      width: 250px;
+      height: 100%;
+      background: #f8f9fa;
+      border-left: 2px solid #ddd;
+      box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+      padding: 10px;
+      overflow-y: auto;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
+    }
+
+    #dashboard-programacion h3 {
+      font-family: 'Bauhaus', sans-serif;
+      font-size: 1.2em;
+      text-align: center;
+      margin-bottom: 10px;
+      border-bottom: 2px solid #00acc1;
+      padding-bottom: 5px;
+      margin-top: 0;
+    }
+
+    .pedido-item {
+      background: white;
+      border: 1px solid #ddd;
+      padding: 10px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all 0.2s;
+      font-size: 0.9em;
+    }
+
+    .pedido-item:hover {
+      background: #e0f7fa;
+      transform: translateX(-2px);
+    }
+
+    .pedido-item.selected {
+      border-color: #00acc1;
+      background: #b2ebf2;
+      box-shadow: 0 0 5px rgba(0,172,193,0.5);
+    }
+
+    .pedido-info {
+      margin-bottom: 3px;
+    }
+    
+    .pedido-status {
+      font-weight: bold;
+      color: #00acc1;
+      font-size: 0.8em;
+      text-transform: uppercase;
+    }
+
+    .btn-despachado {
+      background: #4caf50;
+      color: white;
+      border: none;
+      padding: 10px;
+      width: 100%;
+      cursor: pointer;
+      margin-top: auto;
+      font-weight: bold;
+      border-radius: 4px;
+      font-family: 'Bauhaus', sans-serif;
+      font-size: 1.1em;
+    }
+
+    .btn-despachado:hover {
+      background: #45a049;
+    }
+
+    /* Modal Programación */
+    .modal-programacion {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 2000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      width: 300px;
+      text-align: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+      text-align: left;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 8px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    .btn-guardar-prog {
+      background: #00acc1;
+      color: white;
+      border: none;
+      padding: 8px 20px;
+      cursor: pointer;
+      font-size: 1em;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+    
+    .btn-guardar-prog:hover { background: #00838f; }
+
+    .btn-cancelar-prog {
+      background: #ccc;
+      border: none;
+      padding: 8px 15px;
+      cursor: pointer;
+      margin-left: 10px;
+      border-radius: 4px;
+    }
+    
+    .btn-cancelar-prog:hover { background: #bbb; }
+
+    /* Botones nuevos */
+    .btn-aux {
+      background-color: #607d8b;
+      color: white;
+    }
+    .btn-aux:hover { background-color: #546e7a; }
+    
+    .btn-programar {
+      background-color: #ff9800;
+      color: white;
+    }
+    .btn-programar:hover { background-color: #f57c00; }
+
+    /* Estilos generales de botones (si no existen) */
+    .btn {
+        padding: 8px 15px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+        margin: 0 5px;
+    }
   </style>
   <link rel="stylesheet" href="./css/remision.css?v=20251209">
 
@@ -612,6 +780,8 @@
       <button class="btn btn-cotizar" onclick="imprimirCotizacion()">Cotizar</button>
       <button class="btn btn-vender" onclick="imprimirVenta()">Vender</button>
       <button class="btn btn-pdf" onclick="descargarPDF()">Descargar PDF</button>
+      <button class="btn btn-aux" onclick="descargarPDF(true)">⚡ PDF Rápido</button>
+      <button class="btn btn-programar" onclick="abrirModalProgramacion()">📅 Programar</button>
     </div>
     <div id="report-panel" class="report-panel">
       <div class="report-header">
@@ -1012,7 +1182,7 @@
       if (elTotal) elTotal.innerText = totalTxt;
     }
 
-    async function descargarPDF() {
+    async function descargarPDF(silent = false) {
       // 1. Preparar datos en la plantilla oculta
       prepararDatosPDF();
       const template = document.getElementById('pdf-template');
@@ -1044,7 +1214,9 @@
         // Descarga directa local (El navegador gestionará la ubicación)
         // Por seguridad, los navegadores no permiten forzar la ruta G:\...
         // El usuario debe configurar su navegador o elegir la ruta al guardar.
-        alert(`⚠️ Para guardar en la unidad G:, selecciona esa carpeta cuando aparezca la ventana de guardar.\n\nArchivo: ${nombre}`);
+        if (!silent) {
+            alert(`⚠️ Para guardar en la unidad G:, selecciona esa carpeta cuando aparezca la ventana de guardar.\n\nArchivo: ${nombre}`);
+        }
         pdf.save(nombre);
         
       } catch (e) {
@@ -2317,5 +2489,243 @@ actualizarFechaHora();
 
 
   </script>
-  </body>
+    <!-- Dashboard Programación -->
+  <div id="dashboard-programacion">
+    <h3>Pedidos Programados</h3>
+    <div id="lista-pedidos"></div>
+    <button class="btn-despachado" onclick="despacharPedido()">DESPACHADO</button>
+  </div>
+
+  <!-- Modal Programación -->
+  <div id="modal-programacion" class="modal-programacion">
+    <div class="modal-content">
+      <h3>Programar Entrega</h3>
+      <div class="form-group">
+        <label>Fecha:</label>
+        <input type="date" id="prog-fecha">
+      </div>
+      <div class="form-group">
+        <label>Hora:</label>
+        <input type="time" id="prog-hora">
+      </div>
+      <div style="text-align: center; margin-top: 20px;">
+          <button class="btn-guardar-prog" onclick="guardarProgramacion()">Guardar</button>
+          <button class="btn-cancelar-prog" onclick="cerrarModalProgramacion()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+// --- LÓGICA DE PROGRAMACIÓN DE PEDIDOS ---
+
+let pedidoSeleccionadoId = null;
+
+function initDashboard() {
+  renderDashboard();
+}
+
+function getPedidosProgramados() {
+  const pedidos = localStorage.getItem('PEDIDOS_PROGRAMADOS');
+  return pedidos ? JSON.parse(pedidos) : [];
+}
+
+function savePedidosProgramados(pedidos) {
+  localStorage.setItem('PEDIDOS_PROGRAMADOS', JSON.stringify(pedidos));
+  renderDashboard();
+}
+
+function renderDashboard() {
+  const lista = document.getElementById('lista-pedidos');
+  if (!lista) return;
+  
+  const pedidos = getPedidosProgramados();
+  // Ordenar por fecha/hora
+  pedidos.sort((a, b) => {
+    return new Date(a.fecha + ' ' + a.hora) - new Date(b.fecha + ' ' + b.hora);
+  });
+
+  lista.innerHTML = '';
+  
+  if (pedidos.length === 0) {
+    lista.innerHTML = '<div style="text-align:center; color:#777; padding:10px;">No hay pedidos programados</div>';
+    return;
+  }
+
+  pedidos.forEach(p => {
+    const item = document.createElement('div');
+    item.className = 'pedido-item';
+    if (pedidoSeleccionadoId === p.id) item.classList.add('selected');
+    
+    // Formato fecha amigable
+    const dateObj = new Date(p.fecha + 'T' + p.hora);
+    const fechaStr = dateObj.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' });
+    const horaStr = dateObj.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+
+    item.innerHTML = `
+      <div class="pedido-info"><strong>${p.consecutivo ? 'REM ' + p.consecutivo : 'ID: ' + p.id.substr(0,4)}</strong></div>
+      <div class="pedido-info">${p.cliente_nombre || 'Cliente General'}</div>
+      <div class="pedido-info" style="color:#555;">📅 ${fechaStr} ⏰ ${horaStr}</div>
+      <div class="pedido-status">${p.estado}</div>
+    `;
+    
+    item.onclick = () => selectPedidoDashboard(p.id, item);
+    item.ondblclick = () => cargarPedidoProgramado(p.id);
+    
+    lista.appendChild(item);
+  });
+}
+
+function selectPedidoDashboard(id, elem) {
+  pedidoSeleccionadoId = id;
+  document.querySelectorAll('.pedido-item').forEach(el => el.classList.remove('selected'));
+  elem.classList.add('selected');
+}
+
+function abrirModalProgramacion() {
+  document.getElementById('modal-programacion').style.display = 'flex';
+  const now = new Date();
+  document.getElementById('prog-fecha').valueAsDate = now;
+}
+
+function cerrarModalProgramacion() {
+  document.getElementById('modal-programacion').style.display = 'none';
+}
+
+function guardarProgramacion() {
+  const fecha = document.getElementById('prog-fecha').value;
+  const hora = document.getElementById('prog-hora').value;
+  
+  if (!fecha || !hora) {
+    alert("Por favor seleccione fecha y hora");
+    return;
+  }
+
+  // Validación de disponibilidad
+  const pedidos = getPedidosProgramados();
+  const ocupado = pedidos.some(p => p.fecha === fecha && p.hora === hora);
+  
+  if (ocupado) {
+    alert("⚠️ Esa fecha y hora ya están ocupadas por otro pedido. Por favor seleccione otro horario.");
+    return;
+  }
+
+  // Recopilar datos del pedido actual
+  const items = obtenerItemsBD(); 
+  if (items.length === 0) {
+    alert("No hay productos en la tabla para programar.");
+    return;
+  }
+  
+  const clienteNombre = document.getElementById('nombre-cliente').value;
+  const consecutivo = document.getElementById('numero-consecutivo').innerText;
+  
+  const nuevoPedido = {
+    id: Date.now().toString(),
+    consecutivo: (consecutivo !== '----') ? consecutivo : null,
+    cliente_nombre: clienteNombre,
+    cliente_data: clienteSeleccionado,
+    items: items,
+    total: obtenerTotalNumerico(),
+    fecha: fecha,
+    hora: hora,
+    estado: 'PROGRAMADO',
+    transporte: {
+       activo: document.getElementById('activar-transporte').checked,
+       nombre: document.getElementById('trans-nombre').value,
+       direccion: document.getElementById('trans-direccion').value,
+       telefono: document.getElementById('trans-telefono').value,
+       costo: document.getElementById('trans-costo').value
+    },
+    tipo_pago: getTipoPago(),
+    metodo_pago: getSelectedMetodoPago()
+  };
+  
+  pedidos.push(nuevoPedido);
+  savePedidosProgramados(pedidos);
+  
+  alert("Pedido programado correctamente.");
+  cerrarModalProgramacion();
+}
+
+function cargarPedidoProgramado(id) {
+  const pedidos = getPedidosProgramados();
+  const pedido = pedidos.find(p => p.id === id);
+  
+  if (!pedido) return;
+  
+  if (!confirm("⚠️ Cargar este pedido reemplazará lo que tenga en pantalla. ¿Desea continuar?")) {
+    return;
+  }
+  
+  limpiarTabla();
+  
+  // Restaurar Cliente
+  const inputCliente = document.getElementById('nombre-cliente');
+  inputCliente.value = pedido.cliente_nombre || '';
+  clienteSeleccionado = pedido.cliente_data;
+  if (clienteSeleccionado && clienteSeleccionado.id) {
+     localStorage.setItem('CLIENTE_ID', String(clienteSeleccionado.id));
+  }
+  
+  // Restaurar Consecutivo
+  if (pedido.consecutivo) {
+      document.getElementById('numero-consecutivo').innerText = pedido.consecutivo;
+      lastConsecutivo = pedido.consecutivo;
+  }
+  
+  // Restaurar Items
+  const tbody = document.getElementById('tabla-productos');
+  tbody.innerHTML = ''; 
+  
+  pedido.items.forEach(item => {
+     const tr = document.createElement('tr');
+     tr.innerHTML = `
+        <td class="cant" contenteditable="true">${item.cantidad}</td>
+        <td contenteditable="true" data-id="${item.id_producto || ''}">${item.descripcion}</td>
+        <td class="valor-u" contenteditable="true">${formatearPesos(item.valor_unitario)}</td>
+        <td class="valor-t">${formatearPesos(item.valor_total)}</td>
+     `;
+     tbody.appendChild(tr);
+  });
+  
+  while (tbody.children.length < 7) {
+     agregarFila();
+  }
+  
+  // Restaurar Transporte
+  if (pedido.transporte && pedido.transporte.activo) {
+      document.getElementById('activar-transporte').checked = true;
+      toggleTransporte();
+      document.getElementById('trans-nombre').value = pedido.transporte.nombre || '';
+      document.getElementById('trans-direccion').value = pedido.transporte.direccion || '';
+      document.getElementById('trans-telefono').value = pedido.transporte.telefono || '';
+      document.getElementById('trans-costo').value = pedido.transporte.costo || '';
+  } else {
+      document.getElementById('activar-transporte').checked = false;
+      toggleTransporte();
+  }
+  
+  actualizarTotales();
+  // alert("Pedido cargado: " + (pedido.cliente_nombre || 'Sin nombre'));
+}
+
+function despacharPedido() {
+  if (!pedidoSeleccionadoId) {
+    alert("Seleccione un pedido del tablero para despachar.");
+    return;
+  }
+  
+  if (!confirm("¿Marcar pedido como DESPACHADO? Se eliminará del tablero.")) return;
+  
+  let pedidos = getPedidosProgramados();
+  pedidos = pedidos.filter(p => p.id !== pedidoSeleccionadoId);
+  savePedidosProgramados(pedidos);
+  pedidoSeleccionadoId = null;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    initDashboard();
+});
+</script>
+</body>
 </html>
