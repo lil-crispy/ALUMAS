@@ -2667,17 +2667,30 @@ function abrirPdfPedido(id) {
   const pedido = pedidos.find(p => p.id === id);
   if (!pedido) return;
 
-  if (!pedido.consecutivo) {
-      alert("Este pedido no tiene consecutivo, no se puede buscar el PDF.");
-      return;
-  }
-
   const pv = pedido.punto_venta || 'ferreteria'; 
-  const filename = `${pedido.consecutivo}_${pv}.pdf`;
-  const path = `G:/Mi unidad/FERREDISTRIBUCIONES ALUMAS SAS/bodega/${filename}`;
-  
-  // Intentar abrir en nueva pestaña (Navegadores modernos pueden bloquear file:///)
-  window.open('file:///' + path, '_blank');
+  const filename = (pedido.consecutivo) ? `${pedido.consecutivo}_${pv}.pdf` : `remision_${pv}.pdf`;
+  const rutaWindows = `G:\\Mi unidad\\FERREDISTRIBUCIONES ALUMAS SAS\\bodega\\${filename}`;
+
+  // Los navegadores modernos bloquean 'file:///' por seguridad.
+  // Ofrecemos cargar los datos visualmente (funcionalidad original) o copiar la ruta.
+  const opcion = confirm(
+      `⚠️ SEGURIDAD DEL NAVEGADOR:\n` +
+      `No es posible abrir archivos locales (Disco G:) directamente desde la web.\n\n` +
+      `Archivo: ${filename}\n` +
+      `Ubicación: ${rutaWindows}\n\n` +
+      `[ACEPTAR] -> Cargar los datos del pedido en pantalla (Visualización).\n` +
+      `[CANCELAR] -> Copiar la ruta del archivo para buscarlo manualmente.`
+  );
+
+  if (opcion) {
+      cargarPedidoProgramado(id);
+  } else {
+      navigator.clipboard.writeText(rutaWindows).then(() => {
+          alert("✅ Ruta copiada al portapapeles.\nAbra el Explorador de Archivos (Win+E) y péguela en la barra de direcciones.");
+      }).catch(err => {
+          prompt("No se pudo copiar automáticamente. Copie la ruta aquí:", rutaWindows);
+      });
+  }
 }
 
 function cargarPedidoProgramado(id) {
