@@ -2569,7 +2569,7 @@ function renderDashboard() {
     `;
     
     item.onclick = () => selectPedidoDashboard(p.id, item);
-    item.ondblclick = () => cargarPedidoProgramado(p.id);
+    item.ondblclick = () => abrirPdfPedido(p.id);
     
     lista.appendChild(item);
   });
@@ -2651,7 +2651,8 @@ function guardarProgramacion() {
        costo: document.getElementById('trans-costo').value
     },
     tipo_pago: getTipoPago(),
-    metodo_pago: getSelectedMetodoPago()
+    metodo_pago: getSelectedMetodoPago(),
+    punto_venta: getPuntoVenta()
   };
   
   pedidos.push(nuevoPedido);
@@ -2659,6 +2660,24 @@ function guardarProgramacion() {
   
   alert("Pedido programado correctamente.");
   cerrarModalProgramacion();
+}
+
+function abrirPdfPedido(id) {
+  const pedidos = getPedidosProgramados();
+  const pedido = pedidos.find(p => p.id === id);
+  if (!pedido) return;
+
+  if (!pedido.consecutivo) {
+      alert("Este pedido no tiene consecutivo, no se puede buscar el PDF.");
+      return;
+  }
+
+  const pv = pedido.punto_venta || 'ferreteria'; 
+  const filename = `${pedido.consecutivo}_${pv}.pdf`;
+  const path = `G:/Mi unidad/FERREDISTRIBUCIONES ALUMAS SAS/bodega/${filename}`;
+  
+  // Intentar abrir en nueva pestaña (Navegadores modernos pueden bloquear file:///)
+  window.open('file:///' + path, '_blank');
 }
 
 function cargarPedidoProgramado(id) {
