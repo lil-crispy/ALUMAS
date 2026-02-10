@@ -2581,11 +2581,18 @@ function selectPedidoDashboard(id, elem) {
   elem.classList.add('selected');
 }
 
-function abrirModalProgramacion() {
-  document.getElementById('modal-programacion').style.display = 'flex';
-  const now = new Date();
-  document.getElementById('prog-fecha').valueAsDate = now;
-}
+async function abrirModalProgramacion() {
+   // Descargar PDF automáticamente antes de abrir el modal
+   try {
+     await descargarPDF(true); // true = modo silencioso
+   } catch (error) {
+     console.error("Error generando PDF automático:", error);
+   }
+
+   document.getElementById('modal-programacion').style.display = 'flex';
+   const now = new Date();
+   document.getElementById('prog-fecha').valueAsDate = now;
+ }
 
 function cerrarModalProgramacion() {
   document.getElementById('modal-programacion').style.display = 'none';
