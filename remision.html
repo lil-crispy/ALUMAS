@@ -212,7 +212,9 @@
 
       .punto-venta-container,
       .acciones-tabla,
-      .acciones-tabla button {
+      .acciones-tabla button,
+      #dashboard-programacion,
+      .modal-programacion {
         display: none !important;
       }
 
@@ -2505,8 +2507,20 @@ actualizarFechaHora();
         <input type="date" id="prog-fecha">
       </div>
       <div class="form-group">
-        <label>Hora:</label>
-        <input type="time" id="prog-hora">
+        <label>Hora (8am - 6pm):</label>
+        <select id="prog-hora" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+            <option value="08:00">08:00 AM</option>
+            <option value="09:00">09:00 AM</option>
+            <option value="10:00">10:00 AM</option>
+            <option value="11:00">11:00 AM</option>
+            <option value="12:00">12:00 PM</option>
+            <option value="13:00">01:00 PM</option>
+            <option value="14:00">02:00 PM</option>
+            <option value="15:00">03:00 PM</option>
+            <option value="16:00">04:00 PM</option>
+            <option value="17:00">05:00 PM</option>
+            <option value="18:00">06:00 PM</option>
+        </select>
       </div>
       <div style="text-align: center; margin-top: 20px;">
           <button class="btn-guardar-prog" onclick="guardarProgramacion()">Guardar</button>
@@ -2559,12 +2573,21 @@ function renderDashboard() {
     // Formato fecha amigable
     const dateObj = new Date(p.fecha + 'T' + p.hora);
     const fechaStr = dateObj.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' });
-    const horaStr = dateObj.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+    
+    // Formato hora AM/PM simple
+    let horaShow = p.hora;
+    try {
+        const [hh, mm] = p.hora.split(':');
+        const hVal = parseInt(hh);
+        const ampm = hVal >= 12 ? 'PM' : 'AM';
+        const h12 = hVal % 12 || 12;
+        horaShow = `${h12} ${ampm}`;
+    } catch(e) {}
 
     item.innerHTML = `
       <div class="pedido-info"><strong>${p.consecutivo ? 'REM ' + p.consecutivo : 'ID: ' + p.id.substr(0,4)}</strong></div>
       <div class="pedido-info">${p.cliente_nombre || 'Cliente General'}</div>
-      <div class="pedido-info" style="color:#555;">📅 ${fechaStr} ⏰ ${horaStr}</div>
+      <div class="pedido-info" style="color:#555;">📅 ${fechaStr} ⏰ ${horaShow}</div>
       <div class="pedido-status">${p.estado}</div>
     `;
     
@@ -2621,6 +2644,18 @@ function guardarProgramacion() {
   if (ocupado) {
     alert("⚠️ Esa fecha y hora ya están ocupadas por otro pedido. Por favor seleccione otro horario.");
     return;
+  }
+
+  // Validación: Solo horas en punto (Aunque el select lo fuerza, doble check por seguridad)
+  const [h, m] = hora.split(':');
+  if (m !== '00') {
+      alert("Solo se permiten horas en punto (Ej: 8:00, 9:00).");
+      return;
+  }
+  const hNum = parseInt(h);
+  if (hNum < 8 || hNum > 18) {
+      alert("El horario permitido es de 8:00 AM a 6:00 PM.");
+      return;
   }
 
   // Recopilar datos del pedido actual
