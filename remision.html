@@ -780,7 +780,7 @@
       <button class="btn btn-cotizar" onclick="imprimirCotizacion()">Cotizar</button>
       <button class="btn btn-vender" onclick="imprimirVenta()">Vender</button>
       <button class="btn btn-pdf" onclick="descargarPDF()">Descargar PDF</button>
-      <button class="btn btn-aux" onclick="descargarPDF(true)">⚡ PDF Rápido</button>
+      <!-- <button class="btn btn-aux" onclick="descargarPDF(true)">⚡ PDF Rápido</button> -->
       <button class="btn btn-programar" onclick="abrirModalProgramacion()">📅 Programar</button>
     </div>
     <div id="report-panel" class="report-panel">
@@ -2597,6 +2597,13 @@ function guardarProgramacion() {
   
   if (!fecha || !hora) {
     alert("Por favor seleccione fecha y hora");
+    return;
+  }
+
+  // Validación de transporte obligatorio
+  const transporteActivo = document.getElementById('activar-transporte').checked;
+  if (!transporteActivo) {
+    alert("⚠️ Es OBLIGATORIO habilitar la opción 'Añadir transporte' para programar un pedido.");
     return;
   }
 
