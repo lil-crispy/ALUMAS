@@ -254,6 +254,7 @@
         display: none !important;
       }
 
+      /* El ocultamiento debe ocurrir SOLO durante la impresión */
       body.formato-bodega .contenedor-principal {
         display: none !important;
       }
@@ -2325,12 +2326,9 @@
       const body = document.body;
       const contenido = document.getElementById('contenido-factura');
       
-      if (valor === 'bodega') {
-        body.classList.add('formato-bodega');
-        // NO agregamos al contenido para evitar deformación de tabla
-      } else {
-        body.classList.remove('formato-bodega');
-      }
+      // Eliminamos la clase 'formato-bodega' para evitar que oculte contenido en pantalla
+      // La clase se activará dinámicamente SOLO al momento de imprimir
+      body.classList.remove('formato-bodega');
     }
     
     function getTipoPago() {
@@ -2816,5 +2814,24 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(fetchPedidosProgramados, 30000);
 });
 </script>
+  <script>
+      window.addEventListener('beforeprint', () => {
+        if (getPuntoVenta() === 'bodega') {
+           document.body.classList.add('formato-bodega');
+           prepararDatosPDF(); // Asegurar datos actualizados
+           
+           // Clonar template
+           const template = document.getElementById('pdf-template');
+           const container = document.getElementById('print-bodega-container');
+           if (template && container) {
+               container.innerHTML = template.innerHTML;
+           }
+        }
+      });
+
+      window.addEventListener('afterprint', () => {
+         document.body.classList.remove('formato-bodega');
+      });
+  </script>
 </body>
 </html>
