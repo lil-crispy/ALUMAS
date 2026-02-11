@@ -254,25 +254,28 @@
         display: none !important;
       }
 
-      body.formato-bodega #pdf-template {
+      body.formato-bodega .contenedor-principal {
+        display: none !important;
+      }
+
+      body.formato-bodega #print-bodega-container {
         display: block !important;
-        position: static !important;
-        width: 100% !important; /* Ajustar al ancho del papel (A5) */
-        margin: 0 auto !important;
+        width: 100% !important;
+        height: auto !important;
+        margin: 0 !important;
         padding: 0 !important;
-        box-sizing: border-box !important;
-        z-index: 9999 !important;
-        /* El template original es 21cm, si el papel es A5 (14.8cm), debemos escalar o dejar que fluya.
-           Como el template tiene anchos fijos en px (220px, etc), con 100% width debería ajustarse 
-           siempre y cuando no exceda.
-           Si se ve muy grande, se puede usar zoom o transform.
-        */
-        zoom: 0.7; /* Escalado aproximado para que 21cm quepan en A5 (14.8cm) */
       }
       
-      /* Asegurar que la tabla interna del template se vea bien */
-      body.formato-bodega #pdf-template table {
-         width: 100% !important;
+      /* Ajustes internos para que el template clonado se vea bien impreso */
+      body.formato-bodega #print-bodega-container > div {
+          display: block !important;
+          position: static !important;
+          width: 100% !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          box-shadow: none !important;
+          background: white !important;
+          zoom: 0.75; /* Ajuste de escala para A5 */
       }
     }
 
@@ -567,6 +570,9 @@
         <div style="border-top: 1px solid #000; width: 250px; margin: 0 auto; padding-top: 5px; font-size: 11px;">Firma/Sello de Recibido</div>
     </div>
   </div>
+  
+  <!-- Contenedor clonado para impresión Bodega (se llenará dinámicamente al imprimir) -->
+  <div id="print-bodega-container" style="display:none;"></div>
 
   <script>
     window.jsPDF = window.jspdf.jsPDF;
@@ -1162,6 +1168,14 @@
       const totalTxt = document.getElementById('total-general').innerText;
       const elTotal = document.getElementById('pdf-total');
       if (elTotal) elTotal.innerText = totalTxt;
+
+      // 3. Preparar contenedor para impresión si es Bodega
+      // Clonamos el template HTML del PDF y lo inyectamos en un div visible solo para impresión
+      const template = document.getElementById('pdf-template');
+      const container = document.getElementById('print-bodega-container');
+      if (template && container) {
+          container.innerHTML = template.innerHTML;
+      }
     }
 
     async function descargarPDF(silent = false) {
@@ -2303,22 +2317,20 @@
     }
     
     function actualizarPuntoVenta(valor) {
-      // Función simplificada: ya no cambia clases CSS que afecten el diseño en pantalla.
-      // El valor 'valor' (ferreteria/bodega) se usará internamente para:
-      // 1. Guardar en la BD el origen del pedido.
-      // 2. Determinar el formato de impresión (@media print) si fuera necesario.
-      // 3. Generar el consecutivo correspondiente.
-      
-      // Mantenemos la lógica de clases SOLO si es estrictamente necesario para IMPRESIÓN,
-      // pero el usuario pidió que en PANTALLA se vea igual.
-      // Al quitar las clases 'formato-bodega' del body/contenido, evitamos que el CSS cambie el ancho.
+      // Para impresión correcta en Bodega, necesitamos activar la clase en el BODY
+      // pero el usuario NO quiere ver cambios visuales en PANTALLA.
+      // La solución es usar la clase solo durante la impresión (manejado por @media print)
+      // O asignar la clase 'formato-bodega' y asegurar que el CSS de pantalla la ignore.
       
       const body = document.body;
       const contenido = document.getElementById('contenido-factura');
       
-      // Eliminamos cualquier rastro visual de cambio de formato en pantalla
-      body.classList.remove('formato-bodega');
-      if (contenido) contenido.classList.remove('formato-bodega');
+      if (valor === 'bodega') {
+        body.classList.add('formato-bodega');
+        // NO agregamos al contenido para evitar deformación de tabla
+      } else {
+        body.classList.remove('formato-bodega');
+      }
     }
     
     function getTipoPago() {
