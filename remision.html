@@ -2721,11 +2721,14 @@ async function guardarProgramacion() {
     return;
   }
 
-  // Validación de transporte obligatorio
-  const transporteActivo = document.getElementById('activar-transporte').checked;
-  if (!transporteActivo) {
-    alert("⚠️ Es OBLIGATORIO habilitar la opción 'Añadir transporte' para programar un pedido.");
-    return;
+  // Validación de transporte obligatorio (SOLO SI ES NUEVO PEDIDO)
+  // En reprogramación, asumimos que ya tiene transporte o datos previos
+  if (!modoReprogramacion) {
+      const transporteActivo = document.getElementById('activar-transporte').checked;
+      if (!transporteActivo) {
+        alert("⚠️ Es OBLIGATORIO habilitar la opción 'Añadir transporte' para programar un pedido.");
+        return;
+      }
   }
 
   // Validación de disponibilidad
