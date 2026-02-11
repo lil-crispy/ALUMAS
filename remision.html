@@ -529,8 +529,8 @@
     <div style="font-size: 11px; margin-bottom: 15px; line-height: 1.5;">
         <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
             <div id="pdf-info-fecha" style="font-weight: bold;">FECHA: --</div>
-            <div style="display: flex; align-items: center;">
-                <strong style="margin-right: 5px;">CLIENTE:</strong>
+            <div style="display: flex; align-items: flex-start;">
+                <strong style="margin-right: 5px; margin-top: 2px;">CLIENTE:</strong>
                 <div id="pdf-info-cliente" style="border: 1px solid #ccc; padding: 2px 5px; width: 280px; background: #fff; min-height: 16px;"></div>
             </div>
         </div>
@@ -1090,7 +1090,32 @@
       // Cliente
       const clienteVal = document.getElementById('nombre-cliente').value || '';
       const elInfoCliente = document.getElementById('pdf-info-cliente');
-      if (elInfoCliente) elInfoCliente.textContent = clienteVal;
+      if (elInfoCliente) {
+          elInfoCliente.innerHTML = `<div style="font-weight:bold; font-size:1.1em; margin-bottom:2px;">${clienteVal}</div>`;
+          
+          // Lógica de datos extra: Prioridad Transporte > Base de Datos
+          let extraInfo = '';
+          const transporteActivo = document.getElementById('activar-transporte')?.checked;
+          
+          if (transporteActivo) {
+             const dir = document.getElementById('trans-direccion')?.value || '';
+             const tel = document.getElementById('trans-telefono')?.value || '';
+             if (dir || tel) {
+                extraInfo = `<div style="font-size:0.85em; color:#333;">${dir} ${tel ? ' · ' + tel : ''}</div>`;
+             }
+          } else if (clienteSeleccionado) {
+             // Si no hay transporte manual, usar datos de cliente seleccionado en BD
+             const dir = clienteSeleccionado.direccion || '';
+             const tel = clienteSeleccionado.telefono || '';
+             if (dir || tel) {
+                extraInfo = `<div style="font-size:0.85em; color:#333;">${dir} ${tel ? ' · ' + tel : ''}</div>`;
+             }
+          }
+          
+          if (extraInfo) {
+             elInfoCliente.innerHTML += extraInfo;
+          }
+      }
       
       // Tabla
       if (tbody) {
