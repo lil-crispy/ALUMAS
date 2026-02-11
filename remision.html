@@ -375,11 +375,37 @@
       border-radius: 4px;
       font-family: 'Bauhaus', sans-serif;
       font-size: 1.1em;
+      margin-bottom: 5px;
     }
 
     .btn-despachado:hover {
       background: #45a049;
     }
+    
+    .btn-reprogramar {
+      background: #ff9800;
+      color: white;
+      border: none;
+      padding: 8px;
+      width: 100%;
+      cursor: pointer;
+      font-weight: bold;
+      border-radius: 4px;
+      margin-bottom: 5px;
+    }
+    .btn-reprogramar:hover { background: #f57c00; }
+    
+    .btn-cancelar-pedido {
+      background: #f44336;
+      color: white;
+      border: none;
+      padding: 8px;
+      width: 100%;
+      cursor: pointer;
+      font-weight: bold;
+      border-radius: 4px;
+    }
+    .btn-cancelar-pedido:hover { background: #d32f2f; }
 
     /* Modal Programación */
     .modal-programacion {
@@ -2492,7 +2518,11 @@ actualizarFechaHora();
   <div id="dashboard-programacion">
     <h3>Pedidos Programados</h3>
     <div id="lista-pedidos"></div>
-    <button class="btn-despachado" onclick="despacharPedido()">DESPACHADO</button>
+    <div style="margin-top: auto;">
+        <button class="btn-despachado" onclick="despacharPedido()">DESPACHADO</button>
+        <button class="btn-reprogramar" onclick="iniciarReprogramacion()">REPROGRAMAR</button>
+        <button class="btn-cancelar-pedido" onclick="cancelarPedido()">CANCELAR</button>
+    </div>
   </div>
 
   <!-- Modal Programación -->
@@ -2531,6 +2561,7 @@ actualizarFechaHora();
 
 let pedidoSeleccionadoId = null;
 let globalPedidos = [];
+let modoReprogramacion = false;
 
 async function initDashboard() {
   await fetchPedidosProgramados();
@@ -2542,12 +2573,52 @@ async function fetchPedidosProgramados() {
     if (!resp.ok) throw new Error('Error API');
     const data = await resp.json();
     globalPedidos = data.pedidos || [];
+    
+    await reprogramarVencidos(globalPedidos);
+
     renderDashboard();
     return globalPedidos;
   } catch (e) {
     console.error("Error cargando programados:", e);
     return [];
   }
+}
+
+async function reprogramarVencidos(pedidos) {
+    const hoy = new Date();
+    hoy.setHours(0,0,0,0);
+    
+    let huboCambios = false;
+    
+    for (const p of pedidos) {
+        if (!p.fecha) continue;
+        const fechaPedido = new Date(p.fecha + 'T00:00:00'); // Asegurar hora 00:00 local
+        
+        // Si la fecha es MENOR a hoy (ayer o antes) y NO ha sido despachado
+        if (fechaPedido < hoy && p.estado === 'PROGRAMADO') {
+            // Generar fecha de HOY en string YYYY-MM-DD
+            const year = hoy.getFullYear();
+            const month = String(hoy.getMonth() + 1).padStart(2, '0');
+            const day = String(hoy.getDate()).padStart(2, '0');
+            const nuevaFecha = `${year}-${month}-${day}`;
+            
+            if (p.fecha !== nuevaFecha) {
+                p.fecha = nuevaFecha;
+                // Actualizar en BD
+                try {
+                    // Reutilizamos el endpoint POST que hace update si existe ID
+                    await fetch(getApiBase() + '/api/programados', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(p)
+                    });
+                    huboCambios = true;
+                } catch (e) {
+                    console.error("Error autoreprogramando:", e);
+                }
+            }
+        }
+    }
 }
 
 function renderDashboard() {
@@ -2606,17 +2677,35 @@ function selectPedidoDashboard(id, elem) {
   elem.classList.add('selected');
 }
 
-async function abrirModalProgramacion() {
-   // Descargar PDF automáticamente antes de abrir el modal
-   try {
-     await descargarPDF(true); // true = modo silencioso
-   } catch (error) {
-     console.error("Error generando PDF automático:", error);
+async function abrirModalProgramacion(esReprogramacion = false) {
+   modoReprogramacion = esReprogramacion;
+   
+   if (!esReprogramacion) {
+       // Si es programación nueva, descargar PDF automáticamente
+       try {
+         await descargarPDF(true); 
+       } catch (error) {
+         console.error("Error generando PDF automático:", error);
+       }
+   } else {
+       // Si es REprogramación, cargar datos actuales del pedido seleccionado
+       const pedido = globalPedidos.find(p => p.id === pedidoSeleccionadoId);
+       if (pedido) {
+           document.getElementById('prog-fecha').value = pedido.fecha;
+           document.getElementById('prog-hora').value = pedido.hora;
+       }
    }
 
    document.getElementById('modal-programacion').style.display = 'flex';
-   const now = new Date();
-   document.getElementById('prog-fecha').valueAsDate = now;
+   
+   if (!esReprogramacion) {
+       const now = new Date();
+       document.getElementById('prog-fecha').valueAsDate = now;
+   }
+   
+   // Cambiar título del modal según contexto
+   const titulo = document.querySelector('#modal-programacion h3');
+   if (titulo) titulo.innerText = esReprogramacion ? 'Reprogramar Entrega' : 'Programar Entrega';
  }
 
 function cerrarModalProgramacion() {
@@ -2643,8 +2732,18 @@ async function guardarProgramacion() {
   const ocupado = globalPedidos.some(p => p.fecha === fecha && p.hora === hora);
   
   if (ocupado) {
-    alert("⚠️ Esa fecha y hora ya están ocupadas por otro pedido. Por favor seleccione otro horario.");
-    return;
+    // Si estamos reprogramando y la "ocupación" es por el MISMO pedido (mismo ID), lo permitimos.
+    // Pero si es OTRO pedido, bloqueamos.
+    if (modoReprogramacion && pedidoSeleccionadoId) {
+        const conflicto = globalPedidos.find(p => p.fecha === fecha && p.hora === hora && p.id !== pedidoSeleccionadoId);
+        if (conflicto) {
+            alert("⚠️ Esa fecha y hora ya están ocupadas por OTRO pedido.");
+            return;
+        }
+    } else {
+        alert("⚠️ Esa fecha y hora ya están ocupadas por otro pedido. Por favor seleccione otro horario.");
+        return;
+    }
   }
 
   // Validación: Solo horas en punto
@@ -2659,7 +2758,35 @@ async function guardarProgramacion() {
       return;
   }
 
-  // Recopilar datos del pedido actual
+  // --- LÓGICA DIFERENCIADA: NUEVO vs REPROGRAMACIÓN ---
+  
+  if (modoReprogramacion && pedidoSeleccionadoId) {
+      // ACTUALIZAR PEDIDO EXISTENTE
+      const pedidoExistente = globalPedidos.find(p => p.id === pedidoSeleccionadoId);
+      if (!pedidoExistente) return;
+      
+      pedidoExistente.fecha = fecha;
+      pedidoExistente.hora = hora;
+      
+      try {
+          const resp = await fetch(getApiBase() + '/api/programados', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(pedidoExistente)
+          });
+          if (!resp.ok) throw new Error('Error actualizando');
+          
+          await fetchPedidosProgramados();
+          alert("Pedido REPROGRAMADO correctamente.");
+          cerrarModalProgramacion();
+          return;
+      } catch(e) {
+          alert("Error: " + e.message);
+          return;
+      }
+  }
+
+  // Recopilar datos del pedido actual (SOLO PARA NUEVOS PEDIDOS)
   const items = obtenerItemsBD(); 
   if (items.length === 0) {
     alert("No hay productos en la tabla para programar.");
@@ -2785,6 +2912,47 @@ function cargarPedidoProgramado(id) {
   
   actualizarTotales();
   // alert("Pedido cargado: " + (pedido.cliente_nombre || 'Sin nombre'));
+}
+
+function iniciarReprogramacion() {
+  if (!pedidoSeleccionadoId) {
+      alert("Seleccione un pedido para reprogramar.");
+      return;
+  }
+  abrirModalProgramacion(true); // true = modo reprogramación
+}
+
+async function cancelarPedido() {
+  if (!pedidoSeleccionadoId) {
+    alert("Seleccione un pedido para CANCELAR.");
+    return;
+  }
+  
+  if (!confirm("⚠️ ¿Está seguro de CANCELAR este pedido definitivamente?\n\nEsta acción:\n1. Eliminará el pedido del tablero de programación.\n2. ELIMINARÁ la venta correspondiente de la Base de Datos.\n\nEsta acción NO se puede deshacer.")) {
+      return;
+  }
+  
+  const pedido = globalPedidos.find(p => p.id === pedidoSeleccionadoId);
+  if (!pedido) return;
+  
+  try {
+      // 1. Eliminar de Programados
+      const resp1 = await fetch(getApiBase() + '/api/programados/' + pedidoSeleccionadoId, { method: 'DELETE' });
+      if (!resp1.ok) throw new Error("Error eliminando programación");
+      
+      // 2. Eliminar Venta de BD (si tiene consecutivo asociado)
+      if (pedido.consecutivo) {
+         const resp2 = await fetch(getApiBase() + '/api/venta/' + pedido.consecutivo, { method: 'DELETE' });
+         // Nota: Podría dar 404 si la venta ya no existe, lo cual no es crítico aquí, pero lo intentamos borrar.
+      }
+      
+      alert("Pedido CANCELADO y venta eliminada correctamente.");
+      pedidoSeleccionadoId = null;
+      await fetchPedidosProgramados();
+      
+  } catch(e) {
+      alert("Error al cancelar: " + e.message);
+  }
 }
 
 async function despacharPedido() {
