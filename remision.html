@@ -2488,27 +2488,32 @@ actualizarFechaHora();
 // --- LÓGICA DE PROGRAMACIÓN DE PEDIDOS ---
 
 let pedidoSeleccionadoId = null;
+let globalPedidos = [];
 
-function initDashboard() {
-  renderDashboard();
+async function initDashboard() {
+  await fetchPedidosProgramados();
 }
 
-function getPedidosProgramados() {
-  const pedidos = localStorage.getItem('PEDIDOS_PROGRAMADOS');
-  return pedidos ? JSON.parse(pedidos) : [];
-}
-
-function savePedidosProgramados(pedidos) {
-  localStorage.setItem('PEDIDOS_PROGRAMADOS', JSON.stringify(pedidos));
-  renderDashboard();
+async function fetchPedidosProgramados() {
+  try {
+    const resp = await fetch(getApiBase() + '/api/programados');
+    if (!resp.ok) throw new Error('Error API');
+    const data = await resp.json();
+    globalPedidos = data.pedidos || [];
+    renderDashboard();
+    return globalPedidos;
+  } catch (e) {
+    console.error("Error cargando programados:", e);
+    return [];
+  }
 }
 
 function renderDashboard() {
   const lista = document.getElementById('lista-pedidos');
   if (!lista) return;
   
-  const pedidos = getPedidosProgramados();
   // Ordenar por fecha/hora
+  const pedidos = [...globalPedidos];
   pedidos.sort((a, b) => {
     return new Date(a.fecha + ' ' + a.hora) - new Date(b.fecha + ' ' + b.hora);
   });
@@ -2576,7 +2581,7 @@ function cerrarModalProgramacion() {
   document.getElementById('modal-programacion').style.display = 'none';
 }
 
-function guardarProgramacion() {
+async function guardarProgramacion() {
   const fecha = document.getElementById('prog-fecha').value;
   const hora = document.getElementById('prog-hora').value;
   
@@ -2593,15 +2598,14 @@ function guardarProgramacion() {
   }
 
   // Validación de disponibilidad
-  const pedidos = getPedidosProgramados();
-  const ocupado = pedidos.some(p => p.fecha === fecha && p.hora === hora);
+  const ocupado = globalPedidos.some(p => p.fecha === fecha && p.hora === hora);
   
   if (ocupado) {
     alert("⚠️ Esa fecha y hora ya están ocupadas por otro pedido. Por favor seleccione otro horario.");
     return;
   }
 
-  // Validación: Solo horas en punto (Aunque el select lo fuerza, doble check por seguridad)
+  // Validación: Solo horas en punto
   const [h, m] = hora.split(':');
   if (m !== '00') {
       alert("Solo se permiten horas en punto (Ej: 8:00, 9:00).");
@@ -2645,16 +2649,25 @@ function guardarProgramacion() {
     punto_venta: getPuntoVenta()
   };
   
-  pedidos.push(nuevoPedido);
-  savePedidosProgramados(pedidos);
-  
-  alert("Pedido programado correctamente.");
-  cerrarModalProgramacion();
+  try {
+      const resp = await fetch(getApiBase() + '/api/programados', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(nuevoPedido)
+      });
+      
+      if (!resp.ok) throw new Error('Error guardando');
+      
+      await fetchPedidosProgramados(); // Recargar lista
+      alert("Pedido programado correctamente.");
+      cerrarModalProgramacion();
+  } catch (e) {
+      alert("Error al guardar en el servidor: " + e.message);
+  }
 }
 
 function abrirPdfPedido(id) {
-  const pedidos = getPedidosProgramados();
-  const pedido = pedidos.find(p => p.id === id);
+  const pedido = globalPedidos.find(p => p.id === id);
   if (!pedido) return;
 
   const pv = pedido.punto_venta || 'ferreteria'; 
@@ -2665,7 +2678,6 @@ function abrirPdfPedido(id) {
   if (confirm(`Ubicación del archivo:\n${rutaWindows}\n\n¿Desea copiar la ruta al portapapeles?`)) {
       navigator.clipboard.writeText(rutaWindows).then(() => {
           // Opcional: Feedback breve o silencioso
-          // alert("Ruta copiada."); 
       }).catch(err => {
           prompt("Copie la ruta manualmente:", rutaWindows);
       });
@@ -2673,8 +2685,7 @@ function abrirPdfPedido(id) {
 }
 
 function cargarPedidoProgramado(id) {
-  const pedidos = getPedidosProgramados();
-  const pedido = pedidos.find(p => p.id === id);
+  const pedido = globalPedidos.find(p => p.id === id);
   
   if (!pedido) return;
   
@@ -2734,7 +2745,7 @@ function cargarPedidoProgramado(id) {
   // alert("Pedido cargado: " + (pedido.cliente_nombre || 'Sin nombre'));
 }
 
-function despacharPedido() {
+async function despacharPedido() {
   if (!pedidoSeleccionadoId) {
     alert("Seleccione un pedido del tablero para despachar.");
     return;
@@ -2742,14 +2753,23 @@ function despacharPedido() {
   
   if (!confirm("¿Marcar pedido como DESPACHADO? Se eliminará del tablero.")) return;
   
-  let pedidos = getPedidosProgramados();
-  pedidos = pedidos.filter(p => p.id !== pedidoSeleccionadoId);
-  savePedidosProgramados(pedidos);
-  pedidoSeleccionadoId = null;
+  try {
+      const resp = await fetch(getApiBase() + '/api/programados/' + pedidoSeleccionadoId, {
+          method: 'DELETE'
+      });
+      if (!resp.ok) throw new Error('Error al eliminar');
+      
+      pedidoSeleccionadoId = null;
+      await fetchPedidosProgramados(); // Recargar
+  } catch (e) {
+      alert("Error despachando pedido: " + e.message);
+  }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     initDashboard();
+    // Auto-recargar cada 30 segundos para ver cambios de otros PCs
+    setInterval(fetchPedidosProgramados, 30000);
 });
 </script>
 </body>

@@ -41,8 +41,27 @@ async function ensureSchema() {
       valor_total INT
     ) ENGINE=InnoDB;
   `
+  const createProgramados = `
+    CREATE TABLE IF NOT EXISTS pedidos_programados (
+      id VARCHAR(50) PRIMARY KEY,
+      consecutivo VARCHAR(50),
+      cliente_nombre VARCHAR(255),
+      cliente_data TEXT,
+      items TEXT,
+      total INT,
+      fecha VARCHAR(20),
+      hora VARCHAR(20),
+      estado VARCHAR(50),
+      transporte TEXT,
+      tipo_pago VARCHAR(50),
+      metodo_pago VARCHAR(50),
+      punto_venta VARCHAR(50),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB;
+  `
   await pool.query(createVentas)
   await pool.query(createItems)
+  await pool.query(createProgramados)
 }
 
 let pool
@@ -473,6 +492,75 @@ app.delete('/api/venta/:id', async (req, res) => {
     res.status(500).json({ ok: false, error: err.message })
   }
 })
+
+// --- API PEDIDOS PROGRAMADOS ---
+
+app.get('/api/programados', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM pedidos_programados ORDER BY fecha ASC, hora ASC');
+    // Parsear campos JSON/TEXT
+    const pedidos = rows.map(r => ({
+      ...r,
+      cliente_data: r.cliente_data ? JSON.parse(r.cliente_data) : null,
+      items: r.items ? JSON.parse(r.items) : [],
+      transporte: r.transporte ? JSON.parse(r.transporte) : null
+    }));
+    res.json({ ok: true, pedidos });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/api/programados', async (req, res) => {
+  try {
+    const p = req.body;
+    if (!p.id) return res.status(400).json({ error: 'id_requerido' });
+
+    // Verificar si existe para actualizar o insertar (Upsert simplificado: DELETE + INSERT o INSERT ON DUPLICATE)
+    // Dado que el ID lo genera el front, usaremos INSERT ON DUPLICATE KEY UPDATE
+    const sql = `
+      INSERT INTO pedidos_programados 
+      (id, consecutivo, cliente_nombre, cliente_data, items, total, fecha, hora, estado, transporte, tipo_pago, metodo_pago, punto_venta)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+      consecutivo=VALUES(consecutivo), cliente_nombre=VALUES(cliente_nombre), cliente_data=VALUES(cliente_data),
+      items=VALUES(items), total=VALUES(total), fecha=VALUES(fecha), hora=VALUES(hora), estado=VALUES(estado),
+      transporte=VALUES(transporte), tipo_pago=VALUES(tipo_pago), metodo_pago=VALUES(metodo_pago), punto_venta=VALUES(punto_venta)
+    `;
+    
+    const params = [
+      p.id,
+      p.consecutivo || null,
+      p.cliente_nombre || '',
+      JSON.stringify(p.cliente_data || {}),
+      JSON.stringify(p.items || []),
+      Number(p.total || 0),
+      p.fecha,
+      p.hora,
+      p.estado || 'PROGRAMADO',
+      JSON.stringify(p.transporte || {}),
+      p.tipo_pago || '',
+      p.metodo_pago || '',
+      p.punto_venta || ''
+    ];
+
+    await pool.query(sql, params);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Error guardando programado:", err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.delete('/api/programados/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    await pool.query('DELETE FROM pedidos_programados WHERE id = ?', [id]);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
 
 // Servir estáticos del proyecto actual
 app.use(express.static(path.resolve(__dirname)))
