@@ -2636,12 +2636,8 @@ async function abrirModalProgramacion(esReprogramacion = false) {
    if (!esReprogramacion) {
        // Si es programación nueva:
        
-       // 1. Descargar PDF automáticamente
-       try {
-         await descargarPDF(true); 
-       } catch (error) {
-         console.error("Error generando PDF automático:", error);
-       }
+       // 1. (ELIMINADO) Descargar PDF se mueve al botón Guardar
+       // para incluir los datos ingresados en el modal.
        
        // 2. Pre-llenar datos de transporte si hay cliente seleccionado
        if (clienteSeleccionado) {
@@ -2795,6 +2791,13 @@ async function guardarProgramacion() {
       
       if (!resp.ok) throw new Error('Error guardando');
       
+      // Descargar PDF con los datos actualizados (transporte, etc.)
+      try {
+        await descargarPDF(true); 
+      } catch (error) {
+        console.error("Error generando PDF automático:", error);
+      }
+
       await fetchPedidosProgramados(); // Recargar lista
       alert("Pedido programado correctamente.");
       cerrarModalProgramacion();
