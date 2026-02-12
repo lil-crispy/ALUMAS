@@ -2726,6 +2726,13 @@ async function guardarProgramacion() {
        costo: document.getElementById('trans-costo').value
   };
 
+  // --- SINCRONIZACIÓN IMPORTANTE ---
+  // Si el usuario ingresó un nombre en el formulario de transporte (modal),
+  // usamos ese nombre como el Cliente Principal para el PDF y el Dashboard.
+  if (transporteData.nombre) {
+      document.getElementById('nombre-cliente').value = transporteData.nombre;
+  }
+
   // --- LÓGICA DIFERENCIADA: NUEVO vs REPROGRAMACIÓN ---
   
   if (modoReprogramacion && pedidoSeleccionadoId) {
@@ -2737,6 +2744,10 @@ async function guardarProgramacion() {
       pedidoExistente.hora = hora;
       // Actualizar también info de transporte si cambió
       pedidoExistente.transporte = transporteData;
+      // Actualizar nombre del cliente si cambió en el modal
+      if (transporteData.nombre) {
+          pedidoExistente.cliente_nombre = transporteData.nombre;
+      }
       
       try {
           const resp = await fetch(getApiBase() + '/api/programados', {
