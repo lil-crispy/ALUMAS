@@ -676,9 +676,6 @@
       <div id="info-transporte"></div>
     </div>
 
-    <div class="checkbox-transporte">
-      <input type="checkbox" id="activar-transporte" onchange="toggleTransporte()"> <label for="activar-transporte">Añadir transporte</label>
-    </div>
     <div class="metodos-pago">
       <label><input type="checkbox" id="pago-efectivo"> Efectivo</label>
       <label><input type="checkbox" id="pago-tarjeta"> Tarjeta</label>
@@ -699,26 +696,6 @@
         <option value="ferreteria">Ferretería</option>
         <option value="bodega">Bodega</option>
       </select>
-    </div>
-
-    <div id="form-transporte">
-      <div class="campo-form">
-        <label>Nombre del cliente:</label>
-        <input type="text" id="trans-nombre">
-      </div>
-      <div class="campo-form">
-        <label>Dirección de envío:</label>
-        <input type="text" id="trans-direccion">
-      </div>
-      <div class="campo-form">
-        <label>Teléfono:</label>
-        <input type="text" id="trans-telefono">
-      </div>
-      <div class="campo-form">
-        <label>Costo del transporte:</label>
-        <input type="number" id="trans-costo">
-      </div>
-      <button onclick="guardarTransporte()">Guardar transporte</button>
     </div>
 
     <div class="contenedor-tabla">
@@ -1128,14 +1105,13 @@
           
           // Lógica de datos extra: Prioridad Transporte > Base de Datos
           let extraInfo = '';
-          const transporteActivo = document.getElementById('activar-transporte')?.checked;
           
-          if (transporteActivo) {
-             const dir = document.getElementById('trans-direccion')?.value || '';
-             const tel = document.getElementById('trans-telefono')?.value || '';
-             if (dir || tel) {
-                extraInfo = `<div style="font-size:0.85em; color:#333;">${dir} ${tel ? ' · ' + tel : ''}</div>`;
-             }
+          // Verificar si hay datos manuales en los inputs de transporte (ahora en el modal)
+          const dirManual = document.getElementById('trans-direccion')?.value || '';
+          const telManual = document.getElementById('trans-telefono')?.value || '';
+          
+          if (dirManual || telManual) {
+             extraInfo = `<div style="font-size:0.85em; color:#333;">${dirManual} ${telManual ? ' · ' + telManual : ''}</div>`;
           } else if (clienteSeleccionado) {
              // Si no hay transporte manual, usar datos de cliente seleccionado en BD
              const dir = clienteSeleccionado.direccion || '';
@@ -1499,60 +1475,7 @@
          celdaActiva = celdaCant;
       }
     }
-  function toggleTransporte() {
-  const form = document.getElementById('form-transporte');
-  const mensajeTransporte = document.getElementById('mensaje-transporte');
 
-  form.style.display = document.getElementById('activar-transporte').checked ? 'block' : 'none';
-
-  if (document.getElementById('activar-transporte').checked) {
-    // Si hay un cliente seleccionado, rellenar datos automáticamente
-    if (clienteSeleccionado) {
-      document.getElementById('trans-nombre').value = clienteSeleccionado.nombre || '';
-      document.getElementById('trans-direccion').value = clienteSeleccionado.direccion || '';
-      document.getElementById('trans-telefono').value = clienteSeleccionado.telefono || '';
-    }
-
-    if (!mensajeTransporte) {
-      const mensaje = document.createElement('div');
-      mensaje.id = 'mensaje-transporte';
-      mensaje.innerHTML = `
-        <p style="font-size: 22px; font-weight: bold; text-align: center; margin-top: 40px;">
-          IMPORTANTE: TODO ENVÍO O DOMICILIO SE ENTREGA HASTA DONDE TENGA ACCESO EL VEHÍCULO DE TRANSPORTE. 
-          EL CONDUCTOR O TRANSPORTADOR NO ESTÁ AUTORIZADO A MANIPULAR LA MERCANCÍA MÁS ALLÁ DEL PRIMER PISO. 
-          EN CASO DE HACER CASO OMISO A ESTA INSTRUCCIÓN, EL TRABAJADOR PUEDE SER SANCIONADO POR LA EMPRESA.
-        </p>
-      `;
-      const mensajeDiv = document.querySelector('.mensaje');
-      mensajeDiv.parentNode.insertBefore(mensaje, mensajeDiv);
-    }
-  } else {
-    if (mensajeTransporte) {
-      mensajeTransporte.remove();
-    }
-  }
-}
-
-  
-    function guardarTransporte() {
-      const nombre = document.getElementById('trans-nombre').value;
-      const direccion = document.getElementById('trans-direccion').value;
-      const telefono = document.getElementById('trans-telefono').value;
-      const costo = parseInt(document.getElementById('trans-costo').value) || 0;
-  
-      document.getElementById('nombre-cliente').innerText = nombre;
-      document.getElementById('info-transporte').innerHTML = ``;
-  
-      const fila = document.createElement('tr');
-      fila.innerHTML = `
-        <td class="cant">1</td>
-        <td>TRANSPORTE</td>
-        <td class="valor-u">${costo}</td>
-        <td class="valor-t">${formatearPesos(costo)}</td>
-      `;
-      tabla.appendChild(fila);
-      actualizarTotales();
-    }
   
     tabla.addEventListener('focusin', (e) => {
       const celda = e.target.closest('td');
@@ -2292,17 +2215,10 @@
       }
       clienteSeleccionado = cliente
       if (cliente && cliente.id) {
-    localStorage.setItem('CLIENTE_ID', String(cliente.id))
-  }
+        localStorage.setItem('CLIENTE_ID', String(cliente.id))
+      }
 
-  // Si el formulario de transporte está activo, actualizar los datos
-  if (document.getElementById('activar-transporte')?.checked) {
-    document.getElementById('trans-nombre').value = cliente.nombre || '';
-    document.getElementById('trans-direccion').value = cliente.direccion || '';
-    document.getElementById('trans-telefono').value = cliente.telefono || '';
-  }
-
-  const dropdown = document.getElementById('autocomplete-dropdown')
+      const dropdown = document.getElementById('autocomplete-dropdown')
       if (dropdown) {
         dropdown.style.display = 'none'
         dropdown.innerHTML = ''
@@ -2527,12 +2443,14 @@ actualizarFechaHora();
 
   <!-- Modal Programación -->
   <div id="modal-programacion" class="modal-programacion">
-    <div class="modal-content">
+    <div class="modal-content" style="width: 350px; max-height: 90vh; overflow-y: auto;">
       <h3>Programar Entrega</h3>
+      
       <div class="form-group">
         <label>Fecha:</label>
         <input type="date" id="prog-fecha">
       </div>
+      
       <div class="form-group">
         <label>Hora (8am - 6pm):</label>
         <select id="prog-hora" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
@@ -2549,6 +2467,31 @@ actualizarFechaHora();
             <option value="18:00">06:00 PM</option>
         </select>
       </div>
+
+      <div style="border-top: 1px solid #ddd; margin: 15px 0; padding-top: 10px;">
+        <h4 style="margin: 0 0 10px 0; color: #00acc1;">Datos de Transporte</h4>
+        
+        <div class="form-group">
+            <label style="font-size: 0.9em;">Nombre Cliente:</label>
+            <input type="text" id="trans-nombre" placeholder="Nombre quien recibe">
+        </div>
+        
+        <div class="form-group">
+            <label style="font-size: 0.9em;">Dirección de envío:</label>
+            <input type="text" id="trans-direccion" placeholder="Dirección completa">
+        </div>
+        
+        <div class="form-group">
+            <label style="font-size: 0.9em;">Teléfono:</label>
+            <input type="text" id="trans-telefono" placeholder="Celular / Teléfono">
+        </div>
+        
+        <div class="form-group">
+            <label style="font-size: 0.9em;">Costo Transporte:</label>
+            <input type="number" id="trans-costo" placeholder="0">
+        </div>
+      </div>
+
       <div style="text-align: center; margin-top: 20px;">
           <button class="btn-guardar-prog" onclick="guardarProgramacion()">Guardar</button>
           <button class="btn-cancelar-prog" onclick="cerrarModalProgramacion()">Cancelar</button>
@@ -2680,28 +2623,55 @@ function selectPedidoDashboard(id, elem) {
 async function abrirModalProgramacion(esReprogramacion = false) {
    modoReprogramacion = esReprogramacion;
    
+   // --- LIMPIEZA / PREPARACIÓN DE CAMPOS ---
+   document.getElementById('prog-fecha').value = '';
+   document.getElementById('prog-hora').value = '08:00';
+   
+   // Limpiar campos de transporte por defecto
+   document.getElementById('trans-nombre').value = '';
+   document.getElementById('trans-direccion').value = '';
+   document.getElementById('trans-telefono').value = '';
+   document.getElementById('trans-costo').value = '';
+
    if (!esReprogramacion) {
-       // Si es programación nueva, descargar PDF automáticamente
+       // Si es programación nueva:
+       
+       // 1. Descargar PDF automáticamente
        try {
          await descargarPDF(true); 
        } catch (error) {
          console.error("Error generando PDF automático:", error);
        }
+       
+       // 2. Pre-llenar datos de transporte si hay cliente seleccionado
+       if (clienteSeleccionado) {
+           document.getElementById('trans-nombre').value = clienteSeleccionado.nombre || '';
+           document.getElementById('trans-direccion').value = clienteSeleccionado.direccion || '';
+           document.getElementById('trans-telefono').value = clienteSeleccionado.telefono || '';
+       }
+       
+       // 3. Setear fecha actual
+       const now = new Date();
+       document.getElementById('prog-fecha').valueAsDate = now;
+
    } else {
        // Si es REprogramación, cargar datos actuales del pedido seleccionado
        const pedido = globalPedidos.find(p => p.id === pedidoSeleccionadoId);
        if (pedido) {
            document.getElementById('prog-fecha').value = pedido.fecha;
            document.getElementById('prog-hora').value = pedido.hora;
+           
+           // Cargar datos de transporte existentes
+           if (pedido.transporte) {
+               document.getElementById('trans-nombre').value = pedido.transporte.nombre || '';
+               document.getElementById('trans-direccion').value = pedido.transporte.direccion || '';
+               document.getElementById('trans-telefono').value = pedido.transporte.telefono || '';
+               document.getElementById('trans-costo').value = pedido.transporte.costo || '';
+           }
        }
    }
 
    document.getElementById('modal-programacion').style.display = 'flex';
-   
-   if (!esReprogramacion) {
-       const now = new Date();
-       document.getElementById('prog-fecha').valueAsDate = now;
-   }
    
    // Cambiar título del modal según contexto
    const titulo = document.querySelector('#modal-programacion h3');
@@ -2719,16 +2689,6 @@ async function guardarProgramacion() {
   if (!fecha || !hora) {
     alert("Por favor seleccione fecha y hora");
     return;
-  }
-
-  // Validación de transporte obligatorio (SOLO SI ES NUEVO PEDIDO)
-  // En reprogramación, asumimos que ya tiene transporte o datos previos
-  if (!modoReprogramacion) {
-      const transporteActivo = document.getElementById('activar-transporte').checked;
-      if (!transporteActivo) {
-        alert("⚠️ Es OBLIGATORIO habilitar la opción 'Añadir transporte' para programar un pedido.");
-        return;
-      }
   }
 
   // Validación de disponibilidad
@@ -2760,6 +2720,15 @@ async function guardarProgramacion() {
       alert("El horario permitido es de 8:00 AM a 6:00 PM.");
       return;
   }
+  
+  // Recoger datos de transporte del modal
+  const transporteData = {
+       activo: true, // Siempre true al guardar desde aquí
+       nombre: document.getElementById('trans-nombre').value,
+       direccion: document.getElementById('trans-direccion').value,
+       telefono: document.getElementById('trans-telefono').value,
+       costo: document.getElementById('trans-costo').value
+  };
 
   // --- LÓGICA DIFERENCIADA: NUEVO vs REPROGRAMACIÓN ---
   
@@ -2770,6 +2739,8 @@ async function guardarProgramacion() {
       
       pedidoExistente.fecha = fecha;
       pedidoExistente.hora = hora;
+      // Actualizar también info de transporte si cambió
+      pedidoExistente.transporte = transporteData;
       
       try {
           const resp = await fetch(getApiBase() + '/api/programados', {
@@ -2809,13 +2780,7 @@ async function guardarProgramacion() {
     fecha: fecha,
     hora: hora,
     estado: 'PROGRAMADO',
-    transporte: {
-       activo: document.getElementById('activar-transporte').checked,
-       nombre: document.getElementById('trans-nombre').value,
-       direccion: document.getElementById('trans-direccion').value,
-       telefono: document.getElementById('trans-telefono').value,
-       costo: document.getElementById('trans-costo').value
-    },
+    transporte: transporteData,
     tipo_pago: getTipoPago(),
     metodo_pago: getSelectedMetodoPago(),
     punto_venta: getPuntoVenta()
@@ -2901,16 +2866,16 @@ function cargarPedidoProgramado(id) {
   }
   
   // Restaurar Transporte
-  if (pedido.transporte && pedido.transporte.activo) {
-      document.getElementById('activar-transporte').checked = true;
-      toggleTransporte();
+  if (pedido.transporte) {
       document.getElementById('trans-nombre').value = pedido.transporte.nombre || '';
       document.getElementById('trans-direccion').value = pedido.transporte.direccion || '';
       document.getElementById('trans-telefono').value = pedido.transporte.telefono || '';
       document.getElementById('trans-costo').value = pedido.transporte.costo || '';
   } else {
-      document.getElementById('activar-transporte').checked = false;
-      toggleTransporte();
+      document.getElementById('trans-nombre').value = '';
+      document.getElementById('trans-direccion').value = '';
+      document.getElementById('trans-telefono').value = '';
+      document.getElementById('trans-costo').value = '';
   }
   
   actualizarTotales();
