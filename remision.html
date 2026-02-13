@@ -271,12 +271,13 @@
       body.formato-bodega #print-bodega-container > div {
           display: block !important;
           position: static !important;
-          width: 100% !important;
+          width: 21cm !important;
           padding: 0 !important;
           margin: 0 !important;
           box-shadow: none !important;
           background: white !important;
-          zoom: 0.75; /* Ajuste de escala para A5 */
+          zoom: 0.66; /* Escala para ajustar 21cm a A5 (aprox 14cm) */
+          overflow: hidden;
       }
     }
 
@@ -1199,7 +1200,11 @@
       const template = document.getElementById('pdf-template');
       const container = document.getElementById('print-bodega-container');
       if (template && container) {
-          container.innerHTML = template.innerHTML;
+          container.innerHTML = '';
+          const clone = template.cloneNode(true);
+          clone.id = 'pdf-template-clone';
+          clone.style.display = 'block';
+          container.appendChild(clone);
       }
     }
 
@@ -3006,13 +3011,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (getPuntoVenta() === 'bodega') {
            document.body.classList.add('formato-bodega');
            prepararDatosPDF(); // Asegurar datos actualizados
-           
-           // Clonar template
-           const template = document.getElementById('pdf-template');
-           const container = document.getElementById('print-bodega-container');
-           if (template && container) {
-               container.innerHTML = template.innerHTML;
-           }
         }
       });
 
