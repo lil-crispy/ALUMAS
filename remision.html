@@ -1043,20 +1043,42 @@
       actualizarTotales();
   
       // Limpiar datos en pantalla
-      document.getElementById('nombre-cliente').value = '';
-      document.getElementById('tipo-pago').value = 'CONTADO';
-      document.getElementById('total-general').innerText = 'TOTAL: $ 0';
+      const elNombre = document.getElementById('nombre-cliente');
+      if (elNombre) elNombre.value = '';
+
+      const elSelectPago = document.getElementById('select-tipo-pago');
+      if (elSelectPago) elSelectPago.value = 'CONTADO';
+
+      const elTotal = document.getElementById('total-general');
+      if (elTotal) elTotal.innerText = 'TOTAL: $ 0';
       
       // Limpiar variable global de cliente
       clienteSeleccionado = null; 
       localStorage.removeItem('CLIENTE_ID'); 
 
-      // Limpiar transporte
-      document.getElementById('trans-nombre').value = '';
-      document.getElementById('trans-direccion').value = '';
-      document.getElementById('trans-telefono').value = '';
-      document.getElementById('trans-costo').value = '';
-      document.getElementById('info-transporte').innerHTML = '';
+      // Limpiar transporte (Inputs del Modal)
+      const idsTrans = ['trans-nombre', 'trans-direccion', 'trans-telefono', 'trans-costo'];
+      idsTrans.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.value = '';
+      });
+
+      // Limpiar Info Transporte (Div visual)
+      const elInfo = document.getElementById('info-transporte');
+      if (elInfo) elInfo.innerHTML = '';
+
+      // Limpiar campos de fecha/hora modal
+      const elFecha = document.getElementById('prog-fecha');
+      if (elFecha) elFecha.value = '';
+      
+      const elHora = document.getElementById('prog-hora');
+      if (elHora) elHora.value = '08:00';
+
+      // Limpiar checkboxes de pago
+      ['pago-efectivo', 'pago-tarjeta', 'pago-qr'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.checked = false;
+      });
 
       tabla.querySelectorAll('tr').forEach(fila => {
           const descripcion = fila.cells[1]?.textContent.trim();
