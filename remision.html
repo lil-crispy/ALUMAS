@@ -2727,13 +2727,28 @@ async function guardarProgramacion() {
   };
 
   // --- SINCRONIZACIÓN IMPORTANTE ---
-  // Si el usuario ingresó un nombre en el formulario de transporte (modal),
-  // usamos ese nombre como el Cliente Principal para el PDF y el Dashboard.
-  if (transporteData.nombre) {
-      document.getElementById('nombre-cliente').value = transporteData.nombre;
-  }
+   // Si el usuario ingresó un nombre en el formulario de transporte (modal),
+   // usamos ese nombre como el Cliente Principal para el PDF y el Dashboard.
+   if (transporteData.nombre) {
+       document.getElementById('nombre-cliente').value = transporteData.nombre;
+   }
 
-  // --- LÓGICA DIFERENCIADA: NUEVO vs REPROGRAMACIÓN ---
+   // --- VISUALIZACIÓN EN FACTURA (div.info) ---
+   const infoDiv = document.getElementById('info-transporte');
+   if (infoDiv) {
+       const datosEntrega = [];
+       if (transporteData.nombre) datosEntrega.push(`<strong>RECIBE:</strong> ${transporteData.nombre}`);
+       if (transporteData.direccion) datosEntrega.push(`<strong>DIR ENTREGA:</strong> ${transporteData.direccion}`);
+       if (transporteData.telefono) datosEntrega.push(`<strong>TEL:</strong> ${transporteData.telefono}`);
+       
+       if (datosEntrega.length > 0) {
+           infoDiv.innerHTML = `<div style="margin-top:5px; border-top:1px dashed #999; padding-top:2px;">${datosEntrega.join(' - ')}</div>`;
+       } else {
+           infoDiv.innerHTML = '';
+       }
+   }
+
+   // --- LÓGICA DIFERENCIADA: NUEVO vs REPROGRAMACIÓN ---
   
   if (modoReprogramacion && pedidoSeleccionadoId) {
       // ACTUALIZAR PEDIDO EXISTENTE
