@@ -270,14 +270,19 @@
       /* Ajustes internos para que el template clonado se vea bien impreso */
       body.formato-bodega #print-bodega-container > div {
           display: block !important;
-          position: static !important;
-          width: 21cm !important;
+          position: relative !important;
+          width: 21cm !important; /* Mantiene la estructura de diseño original */
+          
+          /* Escalar al 65% para ajustar 21cm en una hoja A5 (aprox 13.6cm visuales) */
+          transform: scale(0.65);
+          transform-origin: top left;
+          
           padding: 0 !important;
           margin: 0 !important;
           box-shadow: none !important;
           background: white !important;
-          zoom: 0.66; /* Escala para ajustar 21cm a A5 (aprox 14cm) */
-          overflow: hidden;
+          zoom: 1 !important; /* Resetear zoom para usar transform */
+          overflow: visible !important;
       }
     }
 
@@ -321,6 +326,63 @@
       box-sizing: border-box;
     }
 
+    /* MODO TRANSPORTADOR: Dashboard pantalla completa y exclusivo */
+    body.transportador-mode #dashboard-programacion {
+      width: 100% !important;
+      height: 100% !important;
+      z-index: 5000;
+      border-right: none;
+      left: 0;
+      top: 0;
+    }
+
+    body.transportador-mode #contenido-factura,
+     body.transportador-mode .report-toggle,
+     body.transportador-mode #panel-sugerencias,
+     body.transportador-mode .boton-imprimir {
+        display: none !important;
+     }
+
+     /* Ensure user bar is visible for logout */
+     body.transportador-mode #user-bar {
+        display: flex !important;
+        z-index: 6000; /* Higher than dashboard */
+        background: rgba(0,0,0,0.5); /* Background to make it readable */
+        padding: 5px;
+        border-radius: 4px;
+     }
+     
+     /* Responsive Dashboard Logic */
+     @media screen and (max-width: 768px) {
+        .pedido-item {
+            padding: 15px;
+            margin-bottom: 12px;
+        }
+        .pedido-status {
+            font-size: 1.1em;
+            padding: 5px 10px;
+        }
+        
+        /* Buttons bigger for touch */
+        .btn-despachado, .btn-reprogramar, .btn-cancelar-pedido {
+            padding: 12px;
+            font-size: 1.1em;
+            margin-bottom: 8px;
+        }
+     }
+    
+    /* Mostrar botón de cerrar sesión en modo transportador de alguna forma? 
+       El usuario dijo "solo tendrán acceso a ver el dashboard".
+       Pero necesitan poder salir. 
+       Podríamos mover el user-bar DENTRO del dashboard o hacerlo flotante visible.
+       Por ahora, ocultamos el user-bar estándar para cumplir "solo ver dashboard".
+       Pero añadiremos un botón de logout dentro del dashboard dinámicamente o lo haremos visible.
+       
+       Mejor opción: Dejar el user-bar visible pero con z-index mayor?
+       El user-bar está en top:0 (position static/fixed?).
+       Veamos user-bar styles.
+    */
+    
     #dashboard-programacion h3 {
       font-family: 'Bauhaus', sans-serif;
       font-size: 1.2em;
@@ -1912,6 +1974,15 @@
       const nameEl = document.getElementById('user-name')
       if (!bar || !nameEl) return
       const nombre = localStorage.getItem('USUARIO_NOMBRE') || ''
+      
+      // LOGICA DE REDIRECCIÓN/RESTRICCIÓN PARA ROL TRANSPORTADOR
+      const rol = localStorage.getItem('USUARIO_ROL') || '';
+      if (rol.toLowerCase() === 'transportador') {
+          document.body.classList.add('transportador-mode');
+      } else {
+          document.body.classList.remove('transportador-mode');
+      }
+
       if (nombre) {
         nameEl.textContent = nombre
         bar.style.display = 'flex'
