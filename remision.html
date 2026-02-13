@@ -327,29 +327,30 @@
     }
 
     /* MODO TRANSPORTADOR: Dashboard pantalla completa y exclusivo */
-    body.transportador-mode #dashboard-programacion {
-      width: 100% !important;
-      height: 100% !important;
-      z-index: 5000;
-      border-right: none;
-      left: 0;
-      top: 0;
-    }
+     body.transportador-mode #dashboard-programacion {
+       width: 100% !important;
+       height: 100% !important;
+       z-index: 5000;
+       border-right: none;
+       left: 0;
+       top: 0;
+     }
 
-    body.transportador-mode #contenido-factura,
+     body.transportador-mode #contenido-factura,
      body.transportador-mode .report-toggle,
      body.transportador-mode #panel-sugerencias,
      body.transportador-mode .boton-imprimir {
         display: none !important;
      }
 
-     /* Ensure user bar is visible for logout */
+     /* Ensure user bar is hidden in Transportador Mode as we use the dedicated button */
      body.transportador-mode #user-bar {
-        display: flex !important;
-        z-index: 6000; /* Higher than dashboard */
-        background: rgba(0,0,0,0.5); /* Background to make it readable */
-        padding: 5px;
-        border-radius: 4px;
+        display: none !important;
+     }
+
+     /* Show the specific logout button only in Transportador Mode */
+     body.transportador-mode #btn-logout-transportador {
+        display: block !important;
      }
      
      /* Responsive Dashboard Logic */
@@ -2530,7 +2531,10 @@ actualizarFechaHora();
   </script>
     <!-- Dashboard Programación -->
   <div id="dashboard-programacion">
-    <h3>Pedidos Programados</h3>
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #00acc1; margin-bottom: 10px; padding-bottom: 5px;">
+        <h3 style="margin:0; border:none; padding:0;">Pedidos Programados</h3>
+        <button id="btn-logout-transportador" onclick="logoutUsuario()" style="display:none; background:#d32f2f; color:white; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; font-weight:bold; font-size: 0.9em;">Cerrar Sesión</button>
+    </div>
     <div id="lista-pedidos"></div>
     <div style="margin-top: auto;">
         <button class="btn-despachado" onclick="despacharPedido()">DESPACHADO</button>
