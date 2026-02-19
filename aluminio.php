@@ -236,11 +236,30 @@
 }
 
   function filtrarProductos() {
-    const input = document.getElementById('buscador').value.toLowerCase();
+    const inputRaw = document.getElementById('buscador').value;
+    // 1. Convertir a minúsculas
+    // 2. Eliminar acentos/diacríticos (á -> a, ñ se mantiene en NFD usualmente o se separa, pero para búsqueda simple funciona bien remover rango 0300-036f)
+    // 3. Dividir por espacios en blanco para obtener palabras clave
+    const terminos = inputRaw
+        .toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .split(/\s+/)
+        .filter(t => t.length > 0);
+
     const productos = document.querySelectorAll('.producto');
+    
     productos.forEach(p => {
-      const nombre = p.getAttribute('data-nombre').toLowerCase();
-      p.style.display = nombre.includes(input) ? 'flex' : 'none';
+      // Normalizar el nombre del producto de la misma forma
+      const nombreOriginal = p.getAttribute('data-nombre') || '';
+      const nombreNorm = nombreOriginal
+          .toLowerCase()
+          .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+      // Estrategia "Y" (AND): El producto debe contener TODAS las palabras buscadas
+      // Esto permite buscar "tubo 1" y encontrar "Tubo cuadrado de 1 pulgada" sin importar el orden
+      const coincide = terminos.every(term => nombreNorm.includes(term));
+      
+      p.style.display = coincide ? 'flex' : 'none';
     });
   }
 
