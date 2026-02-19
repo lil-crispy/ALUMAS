@@ -1122,7 +1122,7 @@
 
       // Limpiar transporte (Inputs del Modal)
       // trans-costo eliminado del DOM pero lo dejamos en la lista para evitar errores si reaparece
-      const idsTrans = ['trans-nombre', 'trans-direccion', 'trans-telefono', 'trans-costo'];
+      const idsTrans = ['trans-nombre', 'trans-direccion', 'trans-telefono', 'trans-costo', 'trans-sector'];
       idsTrans.forEach(id => {
           const el = document.getElementById(id);
           if (el) el.value = '';
@@ -1195,16 +1195,30 @@
           
           // Verificar si hay datos manuales en los inputs de transporte (ahora en el modal)
           const dirManual = document.getElementById('trans-direccion')?.value || '';
+          const sectorManual = document.getElementById('trans-sector')?.value || '';
           const telManual = document.getElementById('trans-telefono')?.value || '';
           
-          if (dirManual || telManual) {
-             extraInfo = `<div style="font-size:0.85em; color:#333;">${dirManual} ${telManual ? ' · ' + telManual : ''}</div>`;
+          if (dirManual || telManual || sectorManual) {
+             let dirDisplay = dirManual;
+             if (sectorManual) {
+                 // Formato resaltado en PDF
+                 dirDisplay += ` <span style="font-weight:bold; font-size:1.3em; background-color:#ffeb3b; padding:0 3px; text-transform:uppercase;">(${sectorManual})</span>`;
+             }
+             extraInfo = `<div style="font-size:0.85em; color:#333;">${dirDisplay} ${telManual ? ' · ' + telManual : ''}</div>`;
           } else if (clienteSeleccionado) {
              // Si no hay transporte manual, usar datos de cliente seleccionado en BD
              const dir = clienteSeleccionado.direccion || '';
              const tel = clienteSeleccionado.telefono || '';
+             // Si el cliente tiene sector guardado (futuro)
+             const sector = clienteSeleccionado.sector || ''; 
+             
+             let dirFull = dir;
+             if (sector) {
+                 dirFull += ` <span style="font-weight:bold; font-size:1.3em; background-color:#ffeb3b; padding:0 3px; text-transform:uppercase;">(${sector})</span>`;
+             }
+             
              if (dir || tel) {
-                extraInfo = `<div style="font-size:0.85em; color:#333;">${dir} ${tel ? ' · ' + tel : ''}</div>`;
+                extraInfo = `<div style="font-size:0.85em; color:#333;">${dirFull} ${tel ? ' · ' + tel : ''}</div>`;
              }
           }
           
@@ -2610,6 +2624,11 @@ actualizarFechaHora();
         </div>
         
         <div class="form-group">
+            <label style="font-size: 0.9em; font-weight: bold; color: #d32f2f;">SECTOR (Obligatorio):</label>
+            <input type="text" id="trans-sector" placeholder="Barrio / Sector" style="border: 2px solid #00acc1; background-color: #f1f8e9;">
+        </div>
+
+        <div class="form-group">
             <label style="font-size: 0.9em;">Teléfono:</label>
             <input type="text" id="trans-telefono" placeholder="Celular / Teléfono">
         </div>
@@ -2803,6 +2822,7 @@ async function abrirModalProgramacion(esReprogramacion = false) {
    // Limpiar campos de transporte por defecto
    document.getElementById('trans-nombre').value = '';
    document.getElementById('trans-direccion').value = '';
+   document.getElementById('trans-sector').value = '';
    document.getElementById('trans-telefono').value = '';
    // Costo eliminado
 
@@ -2816,6 +2836,7 @@ async function abrirModalProgramacion(esReprogramacion = false) {
        if (clienteSeleccionado) {
            document.getElementById('trans-nombre').value = clienteSeleccionado.nombre || '';
            document.getElementById('trans-direccion').value = clienteSeleccionado.direccion || '';
+           document.getElementById('trans-sector').value = clienteSeleccionado.sector || '';
            document.getElementById('trans-telefono').value = clienteSeleccionado.telefono || '';
        }
        
@@ -2834,6 +2855,7 @@ async function abrirModalProgramacion(esReprogramacion = false) {
            if (pedido.transporte) {
                document.getElementById('trans-nombre').value = pedido.transporte.nombre || '';
                document.getElementById('trans-direccion').value = pedido.transporte.direccion || '';
+               document.getElementById('trans-sector').value = pedido.transporte.sector || '';
                document.getElementById('trans-telefono').value = pedido.transporte.telefono || '';
                // Costo eliminado
            }
@@ -2890,11 +2912,19 @@ async function guardarProgramacion() {
       return;
   }
   
+  // Validar Sector (Obligatorio)
+  const sector = document.getElementById('trans-sector').value.trim();
+  if (!sector) {
+      alert("El campo SECTOR es obligatorio.");
+      return;
+  }
+
   // Recoger datos de transporte del modal
   const transporteData = {
        activo: true, // Siempre true al guardar desde aquí
        nombre: document.getElementById('trans-nombre').value,
        direccion: document.getElementById('trans-direccion').value,
+       sector: sector,
        telefono: document.getElementById('trans-telefono').value,
        costo: 0 // Campo eliminado de la UI, se envía 0 por defecto
   };
@@ -2911,7 +2941,14 @@ async function guardarProgramacion() {
    if (infoDiv) {
        const datosEntrega = [];
        if (transporteData.nombre) datosEntrega.push(`<strong>RECIBE:</strong> ${transporteData.nombre}`);
-       if (transporteData.direccion) datosEntrega.push(`<strong>DIR ENTREGA:</strong> ${transporteData.direccion}`);
+       
+       // Combinar dirección y sector
+       let dirShow = transporteData.direccion;
+       if (transporteData.sector) {
+           dirShow += ` <span style="font-size:1.2em; font-weight:bold; background-color:yellow;">(${transporteData.sector})</span>`;
+       }
+       if (transporteData.direccion) datosEntrega.push(`<strong>DIR ENTREGA:</strong> ${dirShow}`);
+       
        if (transporteData.telefono) datosEntrega.push(`<strong>TEL:</strong> ${transporteData.telefono}`);
        
        if (datosEntrega.length > 0) {
@@ -3071,11 +3108,13 @@ function cargarPedidoProgramado(id) {
   if (pedido.transporte) {
       document.getElementById('trans-nombre').value = pedido.transporte.nombre || '';
       document.getElementById('trans-direccion').value = pedido.transporte.direccion || '';
+      document.getElementById('trans-sector').value = pedido.transporte.sector || '';
       document.getElementById('trans-telefono').value = pedido.transporte.telefono || '';
       // Costo eliminado
   } else {
       document.getElementById('trans-nombre').value = '';
       document.getElementById('trans-direccion').value = '';
+      document.getElementById('trans-sector').value = '';
       document.getElementById('trans-telefono').value = '';
       // Costo eliminado
   }
