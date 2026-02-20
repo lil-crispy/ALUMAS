@@ -139,6 +139,10 @@
       margin-top: 15px;
     }
 
+    .mensaje-motivacional {
+      display: none;
+    }
+
     /* Responsive */
     @media screen and (max-width: 600px) {
       .encabezado .titulo {
@@ -231,6 +235,16 @@
       .total {
         font-size: 1.5em;
         margin-top: 10px;
+      }
+      
+      .mensaje-motivacional {
+        display: block !important;
+        font-size: 0.8em;
+        color: #555;
+        font-style: italic;
+        text-align: center;
+        margin-top: 5px;
+        width: 100%;
       }
     }
 
@@ -617,6 +631,9 @@
         </div>
     </div>
 
+    <!-- Mensaje motivacional (aleatorio) -->
+    <div id="pdf-mensaje-motivacional" style="text-align: center; font-style: italic; color: #555; font-size: 10px; margin-top: 2px; margin-bottom: 5px;"></div>
+
     <div style="border-top: 1px solid #000; margin-bottom: 15px;"></div>
 
     <!-- Info -->
@@ -715,6 +732,7 @@
       <div>
         <div class="titulo"></div>
         <img src="./img/LOGO4.webp" alt="Logo ALUMAS" style="max-width: 300px; display: block; margin: 0 auto;">
+        <div id="mensaje-motivacional" class="mensaje-motivacional"></div>
       </div>
     </div>
 
@@ -2554,6 +2572,46 @@ function actualizarFechaHora() {
 
 // Llamar la función al cargar la página
 actualizarFechaHora();
+
+const mensajesMotivacionales = [
+  "Todo pasa, incluso los días difíciles 🙂",
+  "Confía en tu proceso, vas avanzando.",
+  "Respira, lo mejor aún está por venir.",
+  "Eres más fuerte de lo que imaginas.",
+  "Paso a paso también es progreso.",
+  "Lo que hoy cuesta, mañana te hará fuerte.",
+  "No te detengas, el esfuerzo vale la pena.",
+  "Cada día es una nueva oportunidad.",
+  "Las cosas buenas toman tiempo.",
+  "Sigue adelante, aunque sea lento.",
+  "Todo esfuerzo tiene su recompensa.",
+  "Cree en ti, siempre.",
+  "Los momentos difíciles también enseñan.",
+  "No pierdas la fe en lo que sueñas.",
+  "Hoy puede ser el comienzo de algo grande.",
+  "Nunca subestimes tu capacidad.",
+  "Siempre hay una razón para continuar.",
+  "Lo estás haciendo mejor de lo que crees.",
+  "No te rindas, tu momento llegará.",
+  "La paciencia también es valentía."
+];
+
+function setMensajeMotivacional() {
+  const indice = Math.floor(Math.random() * mensajesMotivacionales.length);
+  const mensaje = mensajesMotivacionales[indice];
+  
+  // Para impresión normal
+  const elPrint = document.getElementById('mensaje-motivacional');
+  if (elPrint) elPrint.innerText = mensaje;
+  
+  // Para PDF
+  const elPdf = document.getElementById('pdf-mensaje-motivacional');
+  if (elPdf) elPdf.innerText = mensaje;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  setMensajeMotivacional();
+});
 
 
   </script>
