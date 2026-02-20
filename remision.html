@@ -2649,7 +2649,7 @@ document.addEventListener('DOMContentLoaded', () => {
       
       <div class="form-group">
         <label>Fecha:</label>
-        <input type="date" id="prog-fecha">
+        <input type="date" id="prog-fecha" onchange="actualizarHorasDisponibles()">
       </div>
       
       <div class="form-group">
@@ -2871,6 +2871,69 @@ function selectPedidoDashboard(id, elem) {
   elem.classList.add('selected');
 }
 
+function actualizarHorasDisponibles() {
+  const fechaInput = document.getElementById('prog-fecha');
+  const horaSelect = document.getElementById('prog-hora');
+  if (!fechaInput || !horaSelect) return;
+
+  const fechaSeleccionada = fechaInput.value;
+  // Si no hay fecha seleccionada, no filtramos nada aún
+  if (!fechaSeleccionada) return;
+
+  const horasPosibles = [
+      { v: "08:00", t: "08:00 AM" },
+      { v: "09:00", t: "09:00 AM" },
+      { v: "10:00", t: "10:00 AM" },
+      { v: "11:00", t: "11:00 AM" },
+      { v: "12:00", t: "12:00 PM" },
+      { v: "13:00", t: "01:00 PM" },
+      { v: "14:00", t: "02:00 PM" },
+      { v: "15:00", t: "03:00 PM" },
+      { v: "16:00", t: "04:00 PM" },
+      { v: "17:00", t: "05:00 PM" },
+      { v: "18:00", t: "06:00 PM" }
+  ];
+
+  // Identificar horas ocupadas en la fecha seleccionada
+  const horasOcupadas = globalPedidos.filter(p => {
+      if (p.fecha !== fechaSeleccionada) return false;
+      // Si reprogramamos, ignorar el pedido actual (permitir mantener su hora)
+      if (modoReprogramacion && pedidoSeleccionadoId && String(p.id) === String(pedidoSeleccionadoId)) {
+          return false;
+      }
+      return true;
+  }).map(p => p.hora);
+
+  const valorActual = horaSelect.value;
+  horaSelect.innerHTML = '';
+  
+  let disponible = false;
+  horasPosibles.forEach(h => {
+      if (!horasOcupadas.includes(h.v)) {
+          const opt = document.createElement('option');
+          opt.value = h.v;
+          opt.textContent = h.t;
+          horaSelect.appendChild(opt);
+          disponible = true;
+      }
+  });
+
+  if (!disponible) {
+      const opt = document.createElement('option');
+      opt.textContent = "Sin cupos";
+      opt.disabled = true;
+      horaSelect.appendChild(opt);
+  } else {
+      // Restaurar selección si es posible
+      const existe = Array.from(horaSelect.options).some(o => o.value === valorActual);
+      if (existe) {
+          horaSelect.value = valorActual;
+      } else {
+          horaSelect.selectedIndex = 0;
+      }
+  }
+}
+
 async function abrirModalProgramacion(esReprogramacion = false) {
    modoReprogramacion = esReprogramacion;
    
@@ -2920,6 +2983,9 @@ async function abrirModalProgramacion(esReprogramacion = false) {
            }
        }
    }
+   
+   // Actualizar lista de horas según disponibilidad
+   actualizarHorasDisponibles();
 
    document.getElementById('modal-programacion').style.display = 'flex';
    
@@ -2940,15 +3006,13 @@ async function guardarProgramacion() {
     alert("Por favor seleccione fecha y hora");
     return;
   }
-
-  // Validación de disponibilidad
+  
+  // Validación de disponibilidad (redundante pero segura)
   const ocupado = globalPedidos.some(p => p.fecha === fecha && p.hora === hora);
   
   if (ocupado) {
-    // Si estamos reprogramando y la "ocupación" es por el MISMO pedido (mismo ID), lo permitimos.
-    // Pero si es OTRO pedido, bloqueamos.
     if (modoReprogramacion && pedidoSeleccionadoId) {
-        const conflicto = globalPedidos.find(p => p.fecha === fecha && p.hora === hora && p.id !== pedidoSeleccionadoId);
+        const conflicto = globalPedidos.find(p => p.fecha === fecha && p.hora === hora && String(p.id) !== String(pedidoSeleccionadoId));
         if (conflicto) {
             alert("⚠️ Esa fecha y hora ya están ocupadas por OTRO pedido.");
             return;
