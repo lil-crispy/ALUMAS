@@ -976,6 +976,10 @@
     let inputDebounceTimer = null;
 
     tabla.addEventListener('input', async (e) => {
+      if (document.body.classList.contains('bloqueado')) {
+        e.preventDefault();
+        return;
+      }
       const celda = e.target;
       if (celda.classList.contains('cant') || celda.classList.contains('valor-u')) {
         actualizarTotales();
@@ -1068,6 +1072,7 @@
   
     // --- LÓGICA DE SELECCIÓN DE FILA (4 CLICKS) ---
     tabla.addEventListener('click', (e) => {
+      if (document.body.classList.contains('bloqueado')) return;
       // Manejar selección múltiple con clicks repetidos
       if (e.detail === 4) { // Detectar 4 clicks
         const fila = e.target.closest('tr');
@@ -1095,6 +1100,7 @@
     });
 
     function agregarFila() {
+      if (document.body.classList.contains('bloqueado')) return;
       // Si hay una fila seleccionada, agregar DESPUÉS de ella
       const seleccionada = tabla.querySelector('tr.fila-seleccionada');
       
@@ -1121,6 +1127,7 @@
     }
   
     function eliminarFila() {
+      if (document.body.classList.contains('bloqueado')) return;
       // 1. Intentar eliminar fila seleccionada explícitamente
       const seleccionada = tabla.querySelector('tr.fila-seleccionada');
       if (seleccionada) {
@@ -1140,6 +1147,7 @@
     }
   
     function limpiarTabla() {
+      if (document.body.classList.contains('bloqueado')) return;
       tabla.querySelectorAll('tr').forEach(fila => {
         fila.querySelectorAll('td').forEach(celda => {
           if (!celda.classList.contains('valor-t')) {
@@ -1631,6 +1639,7 @@
 
   
     tabla.addEventListener('focusin', (e) => {
+      if (document.body.classList.contains('bloqueado')) return;
       const celda = e.target.closest('td');
       if (celda && !celda.classList.contains('valor-t')) {
         celdaActiva = celda;
@@ -1638,6 +1647,7 @@
     });
 
     tabla.addEventListener('click', (e) => {
+      if (document.body.classList.contains('bloqueado')) return;
       const celda = e.target.closest('td');
       if (!celda || celda.classList.contains('valor-t')) return;
       celda.setAttribute('contenteditable', 'true');
@@ -1646,6 +1656,7 @@
     });
   
     tabla.addEventListener('dblclick', (e) => {
+      if (document.body.classList.contains('bloqueado')) return;
       const celda = e.target.closest('td');
       if (celda && !celda.classList.contains('valor-t')) {
         celda.setAttribute('contenteditable', 'true');
@@ -1654,6 +1665,10 @@
     });
   
     tabla.addEventListener('keydown', async (e) => {
+      if (document.body.classList.contains('bloqueado')) {
+        e.preventDefault();
+        return;
+      }
       // --- MANEJO DE SUGERENCIAS Y NAVEGACIÓN ---
       const panel = document.getElementById('panel-sugerencias');
       const dropdown = document.getElementById('producto-autocomplete-dropdown');
@@ -2649,15 +2664,43 @@ document.addEventListener('DOMContentLoaded', () => {
     isLocked = !isLocked;
     const btn = document.getElementById('btn-lock');
     const body = document.body;
+    const container = document.querySelector('.contenedor-principal');
     
     if (isLocked) {
         btn.innerText = '🔒';
         btn.title = 'Desbloquear tabla';
         body.classList.add('bloqueado');
+        
+        // Deshabilitar edición de texto en celdas
+        container.querySelectorAll('[contenteditable="true"]').forEach(el => {
+            el.setAttribute('contenteditable', 'false');
+            el.dataset.wasEditable = 'true';
+        });
+        
+        // Deshabilitar inputs, selects y botones
+        container.querySelectorAll('input, select, button').forEach(el => {
+            if (el.id !== 'btn-lock') {
+                el.disabled = true;
+            }
+        });
+
     } else {
         btn.innerText = '🔓';
         btn.title = 'Bloquear tabla';
         body.classList.remove('bloqueado');
+        
+        // Restaurar edición
+        container.querySelectorAll('[data-was-editable="true"]').forEach(el => {
+            el.setAttribute('contenteditable', 'true');
+            delete el.dataset.wasEditable;
+        });
+        
+        // Restaurar inputs, selects y botones
+        container.querySelectorAll('input, select, button').forEach(el => {
+            if (el.id !== 'btn-lock') {
+                el.disabled = false;
+            }
+        });
     }
   }
 
