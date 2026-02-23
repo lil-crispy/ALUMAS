@@ -54,14 +54,40 @@
     }
 
     .acciones-tabla {
-      text-align: right;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       margin-bottom: 5px;
+    }
+
+    .acciones-tabla .botones-derecha {
+      text-align: right;
     }
 
     .acciones-tabla button {
       margin-left: 5px;
       padding: 5px 10px;
       cursor: pointer;
+    }
+
+    /* Estilos para modo bloqueado */
+    body.bloqueado .contenedor-principal {
+      pointer-events: none;
+    }
+    
+    body.bloqueado #btn-lock {
+      pointer-events: auto;
+      background-color: #f44336; /* Rojo para indicar bloqueo */
+      color: white;
+      border: 1px solid #d32f2f;
+      z-index: 1001; /* Asegurar que esté por encima */
+    }
+
+    body.bloqueado [contenteditable="true"],
+    body.bloqueado input,
+    body.bloqueado select {
+      background-color: #eee;
+      color: #777;
     }
 
     table {
@@ -783,9 +809,12 @@
 
     <div class="contenedor-tabla">
       <div class="acciones-tabla">
-        <button onclick="agregarFila()">➕</button>
-        <button onclick="eliminarFila()">➖</button>
-        <button onclick="limpiarTabla()">🧹 Limpiar</button>
+        <button id="btn-lock" onclick="toggleBloqueo()" title="Bloquear edición">🔓</button>
+        <div class="botones-derecha">
+          <button onclick="agregarFila()">➕</button>
+          <button onclick="eliminarFila()">➖</button>
+          <button onclick="limpiarTabla()">🧹 Limpiar</button>
+        </div>
       </div>
       <table>
         <thead>
@@ -2611,8 +2640,26 @@ function setMensajeMotivacional() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  setMensajeMotivacional();
-});
+    setMensajeMotivacional();
+  });
+
+  // Función para bloquear/desbloquear la tabla
+  let isLocked = false;
+  function toggleBloqueo() {
+    isLocked = !isLocked;
+    const btn = document.getElementById('btn-lock');
+    const body = document.body;
+    
+    if (isLocked) {
+        btn.innerText = '🔒';
+        btn.title = 'Desbloquear tabla';
+        body.classList.add('bloqueado');
+    } else {
+        btn.innerText = '🔓';
+        btn.title = 'Bloquear tabla';
+        body.classList.remove('bloqueado');
+    }
+  }
 
 
   </script>
