@@ -471,5 +471,124 @@ doc.save('remision_ALUMAS.pdf');
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
+<!-- Modal para imagen ampliada -->
+<div id="imageModal" class="image-modal">
+  <span class="close-modal">&times;</span>
+  <img class="modal-content" id="imgExpanded">
+  <div id="caption"></div>
+</div>
+
+<style>
+/* Estilos del Modal */
+.image-modal {
+  display: none; 
+  position: fixed; 
+  z-index: 10000; /* High z-index to be on top of everything */
+  padding-top: 60px; 
+  left: 0;
+  top: 0;
+  width: 100%; 
+  height: 100%; 
+  overflow: auto; 
+  background-color: rgba(0,0,0,0.9); 
+}
+
+.modal-content {
+  margin: auto;
+  display: block;
+  width: 80%;
+  max-width: 900px; /* Max width for desktop */
+  max-height: 80vh; /* Max height to fit screen */
+  object-fit: contain;
+}
+
+#caption {
+  margin: auto;
+  display: block;
+  width: 80%;
+  max-width: 700px;
+  text-align: center;
+  color: #ccc;
+  padding: 10px 0;
+  height: 150px;
+  font-size: 20px;
+}
+
+.modal-content, #caption {  
+  animation-name: zoom;
+  animation-duration: 0.6s;
+}
+
+@keyframes zoom {
+  from {transform:scale(0)} 
+  to {transform:scale(1)}
+}
+
+.close-modal {
+  position: absolute;
+  top: 15px;
+  right: 35px;
+  color: #f1f1f1;
+  font-size: 40px;
+  font-weight: bold;
+  transition: 0.3s;
+  cursor: pointer;
+}
+
+.close-modal:hover,
+.close-modal:focus {
+  color: #bbb;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/* Responsive */
+@media only screen and (max-width: 700px) {
+  .modal-content {
+    width: 100%;
+  }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // Modal Logic
+  const modal = document.getElementById("imageModal");
+  const modalImg = document.getElementById("imgExpanded");
+  const captionText = document.getElementById("caption");
+  const span = document.getElementsByClassName("close-modal")[0];
+
+  // Attach click event to all product images
+  document.querySelectorAll('.producto img').forEach(img => {
+    img.style.cursor = 'pointer';
+    img.title = "Click para ampliar";
+    img.addEventListener('click', function() {
+      modal.style.display = "block";
+      modalImg.src = this.src;
+      captionText.textContent = this.alt;
+    });
+  });
+
+  // Close when clicking X
+  span.onclick = function() { 
+    modal.style.display = "none";
+  }
+
+  // Close when clicking outside the image
+  modal.onclick = function(event) {
+    if (event.target === modal) {
+      modal.style.display = "none";
+    }
+  }
+
+  // Close with Escape key
+  document.addEventListener('keydown', function(event) {
+    if (event.key === "Escape" && modal.style.display === "block") {
+      modal.style.display = "none";
+    }
+  });
+});
+</script>
+
 </body>
 </html>
