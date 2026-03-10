@@ -807,6 +807,7 @@
     <div class="scanner-cotizacion-container">
       <span class="scanner-icon">📷</span>
       <input type="text" id="scannerCotizacion" class="scanner-input" placeholder="Escanear código...">
+      <button id="btn-buscar-cot" class="btn-buscar-scan" title="Buscar cotización">✔️</button>
     </div>
 
     <style>
@@ -843,6 +844,20 @@
       }
       .scanner-input::placeholder {
         color: #aaa;
+      }
+      .btn-buscar-scan {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 1.1em;
+        color: #00acc1;
+        margin-left: 5px;
+        padding: 0 5px;
+        transition: transform 0.2s;
+      }
+      .btn-buscar-scan:hover {
+        transform: scale(1.2);
+        color: #00838f;
       }
     </style>
 
@@ -2102,7 +2117,7 @@
                     scannerInput.value = ''; 
                     scannerInput.blur(); 
                 } else {
-                    alert("Cotización no encontrada o expirada.\nCódigo: " + codigo);
+                    alert("⚠️ Cotización NO encontrada.\n\nCódigo buscado: " + codigo);
                     scannerInput.value = '';
                     scannerInput.focus();
                 }
@@ -2118,8 +2133,23 @@
             
             // Evento Change (Respaldo para pegar/mouse)
             scannerInput.addEventListener('change', function(e) {
-                procesarCodigo(this.value);
+                // Solo si el usuario hace click fuera o pega y sale
+                if (this.value) procesarCodigo(this.value);
             });
+
+            // Nuevo botón de búsqueda manual
+            const btnBuscar = document.getElementById('btn-buscar-cot');
+            if (btnBuscar) {
+                btnBuscar.addEventListener('click', () => {
+                    const val = scannerInput.value.trim();
+                    if (!val) {
+                        alert("Por favor ingrese un código.");
+                        scannerInput.focus();
+                        return;
+                    }
+                    procesarCodigo(val);
+                });
+            }
         }
         limpiarCotizacionesAntiguas();
     });
