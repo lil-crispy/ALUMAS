@@ -804,10 +804,47 @@
       </select>
     </div>
 
-    <div class="scanner-cotizacion" style="margin-top: 10px; margin-bottom: 10px;">
-      <label for="scannerCotizacion"><strong>Recuperar Cotización:</strong></label>
-      <input type="text" id="scannerCotizacion" placeholder="Escanear código de barras..." style="padding: 5px; border-radius: 4px; border: 1px solid #ccc; width: 100%; box-sizing: border-box;">
+    <div class="scanner-cotizacion-container">
+      <span class="scanner-icon">📷</span>
+      <input type="text" id="scannerCotizacion" class="scanner-input" placeholder="Escanear código...">
     </div>
+
+    <style>
+      .scanner-cotizacion-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 10px auto;
+        width: fit-content;
+        background: #f9f9f9;
+        padding: 5px 10px;
+        border-radius: 20px;
+        border: 1px solid #ddd;
+        transition: all 0.3s ease;
+      }
+      .scanner-cotizacion-container:hover,
+      .scanner-cotizacion-container:focus-within {
+        border-color: #00acc1;
+        background: #fff;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      }
+      .scanner-icon {
+        font-size: 1.2em;
+        margin-right: 8px;
+        opacity: 0.6;
+      }
+      .scanner-input {
+        border: none;
+        background: transparent;
+        outline: none;
+        width: 150px;
+        font-size: 0.9em;
+        color: #333;
+      }
+      .scanner-input::placeholder {
+        color: #aaa;
+      }
+    </style>
 
     <div class="punto-venta-selector" style="margin-top: 10px; margin-bottom: 10px;">
       <label for="select-punto-venta"><strong>Punto de Venta:</strong></label>
@@ -2041,25 +2078,38 @@
     document.addEventListener('DOMContentLoaded', () => {
         const scannerInput = document.getElementById('scannerCotizacion');
         if (scannerInput) {
-            scannerInput.addEventListener('change', function(e) {
-                const codigo = e.target.value.trim();
+            scannerInput.setAttribute('autocomplete', 'off'); // Evitar autocompletado del navegador
+            
+            // Función procesar código
+            const procesarCodigo = (codigo) => {
                 if (!codigo) return;
+                codigo = codigo.trim().toUpperCase();
+                
                 if (codigo.startsWith('COT-')) {
                     const cotizacion = recuperarCotizacion(codigo);
                     if (cotizacion) {
                         cargarCotizacionEnTabla(cotizacion);
-                        e.target.value = ''; 
+                        scannerInput.value = ''; 
+                        scannerInput.blur(); 
                     } else {
-                        alert("Cotización no encontrada o expirada.");
-                        e.target.value = '';
+                        alert("Cotización no encontrada o expirada.\nCódigo: " + codigo);
+                        scannerInput.value = '';
+                        scannerInput.focus();
                     }
                 }
-            });
+            };
+
+            // Evento Enter (Principal para escáneres)
             scannerInput.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    this.blur(); 
+                    procesarCodigo(this.value);
                 }
+            });
+            
+            // Evento Change (Respaldo para pegar/mouse)
+            scannerInput.addEventListener('change', function(e) {
+                procesarCodigo(this.value);
             });
         }
         limpiarCotizacionesAntiguas();
