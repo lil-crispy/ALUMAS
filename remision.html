@@ -1948,16 +1948,14 @@
 
     // --- NUEVA FUNCIONALIDAD: COTIZACIÓN CON CÓDIGO DE BARRAS ---
     function generarIdCotizacion() {
+      // Simplificado: Hora Minuto Segundo Milisegundo (HHMMSSmmm)
+      // Suficientemente único para el día a día y muy corto (9 dígitos)
       const hoy = new Date();
-      const yyyy = hoy.getFullYear();
-      const mm = String(hoy.getMonth() + 1).padStart(2, '0');
-      const dd = String(hoy.getDate()).padStart(2, '0');
-      const fechaStr = `${yyyy}${mm}${dd}`;
-      let contador = parseInt(localStorage.getItem(`COT_COUNT_${fechaStr}`) || '0');
-      contador++;
-      localStorage.setItem(`COT_COUNT_${fechaStr}`, contador);
-      const seq = String(contador).padStart(4, '0');
-      return `COT-${fechaStr}-${seq}`;
+      const hh = String(hoy.getHours()).padStart(2, '0');
+      const mm = String(hoy.getMinutes()).padStart(2, '0');
+      const ss = String(hoy.getSeconds()).padStart(2, '0');
+      const mmm = String(hoy.getMilliseconds()).padStart(3, '0');
+      return `${hh}${mm}${ss}${mmm}`;
     }
 
     function guardarDatosCotizacion(id) {
@@ -1976,12 +1974,15 @@
         items: items,
         total: total
       };
-      localStorage.setItem(`COT_DATA_${id}`, JSON.stringify(cotizacion));
+      // Guardar con prefijo 'C-' para evitar conflictos pero ID corto
+      localStorage.setItem(`COT_${id}`, JSON.stringify(cotizacion));
       return true;
     }
 
-    function recuperarCotizacion(id) {
-      const dataStr = localStorage.getItem(`COT_DATA_${id}`);
+    function recuperarCotizacion(codigo) {
+      // El escáner lee el ID directo (ej: 103045123)
+      // Buscamos la clave COT_103045123
+      const dataStr = localStorage.getItem(`COT_${codigo}`);
       if (!dataStr) return null;
       return JSON.parse(dataStr);
     }
@@ -2019,7 +2020,7 @@
       const oneDay = 24 * 60 * 60 * 1000;
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && key.startsWith('COT_DATA_')) {
+        if (key && (key.startsWith('COT_') || key.startsWith('COT_DATA_'))) {
           try {
             const data = JSON.parse(localStorage.getItem(key));
             if (now - data.timestamp > oneDay) {
@@ -2047,8 +2048,10 @@
               JsBarcode(svgNode, idCotizacion, {
                   format: "CODE128",
                   displayValue: true,
-                  fontSize: 14,
-                  height: 40
+                  fontSize: 16,
+                  height: 30,
+                  width: 2,
+                  margin: 5
               });
           }
       }
@@ -2083,19 +2086,25 @@
             // Función procesar código
             const procesarCodigo = (codigo) => {
                 if (!codigo) return;
-                codigo = codigo.trim().toUpperCase();
+                codigo = codigo.trim(); // No uppercase para este formato numérico simple
                 
-                if (codigo.startsWith('COT-')) {
-                    const cotizacion = recuperarCotizacion(codigo);
-                    if (cotizacion) {
-                        cargarCotizacionEnTabla(cotizacion);
-                        scannerInput.value = ''; 
-                        scannerInput.blur(); 
-                    } else {
-                        alert("Cotización no encontrada o expirada.\nCódigo: " + codigo);
-                        scannerInput.value = '';
-                        scannerInput.focus();
-                    }
+                // Intentar recuperar directo (formato nuevo corto)
+                let cotizacion = recuperarCotizacion(codigo);
+                
+                // Si no, intentar formato antiguo
+                if (!cotizacion && codigo.toUpperCase().startsWith('COT-')) {
+                   const dataStr = localStorage.getItem(`COT_DATA_${codigo.toUpperCase()}`);
+                   if (dataStr) cotizacion = JSON.parse(dataStr);
+                }
+
+                if (cotizacion) {
+                    cargarCotizacionEnTabla(cotizacion);
+                    scannerInput.value = ''; 
+                    scannerInput.blur(); 
+                } else {
+                    alert("Cotización no encontrada o expirada.\nCódigo: " + codigo);
+                    scannerInput.value = '';
+                    scannerInput.focus();
                 }
             };
 
