@@ -642,6 +642,8 @@
   <!-- Librerías para PDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- Librería para Código de Barras -->
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
   <div id="pdf-template" style="display:none; width: 21cm; background: white; padding: 1cm; box-sizing: border-box; font-family: Arial, sans-serif; position: absolute; top: 0; left: 0; z-index: -1000; color: black;">
     <!-- Header -->
     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
@@ -760,6 +762,9 @@
         <div class="titulo"></div>
         <img src="./img/LOGO4.webp" alt="Logo ALUMAS" style="max-width: 300px; display: block; margin: 0 auto;">
         <div id="mensaje-motivacional" class="mensaje-motivacional"></div>
+        <div id="barcode-container" style="text-align: center; margin-top: 10px; display: none;">
+          <svg id="barcode"></svg>
+        </div>
       </div>
     </div>
 
@@ -797,6 +802,11 @@
         <option value="CONTADO" selected>Contado</option>
         <option value="CREDITO">Crédito</option>
       </select>
+    </div>
+
+    <div class="scanner-cotizacion" style="margin-top: 10px; margin-bottom: 10px;">
+      <label for="scannerCotizacion"><strong>Recuperar Cotización:</strong></label>
+      <input type="text" id="scannerCotizacion" placeholder="Escanear código de barras..." style="padding: 5px; border-radius: 4px; border: 1px solid #ccc; width: 100%; box-sizing: border-box;">
     </div>
 
     <div class="punto-venta-selector" style="margin-top: 10px; margin-bottom: 10px;">
@@ -1148,6 +1158,13 @@
   
     function limpiarTabla() {
       if (document.body.classList.contains('bloqueado')) return;
+      
+      // Ocultar código de barras si existe
+      const barcodeContainer = document.getElementById('barcode-container');
+      if (barcodeContainer) barcodeContainer.style.display = 'none';
+      const tempId = document.getElementById('temp-cot-id');
+      if (tempId) tempId.remove();
+
       tabla.querySelectorAll('tr').forEach(fila => {
         fila.querySelectorAll('td').forEach(celda => {
           if (!celda.classList.contains('valor-t')) {
@@ -1892,10 +1909,161 @@
       if (consecutivoDisplay) consecutivoDisplay.style.visibility = 'visible';
     }
 
-    function imprimirCotizacion() {
-      aplicarCotizacionUI();
-      window.print();
+    // --- NUEVA FUNCIONALIDAD: COTIZACIÓN CON CÓDIGO DE BARRAS ---
+    function generarIdCotizacion() {
+      const hoy = new Date();
+      const yyyy = hoy.getFullYear();
+      const mm = String(hoy.getMonth() + 1).padStart(2, '0');
+      const dd = String(hoy.getDate()).padStart(2, '0');
+      const fechaStr = `${yyyy}${mm}${dd}`;
+      let contador = parseInt(localStorage.getItem(`COT_COUNT_${fechaStr}`) || '0');
+      contador++;
+      localStorage.setItem(`COT_COUNT_${fechaStr}`, contador);
+      const seq = String(contador).padStart(4, '0');
+      return `COT-${fechaStr}-${seq}`;
     }
+
+    function guardarDatosCotizacion(id) {
+      const items = obtenerItemsBD();
+      if (items.length === 0) return false;
+      const clienteNombre = document.getElementById('nombre-cliente')?.value || '';
+      const total = obtenerTotalNumerico();
+      const cotizacion = {
+        id: id,
+        timestamp: Date.now(),
+        fecha: new Date().toISOString(),
+        cliente: {
+          nombre: clienteNombre,
+          data: clienteSeleccionado
+        },
+        items: items,
+        total: total
+      };
+      localStorage.setItem(`COT_DATA_${id}`, JSON.stringify(cotizacion));
+      return true;
+    }
+
+    function recuperarCotizacion(id) {
+      const dataStr = localStorage.getItem(`COT_DATA_${id}`);
+      if (!dataStr) return null;
+      return JSON.parse(dataStr);
+    }
+
+    function cargarCotizacionEnTabla(cotizacion) {
+      if (!confirm(`¿Cargar cotización ${cotizacion.id} de ${cotizacion.cliente.nombre || 'Cliente General'}?`)) return;
+      limpiarTabla();
+      const inputCliente = document.getElementById('nombre-cliente');
+      if (inputCliente) inputCliente.value = cotizacion.cliente.nombre || '';
+      clienteSeleccionado = cotizacion.cliente.data;
+      if (clienteSeleccionado && clienteSeleccionado.id) {
+        localStorage.setItem('CLIENTE_ID', String(clienteSeleccionado.id));
+      }
+      const tbody = document.getElementById('tabla-productos');
+      tbody.innerHTML = '';
+      cotizacion.items.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="cant" contenteditable="true">${item.cantidad}</td>
+          <td contenteditable="true" data-id="${item.id_producto || ''}">${item.descripcion}</td>
+          <td class="valor-u" contenteditable="true">${formatearPesos(item.valor_unitario)}</td>
+          <td class="valor-t">${formatearPesos(item.valor_total)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+      while (tbody.children.length < 7) {
+        agregarFila();
+      }
+      actualizarTotales();
+      // alert("Cotización cargada correctamente.");
+    }
+
+    function limpiarCotizacionesAntiguas() {
+      const now = Date.now();
+      const oneDay = 24 * 60 * 60 * 1000;
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('COT_DATA_')) {
+          try {
+            const data = JSON.parse(localStorage.getItem(key));
+            if (now - data.timestamp > oneDay) {
+              localStorage.removeItem(key);
+            }
+          } catch (e) { localStorage.removeItem(key); }
+        }
+      }
+    }
+
+    function imprimirCotizacion() {
+      const items = obtenerItemsBD();
+      if (items.length === 0) {
+          alert("La tabla está vacía. Agregue productos para cotizar.");
+          return;
+      }
+      const idCotizacion = generarIdCotizacion();
+      
+      // Generar código de barras
+      if (window.JsBarcode) {
+          const barcodeContainer = document.getElementById('barcode-container');
+          const svgNode = document.getElementById('barcode');
+          if (barcodeContainer && svgNode) {
+              barcodeContainer.style.display = 'block';
+              JsBarcode(svgNode, idCotizacion, {
+                  format: "CODE128",
+                  displayValue: true,
+                  fontSize: 14,
+                  height: 40
+              });
+          }
+      }
+      guardarDatosCotizacion(idCotizacion);
+      aplicarCotizacionUI();
+      
+      // Añadir ID visible extra si se desea
+      const mensajeDiv = document.querySelector('.mensaje');
+      if (mensajeDiv) {
+           const pId = document.createElement('p');
+           pId.style.fontWeight = 'bold';
+           pId.innerText = `ID: ${idCotizacion}`;
+           pId.id = 'temp-cot-id';
+           mensajeDiv.prepend(pId);
+      }
+      
+      window.print();
+      
+      // Limpieza post-impresión
+      setTimeout(() => {
+          const pId = document.getElementById('temp-cot-id');
+          if (pId) pId.remove();
+      }, 2000);
+    }
+
+    // Inicialización del Scanner
+    document.addEventListener('DOMContentLoaded', () => {
+        const scannerInput = document.getElementById('scannerCotizacion');
+        if (scannerInput) {
+            scannerInput.addEventListener('change', function(e) {
+                const codigo = e.target.value.trim();
+                if (!codigo) return;
+                if (codigo.startsWith('COT-')) {
+                    const cotizacion = recuperarCotizacion(codigo);
+                    if (cotizacion) {
+                        cargarCotizacionEnTabla(cotizacion);
+                        e.target.value = ''; 
+                    } else {
+                        alert("Cotización no encontrada o expirada.");
+                        e.target.value = '';
+                    }
+                }
+            });
+            scannerInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.blur(); 
+                }
+            });
+        }
+        limpiarCotizacionesAntiguas();
+    });
 
     async function imprimirVenta() {
       const tipo = getTipoPago();
