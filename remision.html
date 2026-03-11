@@ -796,6 +796,14 @@
       <label><input type="checkbox" id="pago-qr"> QR</label>
     </div>
 
+    <div id="detalle-pago-efectivo" style="display: none; margin-top: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; background-color: #f9f9f9;">
+      <div style="display: flex; flex-direction: column; gap: 5px;">
+        <label for="valor-pagado" style="font-weight: bold;">Valor Pagado:</label>
+        <input type="number" id="valor-pagado" placeholder="Ingrese valor" style="padding: 5px; font-size: 1.1em; width: 100%;">
+        <p id="valor-cambio" style="font-weight: bold; font-size: 1.2em; margin-top: 5px; color: #2e7d32;">Cambio: $ 0</p>
+      </div>
+    </div>
+
     <div class="tipo-pago-selector" style="margin-top: 10px; margin-bottom: 10px;">
       <label for="select-tipo-pago"><strong>Tipo de pago:</strong></label>
       <select id="select-tipo-pago" style="padding: 5px; border-radius: 4px; border: 1px solid #ccc;">
@@ -1015,24 +1023,53 @@
       if (isNaN(numero)) return '$ 0';
       return '$ ' + numero.toLocaleString('es-CO');
     }
-  
+
+    function calcularCambio() {
+      const totalEl = document.getElementById('total-general');
+      const pagadoEl = document.getElementById('valor-pagado');
+      const cambioEl = document.getElementById('valor-cambio');
+      
+      if (!totalEl || !pagadoEl || !cambioEl) return;
+      
+      const totalTxt = totalEl.innerText.replace(/[^\d]/g, '');
+      const total = parseInt(totalTxt) || 0;
+      
+      const pagadoVal = pagadoEl.value;
+      if (!pagadoVal) {
+          cambioEl.innerText = 'Cambio: $ 0';
+          return;
+      }
+      const pagado = parseInt(pagadoVal) || 0;
+      
+      const cambio = pagado - total;
+      
+      cambioEl.innerText = 'Cambio: ' + formatearPesos(cambio);
+      
+      if (cambio < 0) {
+        cambioEl.style.color = '#d32f2f'; // Rojo para cambio negativo
+      } else {
+        cambioEl.style.color = '#2e7d32'; // Verde para cambio positivo
+      }
+    }
+
     function actualizarTotales() {
       let totalGeneral = 0;
-  
+
       tabla.querySelectorAll('tr').forEach(fila => {
         const cant = parseInt(fila.querySelector('.cant')?.innerText || 0);
         const valorUCell = fila.querySelector('.valor-u');
         const valorUTxt = valorUCell?.innerText.replace(/[^\d]/g, '') || '0';
         const valorU = parseInt(valorUTxt);
-  
+
         const totalFila = cant * valorU;
         const totalCelda = fila.querySelector('.valor-t');
         if (totalCelda) totalCelda.innerText = formatearPesos(totalFila);
-  
+
         if (!isNaN(totalFila)) totalGeneral += totalFila;
       });
-  
+
       document.getElementById('total-general').innerText = 'TOTAL: ' + formatearPesos(totalGeneral);
+      calcularCambio();
     }
   
     let inputDebounceTimer = null;
@@ -2406,9 +2443,26 @@
                 }
               });
             }
+            
+            // Actualizar visibilidad del detalle de efectivo
+            const efectivoCheckbox = document.getElementById('pago-efectivo');
+            const detalle = document.getElementById('detalle-pago-efectivo');
+            if (efectivoCheckbox && detalle) {
+                const isEfectivo = efectivoCheckbox.checked;
+                detalle.style.display = isEfectivo ? 'block' : 'none';
+                if (isEfectivo && id === 'pago-efectivo' && el.checked) {
+                    setTimeout(() => document.getElementById('valor-pagado')?.focus(), 100);
+                    calcularCambio();
+                }
+            }
           });
         }
       });
+      
+      const valorPagadoInput = document.getElementById('valor-pagado');
+      if (valorPagadoInput) {
+          valorPagadoInput.addEventListener('input', calcularCambio);
+      }
       // Filtros del reporte
       const header = document.querySelector('.report-header');
       if (header) {
