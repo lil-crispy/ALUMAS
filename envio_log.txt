@@ -1,0 +1,31 @@
+2026-03-27 11:22:04,234 - INFO - ====== WebDriver manager ======
+2026-03-27 11:22:07,578 - INFO - Get LATEST chromedriver version for google-chrome
+2026-03-27 11:22:07,695 - INFO - Get LATEST chromedriver version for google-chrome
+2026-03-27 11:22:07,772 - INFO - Driver [C:\Users\crist\.wdm\drivers\chromedriver\win64\146.0.7680.165\chromedriver-win32/chromedriver.exe] found in cache
+2026-03-27 11:22:11,180 - ERROR - Error al iniciar el driver: Message: session not created
+from unknown error: failed to write prefs file
+Stacktrace:
+	chromedriver!GetHandleVerifier [0x55cdf3+10b03]
+	chromedriver!GetHandleVerifier [0x55cf24+10c34]
+	chromedriver!(No symbol) [0x342120]
+	chromedriver!(No symbol) [0x37b57d]
+	chromedriver!(No symbol) [0x37b778]
+	chromedriver!(No symbol) [0x375dea]
+	chromedriver!(No symbol) [0x372690]
+	chromedriver!(No symbol) [0x3b9cbf]
+	chromedriver!(No symbol) [0x3b94d7]
+	chromedriver!(No symbol) [0x3ad8a6]
+	chromedriver!(No symbol) [0x380229]
+	chromedriver!(No symbol) [0x380fe4]
+	chromedriver!GetHandleVerifier [0x7c48b9+2785c9]
+	chromedriver!GetHandleVerifier [0x7bfeb5+273bc5]
+	chromedriver!GetHandleVerifier [0x7de06b+291d7b]
+	chromedriver!GetHandleVerifier [0x575cc8+299d8]
+	chromedriver!GetHandleVerifier [0x57d9fd+3170d]
+	chromedriver!GetHandleVerifier [0x5658c8+195d8]
+	chromedriver!GetHandleVerifier [0x565a92+197a2]
+	chromedriver!GetHandleVerifier [0x54ee9a+2baa]
+	KERNEL32!BaseThreadInitThunk [0x75ec5d49+19]
+	ntdll!RtlInitializeExceptionChain [0x7706d81b+6b]
+	ntdll!RtlGetAppContainerNamedObjectPath [0x7706d7a1+231]
+

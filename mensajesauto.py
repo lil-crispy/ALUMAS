@@ -61,6 +61,11 @@ def setup_driver():
     opciones.add_experimental_option("detach", True)
     opciones.add_argument("--log-level=3")
     
+    # Opciones adicionales para evitar el error de "DevToolsActivePort file doesn't exist" / "crashed"
+    opciones.add_argument("--no-sandbox")
+    opciones.add_argument("--disable-dev-shm-usage")
+    opciones.add_argument("--disable-gpu")
+    
     try:
         service = Service(ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service, options=opciones)
@@ -104,7 +109,8 @@ def esperar_inicio_sesion(driver):
     # Intentar detectar sesión automáticamente
     try:
         wait = WebDriverWait(driver, 60)
-        wait.until(EC.presence_of_element_located((By.XPATH, '//div[@contenteditable="true"][@data-tab="3"]')))
+        # Esperamos a que aparezca el panel lateral de chats, indicando que se inició sesión
+        wait.until(EC.presence_of_element_located((By.XPATH, '//div[@id="pane-side"] | //div[@contenteditable="true"][@data-tab="3"]')))
         return True
     except TimeoutException:
         return ask_yes_no("Inicio de Sesión", "¿Ya inició sesión en WhatsApp Web (escaneó el QR)?")
@@ -126,7 +132,16 @@ def enviar_mensaje(driver, numero, mensaje_base, promocion):
         except:
             pass
 
-        input_box = wait.until(EC.presence_of_element_located((By.XPATH, '//div[@contenteditable="true"][@data-tab="10"]')))
+        # XPath actualizado y más robusto que no depende del data-tab ni del idioma
+        xpath_input = (
+            '//*[@id="main"]/footer//div[@contenteditable="true"] | '
+            '//div[@contenteditable="true"][@title="Escribe un mensaje"] | '
+            '//div[@contenteditable="true"][@data-tab="10"] | '
+            '//div[@contenteditable="true"][@data-tab="11"]'
+        )
+        input_box = wait.until(EC.presence_of_element_located((By.XPATH, xpath_input)))
+        
+        # Enviar mensaje con ENTER
         time.sleep(1) 
         input_box.send_keys(Keys.ENTER)
         time.sleep(3) 
@@ -183,10 +198,19 @@ def main():
         numero = item[0]
         mensaje = item[1]
         
-        if enviar_mensaje(driver, numero, mensaje, promo):
-            enviados += 1
-        else:
+        try:
+            if enviar_mensaje(driver, numero, mensaje, promo):
+                enviados += 1
+            else:
+                errores += 1
+        except Exception as e:
+            # Si el navegador se cerró o se perdió la conexión
+            if "target frame detached" in str(e) or "disconnected" in str(e) or "chrome not reachable" in str(e):
+                show_error("Error", "El navegador se cerró inesperadamente.")
+                return
             errores += 1
+            logging.error(f"Excepción en envío a {numero}: {e}")
+            
         time.sleep(2)
         
     show_info("Finalizado", f"Envío completado.\n✅ Enviados: {enviados}\n❌ Errores: {errores}")
