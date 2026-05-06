@@ -140,6 +140,21 @@ app.get('/api/clientes', async (req, res) => {
   }
 })
 
+app.get('/api/clientes-mayoristas-contactos', async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT id_cliente AS id, nombre, telefono, tipo_cliente
+       FROM clientes
+       WHERE LOWER(COALESCE(tipo_cliente, '')) LIKE '%mayor%'
+         AND TRIM(COALESCE(telefono, '')) <> ''
+       ORDER BY nombre`
+    )
+    res.json({ ok: true, clientes: rows || [] })
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message })
+  }
+})
+
 app.get('/api/productos', async (req, res) => {
   try {
     const q = String(req.query.q || '').trim()

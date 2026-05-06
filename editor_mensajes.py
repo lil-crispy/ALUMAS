@@ -1,14 +1,20 @@
 import json
 import os
+import random
+import re
 import sys
 import tkinter as tk
+from pathlib import Path
 from tkinter import ttk, messagebox, scrolledtext, simpledialog
+from urllib import error, request
 
 class EditorMensajesApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Editor Avanzado ALUMAS")
         self.root.geometry("1000x700")
+        self.days = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado"]
+        self.distribution_days = ["lunes", "martes", "miércoles", "jueves", "viernes"]
         
         # Datos
         self.data = {}
@@ -35,6 +41,7 @@ class EditorMensajesApp:
         try:
             with open(self.json_path, 'r', encoding='utf-8') as f:
                 self.data = json.load(f)
+            self.ensure_day_structure()
         except FileNotFoundError:
             messagebox.showerror("Error", f"No se encontró el archivo {self.json_path}")
             sys.exit(1)
@@ -42,12 +49,14 @@ class EditorMensajesApp:
             messagebox.showerror("Error", f"Error al leer el JSON: {e}")
             sys.exit(1)
 
-    def save_data(self):
+    def save_data(self, show_success=True):
         """Guarda los cambios en el archivo JSON."""
         try:
+            self.ensure_day_structure()
             with open(self.json_path, 'w', encoding='utf-8') as f:
                 json.dump(self.data, f, indent=4, ensure_ascii=False)
-            messagebox.showinfo("Éxito", "Cambios guardados correctamente.")
+            if show_success:
+                messagebox.showinfo("Éxito", "Cambios guardados correctamente.")
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo guardar: {e}")
 
@@ -77,8 +86,7 @@ class EditorMensajesApp:
         # Selector de día
         ttk.Label(left_panel, text="Día:").pack(anchor=tk.W, pady=(0, 5))
         self.day_var = tk.StringVar()
-        days = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
-        self.day_combo = ttk.Combobox(left_panel, textvariable=self.day_var, values=days, state="readonly", width=25)
+        self.day_combo = ttk.Combobox(left_panel, textvariable=self.day_var, values=self.days, state="readonly", width=25)
         self.day_combo.pack(fill=tk.X, pady=(0, 10))
         self.day_combo.bind("<<ComboboxSelected>>", self.on_day_selected)
         
@@ -105,7 +113,8 @@ class EditorMensajesApp:
         action_frame = ttk.Frame(left_panel)
         action_frame.pack(fill=tk.X, pady=(10, 0))
         ttk.Button(action_frame, text="➕ Agregar Nuevo", command=self.add_contact).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 2))
-        ttk.Button(action_frame, text="❌ Eliminar", command=self.delete_contact).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=(2, 0))
+        ttk.Button(action_frame, text="🔄 Actualizar Contactos", command=self.update_contacts_from_database).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
+        ttk.Button(action_frame, text="❌ Eliminar", command=self.delete_contact).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(2, 0))
         
         # Panel Derecho: Edición
         right_panel = ttk.LabelFrame(parent, text="Editor", padding="10")
@@ -159,6 +168,68 @@ class EditorMensajesApp:
     def on_search_change(self, *args):
         self.populate_contacts()
 
+    def ensure_day_structure(self):
+        mensajes = self.data.setdefault("mensajes_por_dia", {})
+        for day in self.days:
+            mensajes.setdefault(day, [])
+
+    def build_phone_key(self, raw_phone):
+        normalized = self.normalize_phone(raw_phone)
+        if normalized:
+            return normalized
+
+        digits = re.sub(r"\D", "", str(raw_phone or ""))
+        return digits or None
+
+    def find_existing_contact_day(self, phone):
+        phone_key = self.build_phone_key(phone)
+        if not phone_key:
+            return None
+
+        for day in self.days:
+            for contact in self.data.get("mensajes_por_dia", {}).get(day, []):
+                if self.build_phone_key(contact[0]) == phone_key:
+                    return day
+        return None
+
+    def deduplicate_contacts(self):
+        seen = set()
+        removed = 0
+
+        for day in self.days:
+            unique_contacts = []
+            contacts = self.data.get("mensajes_por_dia", {}).get(day, [])
+            for contact in contacts:
+                if not isinstance(contact, list) or len(contact) < 2:
+                    unique_contacts.append(contact)
+                    continue
+
+                phone_key = self.build_phone_key(contact[0])
+                normalized_phone = self.normalize_phone(contact[0])
+                if normalized_phone:
+                    contact[0] = normalized_phone
+
+                if phone_key and phone_key in seen:
+                    removed += 1
+                    continue
+
+                if phone_key:
+                    seen.add(phone_key)
+                unique_contacts.append(contact)
+
+            self.data["mensajes_por_dia"][day] = unique_contacts
+
+        return removed
+
+    def choose_day_for_new_contact(self):
+        counts = {
+            day: len(self.data.get("mensajes_por_dia", {}).get(day, []))
+            for day in self.distribution_days
+        }
+        max_count = max(counts.values()) if counts else 0
+        weights = [(max_count - counts[day] + 1) for day in self.distribution_days]
+        return random.choices(self.distribution_days, weights=weights, k=1)[0]
+
     def populate_contacts(self):
         self.contact_list.delete(0, tk.END)
         self.filtered_indices = [] # Mapeo de indice visual -> indice real
@@ -199,18 +270,20 @@ class EditorMensajesApp:
             
         new_number = simpledialog.askstring("Nuevo Contacto", "Ingrese el número de teléfono (con código país, ej: 573...):")
         if not new_number: return
+        normalized_number = self.normalize_phone(new_number)
+        if not normalized_number:
+            messagebox.showerror("Error", "El número no tiene un formato válido. Use 10 dígitos móviles o el formato 573XXXXXXXXX.")
+            return
         
-        # Verificar duplicados
-        contacts = self.data["mensajes_por_dia"][self.current_day]
-        for c in contacts:
-            if c[0] == new_number:
-                messagebox.showerror("Error", "Este número ya existe en este día.")
-                return
+        existing_day = self.find_existing_contact_day(normalized_number)
+        if existing_day:
+            messagebox.showerror("Error", f"Este número ya existe en {existing_day.upper()}.")
+            return
         
         # Agregar
-        default_msg = f"Hola, buenas tardes. Le enviamos un cordial saludo desde ALUMAS..."
-        self.data["mensajes_por_dia"][self.current_day].append([new_number, default_msg])
-        self.save_data() # Guardar automáticamente
+        default_msg = self.build_default_message()
+        self.data["mensajes_por_dia"][self.current_day].append([normalized_number, default_msg])
+        self.save_data(show_success=False) # Guardar automáticamente
         self.populate_contacts()
         messagebox.showinfo("Éxito", "Contacto agregado.")
 
@@ -221,7 +294,7 @@ class EditorMensajesApp:
             
         if messagebox.askyesno("Confirmar", "¿Está seguro de eliminar este contacto?"):
             del self.data["mensajes_por_dia"][self.current_day][self.current_contact_index]
-            self.save_data()
+            self.save_data(show_success=False)
             self.clear_editor()
             self.populate_contacts()
             messagebox.showinfo("Éxito", "Contacto eliminado.")
@@ -231,7 +304,7 @@ class EditorMensajesApp:
         
         new_msg = self.txt_message.get("1.0", tk.END).strip()
         self.data["mensajes_por_dia"][self.current_day][self.current_contact_index][1] = new_msg
-        self.save_data()
+        self.save_data(show_success=False)
         self.populate_contacts()
         messagebox.showinfo("Éxito", "Mensaje actualizado.")
 
@@ -239,6 +312,218 @@ class EditorMensajesApp:
         self.lbl_number.config(text="-")
         self.txt_message.delete("1.0", tk.END)
         self.current_contact_index = None
+
+    def build_default_message(self, nombre=""):
+        saludo = f"{nombre.strip()}, " if nombre and str(nombre).strip() else ""
+        return (
+            f"{saludo}muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. "
+            "Solo queríamos recordarle que estamos a su disposición para lo que necesite. "
+            "Si requiere algún producto o mercancía, no dude en escribirnos. "
+            "¡Con mucho gusto le atendemos! Dios le bendiga siempre."
+        )
+
+    def normalize_phone(self, raw_phone):
+        digits = re.sub(r"\D", "", str(raw_phone or ""))
+        digits = digits.lstrip("0")
+
+        if len(digits) == 10 and digits.startswith("3"):
+            digits = f"57{digits}"
+
+        if len(digits) == 12 and digits.startswith("57") and digits[2] == "3":
+            return digits
+
+        return None
+
+    def parse_env_file(self, env_path):
+        config = {}
+        try:
+            with open(env_path, "r", encoding="utf-8") as env_file:
+                for raw_line in env_file:
+                    line = raw_line.strip()
+                    if not line or line.startswith("#") or "=" not in line:
+                        continue
+                    if line.startswith("export "):
+                        line = line[7:].strip()
+                    key, value = line.split("=", 1)
+                    config[key.strip()] = value.strip().strip('"').strip("'")
+        except OSError:
+            return {}
+        return config
+
+    def get_candidate_env_paths(self):
+        home = Path.home()
+        candidates = [
+            Path(os.path.dirname(os.path.abspath(__file__))) / ".env",
+            home / "OneDrive" / "Documentos" / "GitHub" / "ALUMAS" / ".env",
+            home / "OneDrive" / "Documents" / "GitHub" / "ALUMAS" / ".env",
+            home / "Documents" / "GitHub" / "ALUMAS" / ".env",
+            home / "Downloads" / "sistetema_contable" / "sistetema_contable" / ".env",
+        ]
+
+        if getattr(sys, "frozen", False):
+            candidates.insert(0, Path(sys.executable).resolve().parent / ".env")
+
+        unique_candidates = []
+        seen = set()
+        for candidate in candidates:
+            candidate_str = str(candidate)
+            if candidate_str not in seen:
+                unique_candidates.append(candidate)
+                seen.add(candidate_str)
+        return unique_candidates
+
+    def get_db_config(self):
+        keys = ["DB_HOST", "DB_USER", "DB_PASS", "DB_NAME", "DB_PORT"]
+        config = {key: os.getenv(key, "") for key in keys}
+
+        if all(config.values()):
+            return config
+
+        for env_path in self.get_candidate_env_paths():
+            if env_path.exists():
+                file_config = self.parse_env_file(env_path)
+                merged = {key: file_config.get(key) or config.get(key, "") for key in keys}
+                if all(merged.values()):
+                    return merged
+
+        missing = [key for key, value in config.items() if not value]
+        raise RuntimeError(
+            "No se encontró la configuración de base de datos. "
+            f"Faltan estas variables: {', '.join(missing)}"
+        )
+
+    def fetch_contacts_from_api(self):
+        api_urls = []
+        api_from_env = os.getenv("ALUMAS_API_URL", "").strip()
+        if api_from_env:
+            api_urls.append(api_from_env.rstrip("/"))
+        api_urls.append("http://localhost:8080")
+
+        tried = set()
+        last_error = None
+
+        for base_url in api_urls:
+            if not base_url or base_url in tried:
+                continue
+            tried.add(base_url)
+
+            url = f"{base_url}/api/clientes-mayoristas-contactos"
+            try:
+                with request.urlopen(url, timeout=8) as response:
+                    payload = json.loads(response.read().decode("utf-8"))
+                if payload.get("ok"):
+                    return payload.get("clientes", []), f"API {base_url}"
+                last_error = payload.get("error", "Respuesta inválida del servidor")
+            except (error.URLError, error.HTTPError, TimeoutError, json.JSONDecodeError) as exc:
+                last_error = str(exc)
+
+        raise RuntimeError(last_error or "No fue posible consultar la API local.")
+
+    def fetch_contacts_from_database(self):
+        try:
+            import mysql.connector
+        except ImportError as exc:
+            raise RuntimeError(
+                "No está instalado mysql-connector-python para consultar la base de datos directamente."
+            ) from exc
+
+        config = self.get_db_config()
+        connection = None
+        cursor = None
+
+        try:
+            connection = mysql.connector.connect(
+                host=config["DB_HOST"],
+                user=config["DB_USER"],
+                password=config["DB_PASS"],
+                database=config["DB_NAME"],
+                port=int(config["DB_PORT"]),
+            )
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute(
+                """
+                SELECT nombre, telefono, tipo_cliente
+                FROM clientes
+                WHERE LOWER(COALESCE(tipo_cliente, '')) LIKE '%mayor%'
+                  AND TRIM(COALESCE(telefono, '')) <> ''
+                ORDER BY nombre
+                """
+            )
+            return cursor.fetchall(), "conexión directa"
+        finally:
+            if cursor is not None:
+                cursor.close()
+            if connection is not None and connection.is_connected():
+                connection.close()
+
+    def update_contacts_from_database(self):
+        if not messagebox.askyesno(
+            "Actualizar contactos",
+            "Se consultarán los clientes mayoristas y se actualizará el programa completo.\n\n"
+            "Los contactos nuevos se repartirán entre lunes y viernes, con más probabilidad en los días con menos contactos.\n"
+            "Además, se omitirán números ya existentes en cualquier día. ¿Desea continuar?"
+        ):
+            return
+
+        try:
+            try:
+                rows, source = self.fetch_contacts_from_api()
+            except Exception:
+                rows, source = self.fetch_contacts_from_database()
+        except Exception as exc:
+            messagebox.showerror("Error", f"No fue posible actualizar los contactos:\n{exc}")
+            return
+
+        removed_duplicates = self.deduplicate_contacts()
+        existing_numbers = set()
+        for day in self.days:
+            for contact in self.data.get("mensajes_por_dia", {}).get(day, []):
+                phone_key = self.build_phone_key(contact[0])
+                if phone_key:
+                    existing_numbers.add(phone_key)
+
+        added = 0
+        duplicates = 0
+        invalid_numbers = 0
+        added_by_day = {day: 0 for day in self.distribution_days}
+
+        for row in rows:
+            phone = self.normalize_phone(row.get("telefono"))
+            phone_key = self.build_phone_key(row.get("telefono"))
+            if not phone or not phone_key:
+                invalid_numbers += 1
+                continue
+
+            if phone_key in existing_numbers:
+                duplicates += 1
+                continue
+
+            target_day = self.choose_day_for_new_contact()
+            self.data["mensajes_por_dia"][target_day].append([phone, self.build_default_message(row.get("nombre", ""))])
+            existing_numbers.add(phone_key)
+            added_by_day[target_day] += 1
+            added += 1
+
+        if added or removed_duplicates:
+            self.save_data(show_success=False)
+        if self.current_day:
+            self.populate_contacts()
+
+        day_summary = "\n".join(
+            f"{day.capitalize()}: {count}"
+            for day, count in added_by_day.items()
+            if count > 0
+        ) or "No se agregaron contactos nuevos."
+        messagebox.showinfo(
+            "Actualización completada",
+            f"Origen: {source}\n"
+            f"Distribución: lunes a viernes\n\n"
+            f"Agregados: {added}\n"
+            f"Duplicados omitidos: {duplicates}\n"
+            f"Números inválidos o vacíos: {invalid_numbers}\n"
+            f"Duplicados antiguos eliminados: {removed_duplicates}\n\n"
+            f"Reparto por día:\n{day_summary}"
+        )
 
     # -------------------------------------------------------------------------
     # LOGICA PROMOCIONES
@@ -260,7 +545,7 @@ class EditorMensajesApp:
         
         new_text = self.txt_promo.get("1.0", tk.END).strip()
         self.data["promociones_por_semana"][self.current_promo_key] = new_text
-        self.save_data()
+        self.save_data(show_success=False)
         messagebox.showinfo("Éxito", "Promoción actualizada.")
 
 
