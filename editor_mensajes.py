@@ -1,4 +1,5 @@
 import json
+import importlib.util
 import os
 import random
 import re
@@ -372,6 +373,38 @@ class EditorMensajesApp:
                 seen.add(candidate_str)
         return unique_candidates
 
+    def get_candidate_connection_modules(self):
+        home = Path.home()
+        candidates = [
+            home / "Downloads" / "sistetema_contable" / "sistetema_contable" / "conexion.py",
+            home / "OneDrive" / "Documentos" / "GitHub" / "ALUMAS" / "conexion.py",
+            home / "Documents" / "GitHub" / "ALUMAS" / "conexion.py",
+        ]
+
+        unique_candidates = []
+        seen = set()
+        for candidate in candidates:
+            candidate_str = str(candidate)
+            if candidate_str not in seen:
+                unique_candidates.append(candidate)
+                seen.add(candidate_str)
+        return unique_candidates
+
+    def load_external_connection_module(self):
+        for module_path in self.get_candidate_connection_modules():
+            if not module_path.exists():
+                continue
+
+            spec = importlib.util.spec_from_file_location("alumas_external_conexion", module_path)
+            if spec is None or spec.loader is None:
+                continue
+
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module, module_path
+
+        raise RuntimeError("No se encontró un archivo conexion.py compatible para usar como respaldo.")
+
     def get_db_config(self):
         keys = ["DB_HOST", "DB_USER", "DB_PASS", "DB_NAME", "DB_PORT"]
         config = {key: os.getenv(key, "") for key in keys}
@@ -432,13 +465,24 @@ class EditorMensajesApp:
         cursor = None
 
         try:
-            connection = mysql.connector.connect(
-                host=config["DB_HOST"],
-                user=config["DB_USER"],
-                password=config["DB_PASS"],
-                database=config["DB_NAME"],
-                port=int(config["DB_PORT"]),
-            )
+            try:
+                connection = mysql.connector.connect(
+                    host=config["DB_HOST"],
+                    user=config["DB_USER"],
+                    password=config["DB_PASS"],
+                    database=config["DB_NAME"],
+                    port=int(config["DB_PORT"]),
+                    connection_timeout=8,
+                )
+                source = "conexión directa"
+            except Exception:
+                module, module_path = self.load_external_connection_module()
+                get_conn = getattr(module, "get_db_connection", None) or getattr(module, "get_connection", None)
+                if get_conn is None:
+                    raise RuntimeError(f"El módulo externo no expone get_db_connection/get_connection: {module_path}")
+                connection = get_conn()
+                source = f"respaldo {module_path.name}"
+
             cursor = connection.cursor(dictionary=True)
             cursor.execute(
                 """
@@ -449,7 +493,7 @@ class EditorMensajesApp:
                 ORDER BY nombre
                 """
             )
-            return cursor.fetchall(), "conexión directa"
+            return cursor.fetchall(), source
         finally:
             if cursor is not None:
                 cursor.close()
