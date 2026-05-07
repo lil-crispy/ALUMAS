@@ -545,6 +545,8 @@ class EditorMensajesApp:
             "database": str(config["DB_NAME"]).strip(),
             "port": int(str(config["DB_PORT"]).strip()),
             "connection_timeout": 8,
+            "use_pure": True,
+            "charset": "utf8mb4",
         }
 
     def update_contacts_from_database(self):
