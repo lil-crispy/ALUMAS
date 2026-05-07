@@ -1,5 +1,4 @@
 import json
-import importlib.util
 import os
 import random
 import re
@@ -390,20 +389,19 @@ class EditorMensajesApp:
                 seen.add(candidate_str)
         return unique_candidates
 
-    def load_external_connection_module(self):
+    def get_external_db_config(self):
+        keys = ["DB_HOST", "DB_USER", "DB_PASS", "DB_NAME", "DB_PORT"]
+
         for module_path in self.get_candidate_connection_modules():
-            if not module_path.exists():
+            env_path = module_path.with_name(".env")
+            if not env_path.exists():
                 continue
 
-            spec = importlib.util.spec_from_file_location("alumas_external_conexion", module_path)
-            if spec is None or spec.loader is None:
-                continue
+            file_config = self.parse_env_file(env_path)
+            if all(file_config.get(key) for key in keys):
+                return {key: file_config.get(key, "") for key in keys}, env_path
 
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
-            return module, module_path
-
-        raise RuntimeError("No se encontró un archivo conexion.py compatible para usar como respaldo.")
+        raise RuntimeError("No se encontró un archivo .env válido para usar como respaldo de la base de datos.")
 
     def get_db_config(self):
         keys = ["DB_HOST", "DB_USER", "DB_PASS", "DB_NAME", "DB_PORT"]
@@ -466,22 +464,12 @@ class EditorMensajesApp:
 
         try:
             try:
-                connection = mysql.connector.connect(
-                    host=config["DB_HOST"],
-                    user=config["DB_USER"],
-                    password=config["DB_PASS"],
-                    database=config["DB_NAME"],
-                    port=int(config["DB_PORT"]),
-                    connection_timeout=8,
-                )
+                connection = mysql.connector.connect(**self.build_mysql_connect_kwargs(config))
                 source = "conexión directa"
             except Exception:
-                module, module_path = self.load_external_connection_module()
-                get_conn = getattr(module, "get_db_connection", None) or getattr(module, "get_connection", None)
-                if get_conn is None:
-                    raise RuntimeError(f"El módulo externo no expone get_db_connection/get_connection: {module_path}")
-                connection = get_conn()
-                source = f"respaldo {module_path.name}"
+                external_config, env_path = self.get_external_db_config()
+                connection = mysql.connector.connect(**self.build_mysql_connect_kwargs(external_config))
+                source = f"respaldo {env_path.name}"
 
             cursor = connection.cursor(dictionary=True)
             cursor.execute(
@@ -499,6 +487,16 @@ class EditorMensajesApp:
                 cursor.close()
             if connection is not None and connection.is_connected():
                 connection.close()
+
+    def build_mysql_connect_kwargs(self, config):
+        return {
+            "host": str(config["DB_HOST"]).strip(),
+            "user": str(config["DB_USER"]).strip(),
+            "password": str(config["DB_PASS"]),
+            "database": str(config["DB_NAME"]).strip(),
+            "port": int(str(config["DB_PORT"]).strip()),
+            "connection_timeout": 8,
+        }
 
     def update_contacts_from_database(self):
         if not messagebox.askyesno(
