@@ -1,12 +1,19 @@
 # -*- mode: python ; coding: utf-8 -*-
+from PyInstaller.utils.hooks import collect_data_files
+from PyInstaller.utils.hooks import collect_submodules
+
+datas = []
+hiddenimports = ['mysql.connector', 'mysql.connector.locales', 'mysql.connector.locales.eng', 'mysql.connector.locales.eng.client_error']
+datas += collect_data_files('mysql.connector')
+hiddenimports += collect_submodules('mysql.connector')
 
 
 a = Analysis(
     ['editor_mensajes.py'],
     pathex=[],
     binaries=[],
-    datas=[],
-    hiddenimports=['mysql.connector', 'mysql.connector.locales', 'mysql.connector.locales.eng', 'mysql.connector.locales.eng.client_error'],
+    datas=datas,
+    hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

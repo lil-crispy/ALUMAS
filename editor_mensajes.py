@@ -1,9 +1,11 @@
 import json
+import logging
 import os
 import random
 import re
 import sys
 import tkinter as tk
+import traceback
 from pathlib import Path
 from tkinter import ttk, messagebox, scrolledtext, simpledialog
 from urllib import error, request
@@ -27,6 +29,9 @@ class EditorMensajesApp:
         self.current_day = None
         self.current_contact_index = None
         self.json_path = self.get_json_path()
+        self.app_dir = os.path.dirname(self.json_path)
+        self.debug_log_path = os.path.join(self.app_dir, "editor_mensajes_debug.log")
+        self.setup_debug_logging()
         
         # Cargar datos
         self.load_data()
@@ -42,6 +47,29 @@ class EditorMensajesApp:
             application_path = os.path.dirname(os.path.abspath(__file__))
         return os.path.join(application_path, 'contactos.json')
 
+    def setup_debug_logging(self):
+        try:
+            logging.basicConfig(
+                filename=self.debug_log_path,
+                level=logging.INFO,
+                format="%(asctime)s [%(levelname)s] %(message)s",
+                encoding="utf-8",
+                force=True,
+            )
+            logging.info("==== Inicio editor_mensajes ====")
+            logging.info("Ruta JSON: %s", self.json_path)
+            logging.info("Modo congelado: %s", getattr(sys, "frozen", False))
+            logging.info("Python executable: %s", sys.executable)
+        except Exception:
+            pass
+
+    def log_exception(self, context, exc):
+        try:
+            logging.error("%s | %s | %r", context, type(exc).__name__, exc)
+            logging.error("%s", traceback.format_exc())
+        except Exception:
+            pass
+
     def load_data(self):
         """Carga los datos desde el archivo JSON."""
         try:
@@ -49,9 +77,11 @@ class EditorMensajesApp:
                 self.data = json.load(f)
             self.ensure_day_structure()
         except FileNotFoundError:
+            logging.error("No se encontró el JSON en %s", self.json_path)
             messagebox.showerror("Error", f"No se encontró el archivo {self.json_path}")
             sys.exit(1)
         except json.JSONDecodeError as e:
+            self.log_exception("Error leyendo JSON", e)
             messagebox.showerror("Error", f"Error al leer el JSON: {e}")
             sys.exit(1)
 
@@ -64,6 +94,7 @@ class EditorMensajesApp:
             if show_success:
                 messagebox.showinfo("Éxito", "Cambios guardados correctamente.")
         except Exception as e:
+            self.log_exception("Error guardando JSON", e)
             messagebox.showerror("Error", f"No se pudo guardar: {e}")
 
     def setup_ui(self):
@@ -353,6 +384,7 @@ class EditorMensajesApp:
                     key, value = line.split("=", 1)
                     config[key.strip()] = value.strip().strip('"').strip("'")
         except OSError:
+            logging.warning("No se pudo leer .env: %s", env_path)
             return {}
         return config
 
@@ -405,6 +437,7 @@ class EditorMensajesApp:
 
             file_config = self.parse_env_file(env_path)
             if all(file_config.get(key) for key in keys):
+                logging.info("Usando respaldo DB desde .env externo: %s", env_path)
                 return {key: file_config.get(key, "") for key in keys}, env_path
 
         raise RuntimeError("No se encontró un archivo .env válido para usar como respaldo de la base de datos.")
@@ -414,6 +447,7 @@ class EditorMensajesApp:
         config = {key: os.getenv(key, "") for key in keys}
 
         if all(config.values()):
+            logging.info("Usando configuración DB desde variables de entorno del proceso.")
             return config
 
         for env_path in self.get_candidate_env_paths():
@@ -421,6 +455,7 @@ class EditorMensajesApp:
                 file_config = self.parse_env_file(env_path)
                 merged = {key: file_config.get(key) or config.get(key, "") for key in keys}
                 if all(merged.values()):
+                    logging.info("Usando configuración DB desde .env: %s", env_path)
                     return merged
 
         missing = [key for key, value in config.items() if not value]
@@ -446,12 +481,15 @@ class EditorMensajesApp:
 
             url = f"{base_url}/api/clientes-mayoristas-contactos"
             try:
+                logging.info("Probando API de contactos: %s", url)
                 with request.urlopen(url, timeout=8) as response:
                     payload = json.loads(response.read().decode("utf-8"))
                 if payload.get("ok"):
+                    logging.info("API respondió correctamente desde %s con %s registros", base_url, len(payload.get("clientes", [])))
                     return payload.get("clientes", []), f"API {base_url}"
                 last_error = payload.get("error", "Respuesta inválida del servidor")
             except (error.URLError, error.HTTPError, TimeoutError, json.JSONDecodeError) as exc:
+                self.log_exception(f"Fallo API {url}", exc)
                 last_error = str(exc)
 
         raise RuntimeError(last_error or "No fue posible consultar la API local.")
@@ -460,6 +498,7 @@ class EditorMensajesApp:
         try:
             import mysql.connector
         except ImportError as exc:
+            self.log_exception("ImportError mysql.connector", exc)
             raise RuntimeError(
                 "No está instalado mysql-connector-python para consultar la base de datos directamente."
             ) from exc
@@ -470,9 +509,11 @@ class EditorMensajesApp:
 
         try:
             try:
+                logging.info("Intentando conexión directa a base de datos.")
                 connection = mysql.connector.connect(**self.build_mysql_connect_kwargs(config))
                 source = "conexión directa"
             except Exception:
+                logging.warning("Falló la conexión directa. Probando respaldo.")
                 external_config, env_path = self.get_external_db_config()
                 connection = mysql.connector.connect(**self.build_mysql_connect_kwargs(external_config))
                 source = f"respaldo {env_path.name}"
@@ -487,7 +528,9 @@ class EditorMensajesApp:
                 ORDER BY nombre
                 """
             )
-            return cursor.fetchall(), source
+            rows = cursor.fetchall()
+            logging.info("Consulta DB correcta desde %s con %s registros", source, len(rows))
+            return rows, source
         finally:
             if cursor is not None:
                 cursor.close()
@@ -511,15 +554,21 @@ class EditorMensajesApp:
             "Los contactos nuevos se repartirán entre lunes y viernes, con más probabilidad en los días con menos contactos.\n"
             "Además, se omitirán números ya existentes en cualquier día. ¿Desea continuar?"
         ):
+            logging.info("Actualización cancelada por el usuario.")
             return
 
         try:
+            logging.info("Iniciando actualización de contactos.")
             try:
                 rows, source = self.fetch_contacts_from_api()
             except Exception:
                 rows, source = self.fetch_contacts_from_database()
         except Exception as exc:
-            messagebox.showerror("Error", f"No fue posible actualizar los contactos:\n{exc}")
+            self.log_exception("Fallo actualización de contactos", exc)
+            messagebox.showerror(
+                "Error",
+                f"No fue posible actualizar los contactos:\n{exc}\n\nRevise el log:\n{self.debug_log_path}"
+            )
             return
 
         removed_duplicates = self.deduplicate_contacts()
@@ -557,6 +606,10 @@ class EditorMensajesApp:
         if self.current_day:
             self.populate_contacts()
 
+        logging.info(
+            "Actualización completada | origen=%s agregados=%s duplicados=%s invalidos=%s eliminados=%s",
+            source, added, duplicates, invalid_numbers, removed_duplicates
+        )
         day_summary = "\n".join(
             f"{day.capitalize()}: {count}"
             for day, count in added_by_day.items()
@@ -598,6 +651,23 @@ class EditorMensajesApp:
 
 
 if __name__ == "__main__":
-    root = tk.Tk()
-    app = EditorMensajesApp(root)
-    root.mainloop()
+    try:
+        root = tk.Tk()
+        app = EditorMensajesApp(root)
+        root.mainloop()
+    except Exception as e:
+        try:
+            fallback_dir = os.path.dirname(sys.executable) if getattr(sys, "frozen", False) else os.path.dirname(os.path.abspath(__file__))
+            fallback_log = os.path.join(fallback_dir, "editor_mensajes_debug.log")
+            logging.basicConfig(
+                filename=fallback_log,
+                level=logging.INFO,
+                format="%(asctime)s [%(levelname)s] %(message)s",
+                encoding="utf-8",
+                force=True,
+            )
+            logging.error("Fallo fatal iniciando editor | %s | %r", type(e).__name__, e)
+            logging.error("%s", traceback.format_exc())
+        except Exception:
+            pass
+        messagebox.showerror("Error Fatal", f"Ocurrió un error inesperado:\n{e}")
