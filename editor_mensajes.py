@@ -8,6 +8,12 @@ from pathlib import Path
 from tkinter import ttk, messagebox, scrolledtext, simpledialog
 from urllib import error, request
 
+try:
+    # PyInstaller no detecta este import dinámico de mysql.connector por sí solo.
+    import mysql.connector.locales.eng.client_error  # noqa: F401
+except Exception:
+    pass
+
 class EditorMensajesApp:
     def __init__(self, root):
         self.root = root
