@@ -57,7 +57,16 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
       margin-bottom: 5px;
+    }
+
+    .acciones-izquierda {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
     }
 
     .acciones-tabla .botones-derecha {
@@ -68,6 +77,28 @@
       margin-left: 5px;
       padding: 5px 10px;
       cursor: pointer;
+    }
+
+    .acciones-tabla .acciones-izquierda button {
+      margin-left: 0;
+    }
+
+    .cotizador-techo-rapido {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .cotizador-techo-rapido label {
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .cotizador-techo-rapido input {
+      width: 70px;
+      padding: 5px 6px;
+      text-align: center;
     }
 
     /* Estilos para modo bloqueado */
@@ -878,7 +909,14 @@
 
     <div class="contenedor-tabla">
       <div class="acciones-tabla">
-        <button id="btn-lock" onclick="toggleBloqueo()" title="Bloquear edición">🔓</button>
+        <div class="acciones-izquierda">
+          <button id="btn-lock" onclick="toggleBloqueo()" title="Bloquear edición">🔓</button>
+          <div class="cotizador-techo-rapido">
+            <label for="metros-techo">m² techo</label>
+            <input type="number" id="metros-techo" min="0" step="0.01" placeholder="0">
+            <button type="button" onclick="cargarCotizadorTechoPVCEnRemision()">Techo PVC</button>
+          </div>
+        </div>
         <div class="botones-derecha">
           <button onclick="agregarFila()">➕</button>
           <button onclick="eliminarFila()">➖</button>
@@ -951,6 +989,15 @@
 
   <script>
     const tabla = document.getElementById('tabla-productos');
+    const PRODUCTOS_TECHO_PVC = [
+      { descripcion: 'LÁMINA TECHO PVC 30cm', factor: 1 / 1.8, valorU: 26500 },
+      { descripcion: 'CORNIZA', factor: 1 / 5.95, valorU: 15000 },
+      { descripcion: 'OMEGA', factor: 1 * 59 / 100, valorU: 4500 },
+      { descripcion: 'VIGUETA', factor: 0.33, valorU: 4500 },
+      { descripcion: 'ANGULO', factor: 0.50, valorU: 3500 },
+      { descripcion: 'TORNILLO PVC', factor: 9, valorU: 50 },
+      { descripcion: 'TORNILLO ESTRUCTURA', factor: 7, valorU: 50 }
+    ];
     let celdaActiva = null;
     let celdaProductoActiva = null;
 
@@ -1021,6 +1068,73 @@
       const numero = parseInt(valor);
       if (isNaN(numero)) return '$ 0';
       return '$ ' + numero.toLocaleString('es-CO');
+    }
+
+    function asegurarFilasTabla(cantidadNecesaria) {
+      while (tabla.querySelectorAll('tr').length < cantidadNecesaria) {
+        const nuevaFila = document.createElement('tr');
+        nuevaFila.innerHTML = `
+          <td class="cant"></td>
+          <td></td>
+          <td class="valor-u"></td>
+          <td class="valor-t"></td>
+        `;
+        tabla.appendChild(nuevaFila);
+      }
+    }
+
+    function limpiarFilaProducto(fila) {
+      const celdas = fila.querySelectorAll('td');
+      celdas.forEach((celda, indice) => {
+        celda.textContent = '';
+        if (indice !== 3) {
+          delete celda.dataset.id;
+        }
+      });
+    }
+
+    function cargarCotizadorTechoPVCEnRemision() {
+      if (document.body.classList.contains('bloqueado')) return;
+
+      const inputMetros = document.getElementById('metros-techo');
+      const metros = parseFloat((inputMetros.value || '').replace(',', '.'));
+
+      if (isNaN(metros) || metros <= 0) {
+        alert('Ingresa una cantidad valida de metros cuadrados para cargar el techo PVC.');
+        inputMetros.focus();
+        return;
+      }
+
+      const items = PRODUCTOS_TECHO_PVC.map(producto => ({
+        cantidad: Math.ceil(metros * producto.factor),
+        descripcion: producto.descripcion,
+        valorU: producto.valorU
+      }));
+
+      asegurarFilasTabla(items.length);
+
+      const filas = Array.from(tabla.querySelectorAll('tr'));
+      filas.forEach((fila, indice) => {
+        if (indice < items.length) {
+          const item = items[indice];
+          const celdas = fila.querySelectorAll('td');
+          const celdaCantidad = celdas[0];
+          const celdaDescripcion = celdas[1];
+          const celdaValorU = celdas[2];
+          const celdaTotal = celdas[3];
+
+          celdaCantidad.textContent = item.cantidad;
+          celdaDescripcion.textContent = item.descripcion;
+          delete celdaDescripcion.dataset.id;
+          celdaValorU.textContent = formatearPesos(item.valorU);
+          if (celdaTotal) celdaTotal.textContent = '';
+        } else {
+          limpiarFilaProducto(fila);
+        }
+      });
+
+      actualizarTotales();
+      actualizarFechaHora();
     }
 
     function calcularCambio() {
@@ -2966,6 +3080,15 @@ function setMensajeMotivacional() {
 
 document.addEventListener('DOMContentLoaded', () => {
     setMensajeMotivacional();
+    const inputMetros = document.getElementById('metros-techo');
+    if (inputMetros) {
+      inputMetros.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          cargarCotizadorTechoPVCEnRemision();
+        }
+      });
+    }
   });
 
   // Función para bloquear/desbloquear la tabla
