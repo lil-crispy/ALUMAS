@@ -2631,7 +2631,7 @@
       const metaEl = document.getElementById('caja-admin-meta')
       if (saldoEl) saldoEl.textContent = formatearPesos(resumen?.saldo_actual || 0)
       if (metaEl) {
-        metaEl.textContent = `Base: ${formatearPesos(resumen?.base_inicial || 0)} | Ventas hoy: ${formatearPesos(resumen?.total_efectivo || 0)} | Egresos hoy: ${formatearPesos(resumen?.total_egresos || 0)}`
+        metaEl.textContent = `Base: ${formatearPesos(resumen?.base_inicial || 0)} | Ferretería hoy: ${formatearPesos(resumen?.total_efectivo || 0)} | Egresos hoy: ${formatearPesos(resumen?.total_egresos || 0)}`
       }
       posicionarBotonReporte()
     }

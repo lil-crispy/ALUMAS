@@ -177,7 +177,8 @@ async function getCajaResumen(conn = pool) {
     `SELECT COALESCE(SUM(total), 0) AS total_efectivo
      FROM ventas
      WHERE fecha >= ? AND fecha <= ?
-       AND UPPER(TRIM(COALESCE(forma_pago, ''))) = 'EFECTIVO'`,
+       AND UPPER(TRIM(COALESCE(forma_pago, ''))) = 'EFECTIVO'
+       AND LOWER(TRIM(COALESCE(punto_venta, 'ferreteria'))) = 'ferreteria'`,
     [startStr, endStr]
   )
   let egresoRow = { total_egresos: 0 }
