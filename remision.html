@@ -255,6 +255,7 @@
       .punto-venta-container,
       .report-toggle,
       .report-panel,
+      #caja-admin-widget,
       #user-bar,
       #conn-status,
       #login-overlay,
@@ -320,6 +321,7 @@
       body.formato-bodega #login-overlay,
       body.formato-bodega .conn-status,
       body.formato-bodega .user-bar,
+      body.formato-bodega #caja-admin-widget,
       body.formato-bodega .report-toggle,
       body.formato-bodega .panel-sugerencias,
       body.formato-bodega .report-panel {
@@ -419,10 +421,188 @@
         display: none !important;
      }
 
+     body.transportador-mode #caja-admin-widget {
+        display: none !important;
+     }
+
      /* Show the specific logout button only in Transportador Mode */
      body.transportador-mode #btn-logout-transportador {
         display: block !important;
      }
+
+     .caja-admin-widget {
+      position: fixed;
+      top: 42px;
+      right: 10px;
+      width: 320px;
+      max-width: calc(100vw - 20px);
+      background: linear-gradient(180deg, #16a34a 0%, #15803d 100%);
+      color: #fff;
+      border-radius: 12px;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+      z-index: 1200;
+      overflow: hidden;
+      display: none;
+    }
+
+    .caja-admin-resumen {
+      padding: 12px 14px 10px;
+      text-align: left;
+    }
+
+    .caja-admin-etiqueta {
+      font-size: 12px;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      opacity: 0.95;
+    }
+
+    .caja-admin-saldo {
+      margin-top: 4px;
+      font-size: 28px;
+      font-weight: bold;
+      line-height: 1.1;
+    }
+
+    .caja-admin-meta {
+      margin-top: 4px;
+      font-size: 11px;
+      opacity: 0.92;
+      text-transform: none;
+    }
+
+    .caja-admin-toggle {
+      width: 100%;
+      border: none;
+      background: rgba(0, 0, 0, 0.12);
+      color: #fff;
+      cursor: pointer;
+      padding: 8px 12px;
+      font-weight: bold;
+      font-size: 13px;
+    }
+
+    .caja-admin-toggle:hover {
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    .caja-admin-detalle {
+      background: #fff;
+      color: #111827;
+      padding: 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .caja-admin-detalle[hidden] {
+      display: none !important;
+    }
+
+    .caja-admin-form {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .caja-admin-form input {
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 13px;
+      text-transform: none;
+    }
+
+    .caja-admin-form button {
+      border: none;
+      border-radius: 8px;
+      background: #15803d;
+      color: #fff;
+      padding: 9px 10px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .caja-admin-form button:hover {
+      background: #166534;
+    }
+
+    .caja-admin-lista {
+      max-height: 220px;
+      overflow-y: auto;
+      display: grid;
+      gap: 8px;
+    }
+
+    .caja-admin-item {
+      display: grid;
+      grid-template-columns: 26px 1fr;
+      gap: 8px;
+      align-items: start;
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 8px;
+    }
+
+    .caja-admin-delete {
+      border: none;
+      border-radius: 999px;
+      width: 26px;
+      height: 26px;
+      background: #ef4444;
+      color: #fff;
+      font-weight: bold;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .caja-admin-delete:hover {
+      background: #dc2626;
+    }
+
+    .caja-admin-item-titulo {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: bold;
+      text-transform: none;
+    }
+
+    .caja-admin-item-motivo {
+      margin-top: 2px;
+      font-size: 12px;
+      color: #374151;
+      text-transform: none;
+    }
+
+    .caja-admin-item-meta {
+      margin-top: 3px;
+      font-size: 11px;
+      color: #6b7280;
+      text-transform: none;
+    }
+
+    .caja-admin-vacio {
+      font-size: 12px;
+      color: #6b7280;
+      padding: 6px 2px;
+      text-transform: none;
+    }
+
+    body.login-active #caja-admin-widget {
+      filter: blur(4px);
+      pointer-events: none;
+    }
+
+    @media screen and (max-width: 700px) {
+      .caja-admin-widget {
+        top: 42px;
+        right: 8px;
+        left: 8px;
+        width: auto;
+      }
+    }
      
      /* Responsive Dashboard Logic */
      @media screen and (max-width: 768px) {
@@ -769,6 +949,24 @@
     <span id="user-name-prefix">USUARIO:</span>
     <span id="user-name"></span>
     <button type="button" id="logout-btn" onclick="logoutUsuario()">Cerrar sesión</button>
+  </div>
+  <div id="caja-admin-widget" class="caja-admin-widget">
+    <div class="caja-admin-resumen">
+      <div class="caja-admin-etiqueta">Saldo En Caja</div>
+      <div id="caja-admin-saldo" class="caja-admin-saldo">$ 0</div>
+      <div id="caja-admin-meta" class="caja-admin-meta">Efectivo: $ 0 | Egresos: $ 0</div>
+    </div>
+    <button id="caja-admin-toggle" class="caja-admin-toggle" type="button" onclick="toggleCajaAdminDetalle()">▼ Egresos de caja</button>
+    <div id="caja-admin-detalle" class="caja-admin-detalle" hidden>
+      <div class="caja-admin-form">
+        <input type="number" id="caja-egreso-valor" min="0" step="1" placeholder="Valor de egreso">
+        <input type="text" id="caja-egreso-justificacion" maxlength="255" placeholder="Justificación, ej: pago gas">
+        <button type="button" onclick="registrarEgresoCaja()">Registrar egreso</button>
+      </div>
+      <div id="caja-egresos-lista" class="caja-admin-lista">
+        <div class="caja-admin-vacio">No hay egresos registrados.</div>
+      </div>
+    </div>
   </div>
   <div class="conn-spacer"></div>
 
@@ -2323,6 +2521,7 @@
         alert('La venta no se pudo guardar. Intente de nuevo.');
         return;
       }
+      refrescarCajaAdminPronto()
 
       // Guardar PDF automáticamente si es Bodega (ELIMINADO POR SOLICITUD DE MANUALIDAD)
       /* 
@@ -2408,6 +2607,209 @@
         el.textContent = `Conexión a BD${hostTxt} ✖`
       }
     }
+    let cajaAdminTimer = null
+    function getUsuarioIdActual() {
+      return parseInt(localStorage.getItem('USUARIO_ID') || '0') || 0
+    }
+    function esAdminActual() {
+      return (localStorage.getItem('USUARIO_ROL') || '').toLowerCase() === 'admin'
+    }
+    function formatearFechaCaja(valor) {
+      if (!valor) return ''
+      const fecha = new Date(valor)
+      if (isNaN(fecha.getTime())) return String(valor)
+      return fecha.toLocaleString('es-CO', {
+        day: '2-digit',
+        month: '2-digit',
+        year: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    }
+    function setCajaAdminResumen(resumen) {
+      const saldoEl = document.getElementById('caja-admin-saldo')
+      const metaEl = document.getElementById('caja-admin-meta')
+      if (saldoEl) saldoEl.textContent = formatearPesos(resumen?.saldo_actual || 0)
+      if (metaEl) {
+        metaEl.textContent = `Efectivo: ${formatearPesos(resumen?.total_efectivo || 0)} | Egresos: ${formatearPesos(resumen?.total_egresos || 0)}`
+      }
+    }
+    function renderCajaEgresos(egresos) {
+      const lista = document.getElementById('caja-egresos-lista')
+      if (!lista) return
+      lista.innerHTML = ''
+      if (!Array.isArray(egresos) || egresos.length === 0) {
+        lista.innerHTML = '<div class="caja-admin-vacio">No hay egresos registrados.</div>'
+        return
+      }
+      egresos.forEach(egreso => {
+        const item = document.createElement('div')
+        item.className = 'caja-admin-item'
+
+        const btn = document.createElement('button')
+        btn.type = 'button'
+        btn.className = 'caja-admin-delete'
+        btn.textContent = '-'
+        btn.title = 'Eliminar egreso'
+        btn.onclick = () => eliminarEgresoCaja(egreso.id)
+
+        const contenido = document.createElement('div')
+
+        const titulo = document.createElement('div')
+        titulo.className = 'caja-admin-item-titulo'
+        const valor = document.createElement('span')
+        valor.textContent = formatearPesos(egreso.valor || 0)
+        const usuario = document.createElement('span')
+        usuario.textContent = egreso.usuario_nombre || 'Admin'
+        titulo.appendChild(valor)
+        titulo.appendChild(usuario)
+
+        const motivo = document.createElement('div')
+        motivo.className = 'caja-admin-item-motivo'
+        motivo.textContent = egreso.justificacion || ''
+
+        const meta = document.createElement('div')
+        meta.className = 'caja-admin-item-meta'
+        meta.textContent = formatearFechaCaja(egreso.created_at)
+
+        contenido.appendChild(titulo)
+        contenido.appendChild(motivo)
+        contenido.appendChild(meta)
+        item.appendChild(btn)
+        item.appendChild(contenido)
+        lista.appendChild(item)
+      })
+    }
+    function detenerCajaAdmin() {
+      if (cajaAdminTimer) {
+        clearInterval(cajaAdminTimer)
+        cajaAdminTimer = null
+      }
+    }
+    async function cargarCajaAdmin() {
+      if (!esAdminActual()) return
+      const usuarioId = getUsuarioIdActual()
+      if (!usuarioId) return
+      try {
+        const resp = await fetch(getApiBase() + '/api/caja/resumen?usuario_id=' + usuarioId, {
+          cache: 'no-store'
+        })
+        if (!resp.ok) {
+          if (resp.status === 403) actualizarCajaAdminVisibilidad()
+          return
+        }
+        const data = await resp.json()
+        if (!data?.ok) return
+        setCajaAdminResumen(data)
+        renderCajaEgresos(data.egresos)
+      } catch (e) {
+        console.error('Error cargando caja admin', e)
+      }
+    }
+    function iniciarCajaAdmin() {
+      detenerCajaAdmin()
+      if (!esAdminActual() || !getUsuarioIdActual()) return
+      cargarCajaAdmin()
+      cajaAdminTimer = setInterval(cargarCajaAdmin, 8000)
+    }
+    function actualizarCajaAdminVisibilidad() {
+      const widget = document.getElementById('caja-admin-widget')
+      if (!widget) return
+      const visible = esAdminActual() && !!getUsuarioIdActual() && !document.body.classList.contains('transportador-mode')
+      widget.style.display = visible ? 'block' : 'none'
+      if (visible) {
+        iniciarCajaAdmin()
+      } else {
+        detenerCajaAdmin()
+      }
+    }
+    function toggleCajaAdminDetalle() {
+      const detalle = document.getElementById('caja-admin-detalle')
+      const btn = document.getElementById('caja-admin-toggle')
+      if (!detalle || !btn) return
+      const estaOculto = detalle.hasAttribute('hidden')
+      if (estaOculto) {
+        detalle.removeAttribute('hidden')
+        btn.textContent = '▲ Egresos de caja'
+      } else {
+        detalle.setAttribute('hidden', '')
+        btn.textContent = '▼ Egresos de caja'
+      }
+    }
+    async function registrarEgresoCaja() {
+      if (!esAdminActual()) return
+      const usuarioId = getUsuarioIdActual()
+      const inputValor = document.getElementById('caja-egreso-valor')
+      const inputJustificacion = document.getElementById('caja-egreso-justificacion')
+      const valor = Math.round(Number(inputValor?.value || 0))
+      const justificacion = (inputJustificacion?.value || '').trim()
+
+      if (!valor || valor <= 0) {
+        alert('Ingresa un valor válido para el egreso.')
+        inputValor?.focus()
+        return
+      }
+      if (!justificacion) {
+        alert('Escribe una justificación para el egreso.')
+        inputJustificacion?.focus()
+        return
+      }
+
+      try {
+        const resp = await fetch(getApiBase() + '/api/caja/egresos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            usuario_id: usuarioId,
+            valor,
+            justificacion
+          })
+        })
+        const data = await resp.json()
+        if (!resp.ok || !data?.ok) {
+          alert('No se pudo registrar el egreso de caja.')
+          return
+        }
+        inputValor.value = ''
+        inputJustificacion.value = ''
+        setCajaAdminResumen(data)
+        renderCajaEgresos(data.egresos)
+      } catch (e) {
+        alert('Error de conexión registrando el egreso.')
+      }
+    }
+    async function eliminarEgresoCaja(id) {
+      if (!esAdminActual() || !id) return
+      const usuarioId = getUsuarioIdActual()
+      const contrasena = window.prompt('Ingrese la contraseña de admin para borrar este egreso:')
+      if (!contrasena) return
+
+      try {
+        const resp = await fetch(getApiBase() + '/api/caja/egresos/' + id, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            usuario_id: usuarioId,
+            contrasena
+          })
+        })
+        const data = await resp.json()
+        if (!resp.ok || !data?.ok) {
+          alert(resp.status === 401 ? 'Contraseña de admin incorrecta.' : 'No se pudo borrar el egreso.')
+          return
+        }
+        setCajaAdminResumen(data)
+        renderCajaEgresos(data.egresos)
+      } catch (e) {
+        alert('Error de conexión borrando el egreso.')
+      }
+    }
+    function refrescarCajaAdminPronto() {
+      if (!esAdminActual()) return
+      setTimeout(() => {
+        cargarCajaAdmin()
+      }, 700)
+    }
     let reporteVentas = [];
     let filtroMetodo = 'todos';
     // function checkResetReporte() { ... } eliminada
@@ -2476,11 +2878,13 @@
         nameEl.textContent = ''
         bar.style.display = 'none'
       }
+      actualizarCajaAdminVisibilidad()
     }
     function logoutUsuario() {
       localStorage.removeItem('USUARIO_ID')
       localStorage.removeItem('USUARIO_NOMBRE')
       localStorage.removeItem('USUARIO_ROL')
+      detenerCajaAdmin()
       actualizarUserBar()
       mostrarLogin()
     }
@@ -2536,6 +2940,7 @@
             errorEl.style.color = ''
           }
           ocultarLogin()
+          actualizarCajaAdminVisibilidad()
         }, 900)
       } catch (e) {
         if (errorEl) errorEl.textContent = 'Error de conexión con el servidor'
@@ -2607,6 +3012,7 @@
         ocultarLogin()
       }
       actualizarUserBar()
+      actualizarCajaAdminVisibilidad()
       solicitarConsecutivo().catch(() => {})
       ;['click','keydown','mousemove','touchstart'].forEach(ev => {
         document.addEventListener(ev, resetInactividad)
@@ -2701,6 +3107,7 @@
           if (data.ok) {
             alert('Venta eliminada correctamente')
             cargarReporte() // Recargar lista desde BD
+            refrescarCajaAdminPronto()
             return
           }
         }

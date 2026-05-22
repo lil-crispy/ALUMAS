@@ -59,9 +59,22 @@ async function ensureSchema() {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB;
   `
+  const createCajaEgresos = `
+    CREATE TABLE IF NOT EXISTS caja_egresos (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      usuario_id INT NOT NULL,
+      valor INT NOT NULL,
+      justificacion VARCHAR(255) NOT NULL,
+      eliminado TINYINT(1) NOT NULL DEFAULT 0,
+      eliminado_por INT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      eliminado_at TIMESTAMP NULL DEFAULT NULL
+    ) ENGINE=InnoDB;
+  `
   await pool.query(createVentas)
   await pool.query(createItems)
   await pool.query(createProgramados)
+  await pool.query(createCajaEgresos)
 }
 
 let pool
@@ -90,6 +103,96 @@ async function initPool() {
   if (DB_CONFIG.host !== 'localhost' && DB_CONFIG.host !== '127.0.0.1') {
     const fallbackConfig = { ...DB_CONFIG, host: 'localhost' }
     await createAndTestPool(fallbackConfig, 'fallback localhost')
+  }
+}
+
+function getStoredPassword(user) {
+  return String(
+    user?.contrasena ||
+    user?.clave ||
+    user?.password ||
+    user?.pass ||
+    ''
+  ).trim()
+}
+
+async function passwordMatchesUser(user, contrasena) {
+  const storedPass = getStoredPassword(user)
+  const inputPass = String(contrasena || '').trim()
+  let okPass = storedPass === inputPass
+
+  if (!okPass) {
+    if (storedPass.startsWith('$2a$') || storedPass.startsWith('$2b$') || storedPass.startsWith('$2y$')) {
+      try {
+        okPass = await bcrypt.compare(inputPass, storedPass)
+      } catch {}
+    }
+  }
+
+  if (!okPass) {
+    const hex = storedPass.toLowerCase()
+    const onlyHex = /^[a-f0-9]+$/.test(hex)
+    if (onlyHex) {
+      const len = hex.length
+      if (len === 32) {
+        const md5 = crypto.createHash('md5').update(inputPass).digest('hex')
+        okPass = md5 === hex
+      } else if (len === 40) {
+        const sha1 = crypto.createHash('sha1').update(inputPass).digest('hex')
+        okPass = sha1 === hex
+      } else if (len === 64) {
+        const sha256 = crypto.createHash('sha256').update(inputPass).digest('hex')
+        okPass = sha256 === hex
+      }
+    }
+  }
+
+  return !!storedPass && !!okPass
+}
+
+async function getUsuarioById(usuarioId, conn = pool) {
+  const [rows] = await conn.query(
+    'SELECT * FROM usuarios WHERE id_usuario = ? LIMIT 1',
+    [Number(usuarioId)]
+  )
+  return rows && rows.length ? rows[0] : null
+}
+
+async function isAdminUser(usuarioId, conn = pool) {
+  const user = await getUsuarioById(usuarioId, conn)
+  return String(user?.rol || '').toLowerCase() === 'admin'
+}
+
+async function getCajaResumen(conn = pool) {
+  const [[ventaRow]] = await conn.query(
+    "SELECT COALESCE(SUM(total), 0) AS total_efectivo FROM ventas WHERE UPPER(COALESCE(forma_pago, '')) = 'EFECTIVO'"
+  )
+  const [[egresoRow]] = await conn.query(
+    'SELECT COALESCE(SUM(valor), 0) AS total_egresos FROM caja_egresos WHERE eliminado = 0'
+  )
+  const [egresos] = await conn.query(
+    `SELECT
+        ce.id,
+        ce.usuario_id,
+        ce.valor,
+        ce.justificacion,
+        ce.created_at,
+        COALESCE(u.nombre, u.usuario, u.nombre_usuario, CONCAT('Usuario ', ce.usuario_id)) AS usuario_nombre
+      FROM caja_egresos ce
+      LEFT JOIN usuarios u ON u.id_usuario = ce.usuario_id
+      WHERE ce.eliminado = 0
+      ORDER BY ce.created_at DESC, ce.id DESC
+      LIMIT 50`
+  )
+
+  const totalEfectivo = Number(ventaRow?.total_efectivo || 0)
+  const totalEgresos = Number(egresoRow?.total_egresos || 0)
+
+  return {
+    total_efectivo: totalEfectivo,
+    total_egresos: totalEgresos,
+    saldo_actual: totalEfectivo - totalEgresos,
+    egresos: egresos || []
   }
 }
 
@@ -203,41 +306,8 @@ app.post('/api/login', async (req, res) => {
       return res.status(401).json({ ok: false, error: 'credenciales_invalidas' })
     }
     const user = rows[0]
-    const rawStored = String(
-      user.contrasena ||
-      user.clave ||
-      user.password ||
-      user.pass ||
-      ''
-    )
-    const storedPass = rawStored.trim()
-    const inputPass = String(contrasena).trim()
-    let okPass = storedPass === inputPass
+    const okPass = await passwordMatchesUser(user, contrasena)
     if (!okPass) {
-      if (storedPass.startsWith('$2a$') || storedPass.startsWith('$2b$') || storedPass.startsWith('$2y$')) {
-        try {
-          okPass = await bcrypt.compare(inputPass, storedPass)
-        } catch {}
-      }
-    }
-    if (!okPass) {
-      const hex = storedPass.toLowerCase()
-      const onlyHex = /^[a-f0-9]+$/.test(hex)
-      if (onlyHex) {
-        const len = hex.length
-        if (len === 32) {
-          const md5 = crypto.createHash('md5').update(inputPass).digest('hex')
-          okPass = md5 === hex
-        } else if (len === 40) {
-          const sha1 = crypto.createHash('sha1').update(inputPass).digest('hex')
-          okPass = sha1 === hex
-        } else if (len === 64) {
-          const sha256 = crypto.createHash('sha256').update(inputPass).digest('hex')
-          okPass = sha256 === hex
-        }
-      }
-    }
-    if (!storedPass || !okPass) {
       return res.status(401).json({ ok: false, error: 'credenciales_invalidas' })
     }
     const idUsuario = user.id_usuario || user.id || user.usuario_id
@@ -271,44 +341,102 @@ app.post('/api/confirmar-pass', async (req, res) => {
       return res.status(401).json({ ok: false, error: 'usuario_no_encontrado' })
     }
     const user = rows[0]
-    const rawStored = String(
-      user.contrasena ||
-      user.clave ||
-      user.password ||
-      user.pass ||
-      ''
-    )
-    const storedPass = rawStored.trim()
-    const inputPass = String(contrasena).trim()
-    let okPass = storedPass === inputPass
+    const okPass = await passwordMatchesUser(user, contrasena)
     if (!okPass) {
-      if (storedPass.startsWith('$2a$') || storedPass.startsWith('$2b$') || storedPass.startsWith('$2y$')) {
-        try {
-          okPass = await bcrypt.compare(inputPass, storedPass)
-        } catch {}
-      }
-    }
-    if (!okPass) {
-      const hex = storedPass.toLowerCase()
-      const onlyHex = /^[a-f0-9]+$/.test(hex)
-      if (onlyHex) {
-        const len = hex.length
-        if (len === 32) {
-          const md5 = crypto.createHash('md5').update(inputPass).digest('hex')
-          okPass = md5 === hex
-        } else if (len === 40) {
-          const sha1 = crypto.createHash('sha1').update(inputPass).digest('hex')
-          okPass = sha1 === hex
-        } else if (len === 64) {
-          const sha256 = crypto.createHash('sha256').update(inputPass).digest('hex')
-          okPass = sha256 === hex
-        }
-      }
-    }
-    if (!storedPass || !okPass) {
       return res.status(401).json({ ok: false, error: 'credenciales_invalidas' })
     }
     res.json({ ok: true })
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message })
+  }
+})
+
+app.get('/api/caja/resumen', async (req, res) => {
+  try {
+    const usuarioId = Number(req.query.usuario_id || 0)
+    if (!usuarioId) {
+      return res.status(400).json({ ok: false, error: 'usuario_id_requerido' })
+    }
+    if (!(await isAdminUser(usuarioId))) {
+      return res.status(403).json({ ok: false, error: 'solo_admin' })
+    }
+
+    const resumen = await getCajaResumen()
+    res.json({ ok: true, ...resumen })
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message })
+  }
+})
+
+app.post('/api/caja/egresos', async (req, res) => {
+  try {
+    const { usuario_id, valor, justificacion } = req.body || {}
+    const usuarioId = Number(usuario_id || 0)
+    const valorNum = Math.round(Number(valor || 0))
+    const motivo = String(justificacion || '').trim()
+
+    if (!usuarioId) {
+      return res.status(400).json({ ok: false, error: 'usuario_id_requerido' })
+    }
+    if (!(await isAdminUser(usuarioId))) {
+      return res.status(403).json({ ok: false, error: 'solo_admin' })
+    }
+    if (!valorNum || valorNum <= 0) {
+      return res.status(400).json({ ok: false, error: 'valor_invalido' })
+    }
+    if (!motivo) {
+      return res.status(400).json({ ok: false, error: 'justificacion_requerida' })
+    }
+
+    const [result] = await pool.query(
+      'INSERT INTO caja_egresos (usuario_id, valor, justificacion) VALUES (?, ?, ?)',
+      [usuarioId, valorNum, motivo]
+    )
+    const resumen = await getCajaResumen()
+    res.json({ ok: true, id: result.insertId, ...resumen })
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message })
+  }
+})
+
+app.delete('/api/caja/egresos/:id', async (req, res) => {
+  try {
+    const egresoId = Number(req.params.id || 0)
+    const { usuario_id, contrasena } = req.body || {}
+    const usuarioId = Number(usuario_id || 0)
+
+    if (!egresoId) {
+      return res.status(400).json({ ok: false, error: 'egreso_id_invalido' })
+    }
+    if (!usuarioId || !contrasena) {
+      return res.status(400).json({ ok: false, error: 'datos_invalidos' })
+    }
+
+    const user = await getUsuarioById(usuarioId)
+    if (!user || String(user.rol || '').toLowerCase() !== 'admin') {
+      return res.status(403).json({ ok: false, error: 'solo_admin' })
+    }
+
+    const okPass = await passwordMatchesUser(user, contrasena)
+    if (!okPass) {
+      return res.status(401).json({ ok: false, error: 'credenciales_invalidas' })
+    }
+
+    const [[egreso]] = await pool.query(
+      'SELECT id FROM caja_egresos WHERE id = ? AND eliminado = 0 LIMIT 1',
+      [egresoId]
+    )
+    if (!egreso) {
+      return res.status(404).json({ ok: false, error: 'egreso_no_encontrado' })
+    }
+
+    await pool.query(
+      'UPDATE caja_egresos SET eliminado = 1, eliminado_por = ?, eliminado_at = NOW() WHERE id = ?',
+      [usuarioId, egresoId]
+    )
+
+    const resumen = await getCajaResumen()
+    res.json({ ok: true, ...resumen })
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message })
   }
