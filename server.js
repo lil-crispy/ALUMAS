@@ -21,6 +21,8 @@ const DB_CONFIG = {
   queueLimit: 0,
 }
 
+const CAJA_BASE_INICIAL = 100000
+
 async function ensureSchema() {
   const createVentas = `
     CREATE TABLE IF NOT EXISTS web_ventas (
@@ -164,11 +166,26 @@ async function isAdminUser(usuarioId, conn = pool) {
 }
 
 async function getCajaResumen(conn = pool) {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  const d = String(now.getDate()).padStart(2, '0')
+  const startStr = `${y}-${m}-${d} 00:00:00`
+  const endStr = `${y}-${m}-${d} 23:59:59`
+
   const [[ventaRow]] = await conn.query(
-    "SELECT COALESCE(SUM(total), 0) AS total_efectivo FROM ventas WHERE UPPER(COALESCE(forma_pago, '')) = 'EFECTIVO'"
+    `SELECT COALESCE(SUM(total), 0) AS total_efectivo
+     FROM ventas
+     WHERE fecha >= ? AND fecha <= ?
+       AND UPPER(TRIM(COALESCE(forma_pago, ''))) = 'EFECTIVO'`,
+    [startStr, endStr]
   )
   const [[egresoRow]] = await conn.query(
-    'SELECT COALESCE(SUM(valor), 0) AS total_egresos FROM caja_egresos WHERE eliminado = 0'
+    `SELECT COALESCE(SUM(valor), 0) AS total_egresos
+     FROM caja_egresos
+     WHERE eliminado = 0
+       AND created_at >= ? AND created_at <= ?`,
+    [startStr, endStr]
   )
   const [egresos] = await conn.query(
     `SELECT
@@ -181,17 +198,22 @@ async function getCajaResumen(conn = pool) {
       FROM caja_egresos ce
       LEFT JOIN usuarios u ON u.id_usuario = ce.usuario_id
       WHERE ce.eliminado = 0
+        AND ce.created_at >= ? AND ce.created_at <= ?
       ORDER BY ce.created_at DESC, ce.id DESC
-      LIMIT 50`
+      LIMIT 50`,
+    [startStr, endStr]
   )
 
   const totalEfectivo = Number(ventaRow?.total_efectivo || 0)
   const totalEgresos = Number(egresoRow?.total_egresos || 0)
+  const baseInicial = CAJA_BASE_INICIAL
 
   return {
+    fecha_caja: `${y}-${m}-${d}`,
+    base_inicial: baseInicial,
     total_efectivo: totalEfectivo,
     total_egresos: totalEgresos,
-    saldo_actual: totalEfectivo - totalEgresos,
+    saldo_actual: baseInicial + totalEfectivo - totalEgresos,
     egresos: egresos || []
   }
 }

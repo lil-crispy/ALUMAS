@@ -2631,8 +2631,9 @@
       const metaEl = document.getElementById('caja-admin-meta')
       if (saldoEl) saldoEl.textContent = formatearPesos(resumen?.saldo_actual || 0)
       if (metaEl) {
-        metaEl.textContent = `Efectivo: ${formatearPesos(resumen?.total_efectivo || 0)} | Egresos: ${formatearPesos(resumen?.total_egresos || 0)}`
+        metaEl.textContent = `Base: ${formatearPesos(resumen?.base_inicial || 0)} | Ventas hoy: ${formatearPesos(resumen?.total_efectivo || 0)} | Egresos hoy: ${formatearPesos(resumen?.total_egresos || 0)}`
       }
+      posicionarBotonReporte()
     }
     function renderCajaEgresos(egresos) {
       const lista = document.getElementById('caja-egresos-lista')
@@ -2686,6 +2687,23 @@
         cajaAdminTimer = null
       }
     }
+    function posicionarBotonReporte() {
+      const toggle = document.querySelector('.report-toggle')
+      if (!toggle) return
+      const widget = document.getElementById('caja-admin-widget')
+      const widgetVisible = widget && window.getComputedStyle(widget).display !== 'none'
+      const margen = window.innerWidth <= 700 ? 8 : 10
+
+      toggle.style.left = 'auto'
+      toggle.style.right = `${margen}px`
+
+      if (widgetVisible) {
+        const rect = widget.getBoundingClientRect()
+        toggle.style.top = `${Math.max(rect.bottom + 12, 92)}px`
+      } else {
+        toggle.style.top = '48px'
+      }
+    }
     async function cargarCajaAdmin() {
       if (!esAdminActual()) return
       const usuarioId = getUsuarioIdActual()
@@ -2702,6 +2720,7 @@
         if (!data?.ok) return
         setCajaAdminResumen(data)
         renderCajaEgresos(data.egresos)
+        posicionarBotonReporte()
       } catch (e) {
         console.error('Error cargando caja admin', e)
       }
@@ -2722,6 +2741,7 @@
       } else {
         detenerCajaAdmin()
       }
+      posicionarBotonReporte()
     }
     function toggleCajaAdminDetalle() {
       const detalle = document.getElementById('caja-admin-detalle')
@@ -2735,6 +2755,7 @@
         detalle.setAttribute('hidden', '')
         btn.textContent = '▼ Egresos de caja'
       }
+      setTimeout(posicionarBotonReporte, 30)
     }
     async function registrarEgresoCaja() {
       if (!esAdminActual()) return
@@ -2774,6 +2795,7 @@
         inputJustificacion.value = ''
         setCajaAdminResumen(data)
         renderCajaEgresos(data.egresos)
+        posicionarBotonReporte()
       } catch (e) {
         alert('Error de conexión registrando el egreso.')
       }
@@ -2800,6 +2822,7 @@
         }
         setCajaAdminResumen(data)
         renderCajaEgresos(data.egresos)
+        posicionarBotonReporte()
       } catch (e) {
         alert('Error de conexión borrando el egreso.')
       }
@@ -3019,6 +3042,8 @@
       })
       resetInactividad()
       cargarReporte()
+      posicionarBotonReporte()
+      window.addEventListener('resize', posicionarBotonReporte)
     });
     function agregarVentaReporte(metodo) {
       // Ya no usamos localStorage local, recargamos desde BD
