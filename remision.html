@@ -2703,6 +2703,26 @@
       } else {
         toggle.style.top = '48px'
       }
+      posicionarPanelReporte()
+    }
+    function posicionarPanelReporte() {
+      const toggle = document.querySelector('.report-toggle')
+      const panel = document.getElementById('report-panel')
+      if (!toggle || !panel) return
+      const rect = toggle.getBoundingClientRect()
+      const margen = window.innerWidth <= 700 ? 8 : 10
+
+      panel.style.left = 'auto'
+      panel.style.right = `${margen}px`
+      panel.style.top = `${rect.bottom + 8}px`
+
+      if (window.innerWidth <= 700) {
+        panel.style.width = `calc(100vw - ${margen * 2}px)`
+        panel.style.maxHeight = '58vh'
+      } else {
+        panel.style.width = '340px'
+        panel.style.maxHeight = '70vh'
+      }
     }
     async function cargarCajaAdmin() {
       if (!esAdminActual()) return
@@ -3104,6 +3124,7 @@
     function toggleReportePanel() {
       const p = document.getElementById('report-panel');
       if (!p) return;
+      posicionarPanelReporte();
       p.classList.toggle('open');
       if (p.classList.contains('open')) {
         cargarReporte()

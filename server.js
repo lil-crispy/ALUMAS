@@ -180,29 +180,58 @@ async function getCajaResumen(conn = pool) {
        AND UPPER(TRIM(COALESCE(forma_pago, ''))) = 'EFECTIVO'`,
     [startStr, endStr]
   )
-  const [[egresoRow]] = await conn.query(
-    `SELECT COALESCE(SUM(valor), 0) AS total_egresos
-     FROM caja_egresos
-     WHERE eliminado = 0
-       AND created_at >= ? AND created_at <= ?`,
-    [startStr, endStr]
-  )
-  const [egresos] = await conn.query(
-    `SELECT
-        ce.id,
-        ce.usuario_id,
-        ce.valor,
-        ce.justificacion,
-        ce.created_at,
-        COALESCE(u.nombre, u.usuario, u.nombre_usuario, CONCAT('Usuario ', ce.usuario_id)) AS usuario_nombre
-      FROM caja_egresos ce
-      LEFT JOIN usuarios u ON u.id_usuario = ce.usuario_id
-      WHERE ce.eliminado = 0
-        AND ce.created_at >= ? AND ce.created_at <= ?
-      ORDER BY ce.created_at DESC, ce.id DESC
-      LIMIT 50`,
-    [startStr, endStr]
-  )
+  let egresoRow = { total_egresos: 0 }
+  let egresos = []
+  try {
+    const [sumRows] = await conn.query(
+      `SELECT COALESCE(SUM(valor), 0) AS total_egresos
+       FROM caja_egresos
+       WHERE eliminado = 0
+         AND created_at >= ? AND created_at <= ?`,
+      [startStr, endStr]
+    )
+    egresoRow = (sumRows && sumRows[0]) || egresoRow
+
+    const [egresoRows] = await conn.query(
+      `SELECT
+          ce.id,
+          ce.usuario_id,
+          ce.valor,
+          ce.justificacion,
+          ce.created_at
+        FROM caja_egresos ce
+        WHERE ce.eliminado = 0
+          AND ce.created_at >= ? AND ce.created_at <= ?
+        ORDER BY ce.created_at DESC, ce.id DESC
+        LIMIT 50`,
+      [startStr, endStr]
+    )
+
+    egresos = (egresoRows || []).map(row => ({
+      ...row,
+      usuario_nombre: `Usuario ${row.usuario_id}`
+    }))
+  } catch (err) {
+    const recoverable = ['ER_NO_SUCH_TABLE', 'ER_BAD_FIELD_ERROR'].includes(err?.code)
+    if (recoverable) {
+      try {
+        await conn.query(`
+          CREATE TABLE IF NOT EXISTS caja_egresos (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            usuario_id INT NOT NULL,
+            valor INT NOT NULL,
+            justificacion VARCHAR(255) NOT NULL,
+            eliminado TINYINT(1) NOT NULL DEFAULT 0,
+            eliminado_por INT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            eliminado_at TIMESTAMP NULL DEFAULT NULL
+          ) ENGINE=InnoDB;
+        `)
+      } catch {}
+    } else {
+      throw err
+    }
+  }
 
   const totalEfectivo = Number(ventaRow?.total_efectivo || 0)
   const totalEgresos = Number(egresoRow?.total_egresos || 0)
