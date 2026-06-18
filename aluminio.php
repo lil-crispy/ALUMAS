@@ -67,38 +67,14 @@
 
 <div class="catalogo" id="catalogo">
   <?php
-  if (!function_exists('alumas_debug_log')) {
-      function alumas_debug_log($message, array $context = []) {
-          $payload = '[ALUMINIO_DEBUG] ' . $message;
-          if (!empty($context)) {
-              $payload .= ' ' . json_encode($context, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-          }
-          error_log($payload);
-      }
-  }
-
-  alumas_debug_log('catalog_request_start', [
-      'uri' => $_SERVER['REQUEST_URI'] ?? '',
-      'script' => __FILE__,
-  ]);
-  alumas_debug_log('db_file_check', [
-      'db_exists' => file_exists(__DIR__ . '/db.php'),
-      'db_path' => __DIR__ . '/db.php',
-  ]);
+  require_once 'db.php';
 
   try {
-      require_once 'db.php';
-      alumas_debug_log('db_file_loaded', [
-          'pdo_ready' => isset($pdo),
-      ]);
-
       // Consulta para obtener los productos del inventario
       // Se asume que la tabla 'inventario' tiene las columnas: nombre, precio_mayor, imagen, unidad_empaque
       // Ajusta los nombres de columnas según tu base de datos real.
       $sql = "SELECT nombre, precio_mayorista, imagen FROM productos";
-      alumas_debug_log('query_start', ['sql' => $sql]);
       $stmt = $pdo->query($sql);
-      alumas_debug_log('query_ok');
 
       while ($row = $stmt->fetch()) {
           $nombre = $row['nombre'];
@@ -139,15 +115,6 @@
             </div>
           </div>';
       }
-      alumas_debug_log('catalog_render_done');
-  } catch (Throwable $e) {
-      alumas_debug_log('catalog_fail', [
-          'type' => get_class($e),
-          'message' => $e->getMessage(),
-          'file' => $e->getFile(),
-          'line' => $e->getLine(),
-      ]);
-      echo '<p>Error interno cargando el catálogo.</p>';
   } catch (PDOException $e) {
       echo '<p>Error al cargar el catálogo: ' . $e->getMessage() . '</p>';
   }
