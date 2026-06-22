@@ -808,6 +808,7 @@
         id: null,
         ts: 0
       };
+      let activePrintFrame = null;
 
       const imageCache = new Map();
 
@@ -1886,28 +1887,84 @@
         }
       }
 
-      async function openPrintPreview() {
-        const printWindow = window.open("", "_blank");
-        if (!printWindow) {
-          setStatus("El navegador bloqueo la ventana de impresion.", "error");
-          return;
+      function cleanupPrintFrame() {
+        if (activePrintFrame && activePrintFrame.parentNode) {
+          activePrintFrame.parentNode.removeChild(activePrintFrame);
         }
+        activePrintFrame = null;
+      }
 
+      async function openPrintPreview() {
         try {
           setStatus("Preparando vista de impresion...", "warn");
           const { canvas } = await buildPrintCanvas();
           const dataUrl = canvas.toDataURL("image/png");
           const totalHeightMm = getRowsCount() * state.config.labelHeightMM;
+          cleanupPrintFrame();
 
-          printWindow.document.write(
+          const frame = document.createElement("iframe");
+          frame.style.position = "fixed";
+          frame.style.right = "0";
+          frame.style.bottom = "0";
+          frame.style.width = "1px";
+          frame.style.height = "1px";
+          frame.style.border = "0";
+          frame.setAttribute("aria-hidden", "true");
+          document.body.appendChild(frame);
+          activePrintFrame = frame;
+
+          const printDoc = frame.contentWindow?.document;
+          if (!printDoc || !frame.contentWindow) {
+            cleanupPrintFrame();
+            setStatus("No se pudo preparar el documento de impresion.", "error");
+            return;
+          }
+
+          const html =
             "<!DOCTYPE html><html><head><title>Impresion ticket</title>" +
-            "<style>@page{size:" + state.config.rowWidthMM + "mm " + totalHeightMm + "mm;margin:0;}html,body{margin:0;padding:0;background:#fff;}img{display:block;width:" + state.config.rowWidthMM + "mm;height:auto;}</style>" +
-            "</head><body><img src='" + dataUrl + "' alt='Ticket listo para imprimir'></body></html>"
-          );
-          printWindow.document.close();
-          printWindow.focus();
-          printWindow.print();
-          setStatus("Vista de impresion abierta en una ventana nueva.", "ok");
+            "<style>@page{size:" + state.config.rowWidthMM + "mm " + totalHeightMm + "mm;margin:0;}" +
+            "html,body{margin:0;padding:0;background:#fff;}" +
+            "body{width:" + state.config.rowWidthMM + "mm;height:" + totalHeightMm + "mm;overflow:hidden;}" +
+            "img{display:block;width:" + state.config.rowWidthMM + "mm;height:" + totalHeightMm + "mm;object-fit:fill;image-rendering:auto;}" +
+            "</style></head><body><img id='ticketPrintImage' alt='Ticket listo para imprimir'></body></html>";
+
+          printDoc.open();
+          printDoc.write(html);
+          printDoc.close();
+
+          const image = printDoc.getElementById("ticketPrintImage");
+          if (!image) {
+            cleanupPrintFrame();
+            setStatus("No se pudo montar la imagen de impresion.", "error");
+            return;
+          }
+
+          image.onload = () => {
+            const printWindow = frame.contentWindow;
+            if (!printWindow) {
+              cleanupPrintFrame();
+              setStatus("La vista de impresion no esta disponible.", "error");
+              return;
+            }
+
+            const release = () => {
+              setTimeout(cleanupPrintFrame, 800);
+            };
+
+            printWindow.onafterprint = release;
+            setTimeout(() => {
+              printWindow.focus();
+              printWindow.print();
+              setStatus("Vista de impresion enviada correctamente.", "ok");
+            }, 120);
+          };
+
+          image.onerror = () => {
+            cleanupPrintFrame();
+            setStatus("No se pudo cargar la imagen para impresion.", "error");
+          };
+
+          image.src = dataUrl;
         } catch (error) {
           console.error(error);
           setStatus("No se pudo generar la vista de impresion.", "error");
