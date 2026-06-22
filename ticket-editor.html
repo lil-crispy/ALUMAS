@@ -1,0 +1,1978 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ALUMAS | Editor de Tickets</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel-soft: #1f2937;
+      --line: #334155;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --accent-soft: rgba(245, 158, 11, 0.18);
+      --danger: #ef4444;
+      --success: #22c55e;
+      --editor-mm: 10px;
+      --shadow: 0 18px 45px rgba(15, 23, 42, 0.35);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background:
+        radial-gradient(circle at top right, rgba(245, 158, 11, 0.12), transparent 22%),
+        linear-gradient(180deg, #0b1120, #111827 45%, #0f172a 100%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    .app-shell {
+      display: grid;
+      grid-template-columns: 360px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      padding: 24px;
+      border-right: 1px solid rgba(148, 163, 184, 0.15);
+      background: rgba(15, 23, 42, 0.9);
+      backdrop-filter: blur(10px);
+      overflow-y: auto;
+    }
+
+    .brand {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 20px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 1.45rem;
+      letter-spacing: 0.02em;
+    }
+
+    .brand p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 0.95rem;
+    }
+
+    .panel {
+      background: rgba(17, 24, 39, 0.96);
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+      margin-bottom: 18px;
+    }
+
+    .panel h2 {
+      margin: 0 0 14px;
+      font-size: 1rem;
+    }
+
+    .panel-note {
+      margin: -4px 0 12px;
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.4;
+    }
+
+    .field-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .field,
+    .field-full {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field-full {
+      margin-top: 12px;
+    }
+
+    label {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    input[type="number"],
+    input[type="text"],
+    select,
+    textarea {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      background: rgba(15, 23, 42, 0.92);
+      color: var(--text);
+      padding: 10px 12px;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 92px;
+      resize: vertical;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: rgba(245, 158, 11, 0.55);
+      box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .tool-grid,
+    .export-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .preset-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .preset-tile {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 10px;
+      border-radius: 14px;
+      background: rgba(15, 23, 42, 0.92);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      color: var(--text);
+      text-align: center;
+    }
+
+    .preset-tile img {
+      width: 72px;
+      height: 72px;
+      object-fit: contain;
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 6px;
+    }
+
+    button {
+      border: none;
+      border-radius: 12px;
+      padding: 11px 12px;
+      cursor: pointer;
+      transition: transform 0.18s ease, opacity 0.18s ease, background 0.18s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #f59e0b, #f97316);
+      color: #111827;
+      font-weight: 700;
+    }
+
+    .btn-secondary {
+      background: rgba(30, 41, 59, 0.95);
+      color: var(--text);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+    }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.16);
+      color: #fecaca;
+      border: 1px solid rgba(239, 68, 68, 0.28);
+    }
+
+    .btn-full {
+      width: 100%;
+      margin-top: 12px;
+    }
+
+    .help-list {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    .help-list li + li {
+      margin-top: 8px;
+    }
+
+    .inspector-empty {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    .workspace {
+      padding: 24px;
+      overflow-x: hidden;
+    }
+
+    .workspace-header {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+
+    .hero-card,
+    .stats-card {
+      background: rgba(15, 23, 42, 0.78);
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      border-radius: 22px;
+      padding: 22px;
+      box-shadow: var(--shadow);
+    }
+
+    .hero-card h2,
+    .stats-card h2 {
+      margin: 0 0 8px;
+    }
+
+    .hero-card p,
+    .stats-card p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .stat-box {
+      padding: 14px;
+      border-radius: 16px;
+      background: rgba(30, 41, 59, 0.78);
+      border: 1px solid rgba(148, 163, 184, 0.1);
+    }
+
+    .stat-box strong {
+      display: block;
+      font-size: 1.15rem;
+      margin-bottom: 4px;
+    }
+
+    .stat-box span {
+      color: var(--muted);
+      font-size: 0.84rem;
+    }
+
+    .editor-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .editor-panel,
+    .preview-panel,
+    .output-panel {
+      background: rgba(15, 23, 42, 0.78);
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      border-radius: 22px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .panel-header h2 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .panel-header span {
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    .editor-shell {
+      overflow: auto;
+      border-radius: 18px;
+      border: 1px dashed rgba(148, 163, 184, 0.2);
+      background:
+        linear-gradient(0deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.02)),
+        linear-gradient(90deg, rgba(148, 163, 184, 0.06) 1px, transparent 1px),
+        linear-gradient(rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+      background-size: 100% 100%, 20px 20px, 20px 20px;
+      padding: 20px;
+    }
+
+    .ticket-stage {
+      position: relative;
+      width: calc(var(--ticket-width-mm) * var(--editor-mm));
+      height: calc(var(--ticket-height-mm) * var(--editor-mm));
+      background: #ffffff;
+      color: #111827;
+      margin: 0 auto;
+      box-shadow: 0 28px 50px rgba(15, 23, 42, 0.18);
+      border-radius: 8px;
+      overflow: hidden;
+      transform-origin: top center;
+      user-select: none;
+      touch-action: none;
+    }
+
+    .ticket-stage::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(to right, rgba(148, 163, 184, 0.12) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(148, 163, 184, 0.12) 1px, transparent 1px);
+      background-size: 20px 20px;
+      pointer-events: none;
+    }
+
+    .ticket-element {
+      position: absolute;
+      border: 1px solid transparent;
+      min-width: 28px;
+      min-height: 22px;
+      z-index: 1;
+      touch-action: none;
+    }
+
+    .ticket-element.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+      z-index: 50;
+    }
+
+    .ticket-element-text {
+      padding: 6px;
+      background: rgba(255, 255, 255, 0.85);
+      overflow: hidden;
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.15;
+    }
+
+    .ticket-text-editor {
+      width: 100%;
+      height: 100%;
+      border: none;
+      outline: none;
+      resize: none;
+      background: rgba(255, 255, 255, 0.92);
+      color: #111827;
+      padding: 6px;
+      line-height: 1.15;
+      user-select: text;
+    }
+
+    .ticket-element-image {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #fff;
+      overflow: hidden;
+    }
+
+    .ticket-element-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .ticket-element.show-border {
+      border-color: #111827;
+    }
+
+    .drag-badge {
+      position: absolute;
+      top: -11px;
+      left: -1px;
+      background: var(--accent);
+      color: #111827;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 999px;
+      letter-spacing: 0.02em;
+      display: none;
+    }
+
+    .ticket-element.selected .drag-badge {
+      display: inline-flex;
+    }
+
+    .resize-handle {
+      position: absolute;
+      right: -7px;
+      bottom: -7px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: 2px solid #fff;
+      display: none;
+      cursor: nwse-resize;
+    }
+
+    .ticket-element.selected .resize-handle {
+      display: block;
+    }
+
+    .preview-grid {
+      display: grid;
+      gap: 12px;
+      align-content: start;
+    }
+
+    .preview-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .preview-ticket {
+      position: relative;
+      aspect-ratio: 32 / 25;
+      background: #fff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
+    }
+
+    .preview-element {
+      position: absolute;
+      overflow: hidden;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: #111827;
+    }
+
+    .preview-element img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .output-panel {
+      margin-top: 18px;
+    }
+
+    .status-box {
+      border-radius: 16px;
+      background: rgba(30, 41, 59, 0.78);
+      border: 1px solid rgba(148, 163, 184, 0.1);
+      padding: 14px;
+      color: var(--muted);
+      line-height: 1.5;
+      min-height: 88px;
+      white-space: pre-wrap;
+    }
+
+    .mono-box {
+      margin-top: 14px;
+      border-radius: 16px;
+      background: #020617;
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      padding: 14px;
+      color: #cbd5e1;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.84rem;
+      min-height: 140px;
+      max-height: 260px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .hidden-input {
+      display: none;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 0.82rem;
+      margin-top: 10px;
+      line-height: 1.45;
+    }
+
+    .status-ok {
+      color: #bbf7d0;
+    }
+
+    .status-warn {
+      color: #fde68a;
+    }
+
+    .status-error {
+      color: #fecaca;
+    }
+
+    @media (max-width: 1200px) {
+      .app-shell {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        border-right: none;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+      }
+
+      .workspace-header,
+      .editor-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media print {
+      body {
+        background: #fff;
+      }
+
+      .sidebar,
+      .workspace-header,
+      .output-panel {
+        display: none !important;
+      }
+
+      .workspace {
+        padding: 0;
+      }
+
+      .editor-panel {
+        display: none;
+      }
+
+      .preview-panel {
+        box-shadow: none;
+        border: none;
+        padding: 0;
+        background: #fff;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <h1>Editor Termico ALUMAS</h1>
+        <p>Editor libre tipo plantilla para crear tickets termicos con texto e imagenes y exportarlos para impresion o para integracion TSPL.</p>
+      </div>
+
+      <section class="panel">
+        <h2>Configuracion</h2>
+        <p class="panel-note">La plantilla se diseña sobre una sola etiqueta y luego se repite en 3 columnas por fila.</p>
+        <div class="field-grid">
+          <div class="field">
+            <label for="labelWidth">Ancho etiqueta (mm)</label>
+            <input id="labelWidth" type="number" min="10" max="100" step="1" value="32">
+          </div>
+          <div class="field">
+            <label for="labelHeight">Alto etiqueta (mm)</label>
+            <input id="labelHeight" type="number" min="10" max="100" step="1" value="25">
+          </div>
+          <div class="field">
+            <label for="rowWidth">Ancho fila (mm)</label>
+            <input id="rowWidth" type="number" min="30" max="200" step="1" value="100">
+          </div>
+          <div class="field">
+            <label for="columns">Columnas por fila</label>
+            <input id="columns" type="number" min="1" max="6" step="1" value="3">
+          </div>
+          <div class="field">
+            <label for="quantity">Cantidad total</label>
+            <input id="quantity" type="number" min="1" max="999" step="1" value="6">
+          </div>
+          <div class="field">
+            <label for="dotsPerMm">Dots por mm</label>
+            <input id="dotsPerMm" type="number" min="4" max="20" step="1" value="8">
+          </div>
+        </div>
+        <p class="hint">La cantidad siempre se ajusta automaticamente al multiplo de columnas para que cada fila salga completa.</p>
+      </section>
+
+      <section class="panel">
+        <h2>Herramientas</h2>
+        <div class="tool-grid">
+          <button id="addTextBtn" class="btn-primary" type="button">Agregar texto</button>
+          <button id="addImageBtn" class="btn-secondary" type="button">Agregar imagen</button>
+          <button id="duplicateBtn" class="btn-secondary" type="button">Duplicar</button>
+          <button id="deleteBtn" class="btn-danger" type="button">Eliminar</button>
+        </div>
+        <button id="resetBtn" class="btn-secondary btn-full" type="button">Restaurar ejemplo</button>
+        <input id="imagePicker" class="hidden-input" type="file" accept="image/*">
+        <div class="preset-grid">
+          <button
+            id="quickLogoBtn"
+            class="preset-tile"
+            type="button"
+            data-src="./img/LOGO3.png"
+            data-width="82"
+            data-height="82"
+            title="Agregar logo circular ALUMAS">
+            <img src="./img/LOGO3.png" alt="Logo circular ALUMAS">
+            <span>Logo ALUMAS</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Propiedades</h2>
+        <div id="inspector">
+          <p class="inspector-empty">Selecciona un bloque para editar su contenido, tamaño, alineacion o borde.</p>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Exportacion</h2>
+        <div class="export-grid">
+          <button id="saveLayoutBtn" class="btn-secondary" type="button">Guardar JSON</button>
+          <button id="loadLayoutBtn" class="btn-secondary" type="button">Cargar JSON</button>
+          <button id="printBtn" class="btn-primary" type="button">Vista imprimir</button>
+          <button id="tsplBtn" class="btn-primary" type="button">Descargar TSPL</button>
+        </div>
+        <input id="layoutPicker" class="hidden-input" type="file" accept=".json,application/json">
+        <p class="hint">El archivo TSPL se genera en binario con comando <strong>BITMAP</strong>, listo para enviarlo por Python con <strong>win32print</strong>.</p>
+      </section>
+
+      <section class="panel">
+        <h2>Uso rapido</h2>
+        <ul class="help-list">
+          <li>Haz clic en un bloque para seleccionarlo.</li>
+          <li>Arrastra el bloque para moverlo dentro de la etiqueta.</li>
+          <li>Usa el punto naranja de la esquina para redimensionarlo.</li>
+          <li>Doble clic en un texto para editarlo directo en el lienzo.</li>
+          <li>La tecla Supr elimina el bloque seleccionado.</li>
+        </ul>
+      </section>
+    </aside>
+
+    <main class="workspace">
+      <section class="workspace-header">
+        <article class="hero-card">
+          <h2>Plantilla libre para tickets termicos</h2>
+          <p>La edicion funciona como una hoja visual: puedes escribir, borrar, subir logos o imagenes, reorganizar elementos y luego repetir el ticket automaticamente en la matriz de impresion.</p>
+        </article>
+        <article class="stats-card">
+          <h2>Resumen de impresion</h2>
+          <p>Compatible con etiqueta de 32 x 25 mm y fila de 3 tickets, pero se puede ajustar desde la configuracion.</p>
+          <div class="stats-row">
+            <div class="stat-box">
+              <strong id="rowsStat">2</strong>
+              <span>filas a imprimir</span>
+            </div>
+            <div class="stat-box">
+              <strong id="totalStat">6</strong>
+              <span>tickets totales</span>
+            </div>
+            <div class="stat-box">
+              <strong id="sizeStat">100 x 50</strong>
+              <span>tamano final mm</span>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section class="editor-layout">
+        <article class="editor-panel">
+          <div class="panel-header">
+            <h2>Editor de etiqueta</h2>
+            <span id="stageMeta">32 x 25 mm</span>
+          </div>
+          <div class="editor-shell">
+            <div id="ticketStage" class="ticket-stage" aria-label="Editor de ticket"></div>
+          </div>
+        </article>
+
+        <article class="preview-panel">
+          <div class="panel-header">
+            <h2>Vista repetida</h2>
+            <span id="previewMeta">3 columnas</span>
+          </div>
+          <div id="previewGrid" class="preview-grid"></div>
+        </article>
+      </section>
+
+      <section class="output-panel">
+        <div class="panel-header">
+          <h2>Salida tecnica</h2>
+          <span>Estado y vista previa de exportacion</span>
+        </div>
+        <div id="statusBox" class="status-box">Listo para editar. Agrega bloques de texto e imagenes y luego exporta.</div>
+        <div id="monoBox" class="mono-box">Aqui aparecera un resumen tecnico del TSPL generado.</div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    (() => {
+      const EDITOR_PX_PER_MM = 10;
+      const textEncoder = new TextEncoder();
+
+      const state = {
+        config: {
+          labelWidthMM: 32,
+          labelHeightMM: 25,
+          rowWidthMM: 100,
+          columns: 3,
+          quantity: 6,
+          dotsPerMM: 8
+        },
+        elements: [],
+        selectedId: null,
+        editingId: null
+      };
+
+      const dom = {
+        ticketStage: document.getElementById("ticketStage"),
+        previewGrid: document.getElementById("previewGrid"),
+        inspector: document.getElementById("inspector"),
+        statusBox: document.getElementById("statusBox"),
+        monoBox: document.getElementById("monoBox"),
+        rowsStat: document.getElementById("rowsStat"),
+        totalStat: document.getElementById("totalStat"),
+        sizeStat: document.getElementById("sizeStat"),
+        stageMeta: document.getElementById("stageMeta"),
+        previewMeta: document.getElementById("previewMeta"),
+        labelWidth: document.getElementById("labelWidth"),
+        labelHeight: document.getElementById("labelHeight"),
+        rowWidth: document.getElementById("rowWidth"),
+        columns: document.getElementById("columns"),
+        quantity: document.getElementById("quantity"),
+        dotsPerMm: document.getElementById("dotsPerMm"),
+        imagePicker: document.getElementById("imagePicker"),
+        layoutPicker: document.getElementById("layoutPicker")
+      };
+
+      const interaction = {
+        mode: null,
+        id: null,
+        startX: 0,
+        startY: 0,
+        originalX: 0,
+        originalY: 0,
+        originalWidth: 0,
+        originalHeight: 0,
+        originalFontSize: 0
+      };
+
+      const textClickState = {
+        id: null,
+        ts: 0
+      };
+
+      const imageCache = new Map();
+
+      // #region debug-point A:runtime-emit
+      const DEBUG_SERVER_URL = "http://127.0.0.1:7777/event";
+      const DEBUG_SESSION_ID = "ticket-text-edit";
+      function debugEmit(hypothesisId, location, msg, data = {}) {
+        const payload = {
+          sessionId: DEBUG_SESSION_ID,
+          runId: "pre-fix",
+          hypothesisId,
+          location,
+          msg: "[DEBUG] " + msg,
+          data,
+          ts: Date.now()
+        };
+        window.__ticketDebugEvents = window.__ticketDebugEvents || [];
+        window.__ticketDebugEvents.push(payload);
+        fetch(DEBUG_SERVER_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        }).catch(() => {});
+      }
+      // #endregion
+
+      function createId(prefix) {
+        return prefix + "-" + Math.random().toString(36).slice(2, 9);
+      }
+
+      function clamp(value, min, max) {
+        return Math.min(Math.max(value, min), max);
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function setStatus(message, type = "ok") {
+        dom.statusBox.textContent = message;
+        dom.statusBox.className = "status-box";
+        if (type === "ok") dom.statusBox.classList.add("status-ok");
+        if (type === "warn") dom.statusBox.classList.add("status-warn");
+        if (type === "error") dom.statusBox.classList.add("status-error");
+      }
+
+      function defaultSampleElements() {
+        return [
+          {
+            id: createId("text"),
+            type: "text",
+            x: 9,
+            y: 8,
+            width: 140,
+            height: 34,
+            text: "ALUMAS",
+            fontSize: 18,
+            fontWeight: "700",
+            textAlign: "left",
+            showBorder: false
+          },
+          {
+            id: createId("text"),
+            type: "text",
+            x: 9,
+            y: 48,
+            width: 214,
+            height: 60,
+            text: "Producto o mensaje libre\nEditable como plantilla",
+            fontSize: 14,
+            fontWeight: "500",
+            textAlign: "left",
+            showBorder: false
+          },
+          {
+            id: createId("text"),
+            type: "text",
+            x: 9,
+            y: 122,
+            width: 110,
+            height: 44,
+            text: "$ 29.900",
+            fontSize: 22,
+            fontWeight: "700",
+            textAlign: "left",
+            showBorder: false
+          },
+          {
+            id: createId("text"),
+            type: "text",
+            x: 9,
+            y: 181,
+            width: 180,
+            height: 28,
+            text: "Ref. interna / fecha / notas",
+            fontSize: 11,
+            fontWeight: "400",
+            textAlign: "left",
+            showBorder: false
+          }
+        ];
+      }
+
+      function normalizeConfig() {
+        const cfg = state.config;
+        cfg.labelWidthMM = clamp(Math.round(Number(cfg.labelWidthMM) || 32), 10, 100);
+        cfg.labelHeightMM = clamp(Math.round(Number(cfg.labelHeightMM) || 25), 10, 100);
+        cfg.rowWidthMM = clamp(Math.round(Number(cfg.rowWidthMM) || 100), cfg.labelWidthMM, 200);
+        cfg.columns = clamp(Math.round(Number(cfg.columns) || 3), 1, 6);
+        cfg.dotsPerMM = clamp(Math.round(Number(cfg.dotsPerMM) || 8), 4, 20);
+
+        const minQuantity = Math.max(1, Math.round(Number(cfg.quantity) || cfg.columns));
+        cfg.quantity = Math.ceil(minQuantity / cfg.columns) * cfg.columns;
+
+        dom.labelWidth.value = cfg.labelWidthMM;
+        dom.labelHeight.value = cfg.labelHeightMM;
+        dom.rowWidth.value = cfg.rowWidthMM;
+        dom.columns.value = cfg.columns;
+        dom.quantity.value = cfg.quantity;
+        dom.dotsPerMm.value = cfg.dotsPerMM;
+      }
+
+      function syncStageSize() {
+        document.documentElement.style.setProperty("--ticket-width-mm", state.config.labelWidthMM);
+        document.documentElement.style.setProperty("--ticket-height-mm", state.config.labelHeightMM);
+        dom.stageMeta.textContent = state.config.labelWidthMM + " x " + state.config.labelHeightMM + " mm";
+        dom.previewMeta.textContent = state.config.columns + " columnas";
+      }
+
+      function getRowsCount() {
+        return Math.ceil(state.config.quantity / state.config.columns);
+      }
+
+      function updateStats() {
+        const rows = getRowsCount();
+        dom.rowsStat.textContent = String(rows);
+        dom.totalStat.textContent = String(state.config.quantity);
+        dom.sizeStat.textContent = state.config.rowWidthMM + " x " + (rows * state.config.labelHeightMM);
+      }
+
+      function getSelectedElement() {
+        return state.elements.find((element) => element.id === state.selectedId) || null;
+      }
+
+      function setSelected(id) {
+        state.selectedId = id;
+        renderStage();
+        renderInspector();
+      }
+
+      function deselectAll() {
+        state.selectedId = null;
+        state.editingId = null;
+        renderStage();
+        renderInspector();
+      }
+
+      function addTextElement() {
+        const element = {
+          id: createId("text"),
+          type: "text",
+          x: 14,
+          y: 14,
+          width: 150,
+          height: 46,
+          text: "Nuevo texto",
+          fontSize: 14,
+          fontWeight: "500",
+          textAlign: "left",
+          showBorder: false
+        };
+        state.elements.push(element);
+        setSelected(element.id);
+        renderAll();
+        setStatus("Se agrego un bloque de texto nuevo.", "ok");
+      }
+
+      function addImageElement(src) {
+        return addImageElementWithOptions(src, {});
+      }
+
+      function addImageElementWithOptions(src, options = {}) {
+        const element = {
+          id: createId("image"),
+          type: "image",
+          x: options.x ?? 16,
+          y: options.y ?? 16,
+          width: options.width ?? 90,
+          height: options.height ?? 54,
+          src,
+          fit: options.fit ?? "contain",
+          showBorder: options.showBorder ?? false
+        };
+        state.elements.push(element);
+        setSelected(element.id);
+        renderAll();
+        setStatus("Imagen agregada al ticket.", "ok");
+        return element;
+      }
+
+      function addPresetImage(src, options = {}) {
+        const absoluteSrc = new URL(src, window.location.href).href;
+        return addImageElementWithOptions(absoluteSrc, options);
+      }
+
+      function duplicateSelected() {
+        const selected = getSelectedElement();
+        if (!selected) {
+          setStatus("Selecciona un bloque antes de duplicarlo.", "warn");
+          return;
+        }
+        const clone = structuredClone(selected);
+        clone.id = createId(selected.type);
+        clone.x = clamp(clone.x + 14, 0, state.config.labelWidthMM * EDITOR_PX_PER_MM - clone.width);
+        clone.y = clamp(clone.y + 14, 0, state.config.labelHeightMM * EDITOR_PX_PER_MM - clone.height);
+        state.elements.push(clone);
+        setSelected(clone.id);
+        renderAll();
+        setStatus("Bloque duplicado.", "ok");
+      }
+
+      function deleteSelected() {
+        if (!state.selectedId) {
+          setStatus("No hay bloque seleccionado para eliminar.", "warn");
+          return;
+        }
+        state.elements = state.elements.filter((element) => element.id !== state.selectedId);
+        state.selectedId = null;
+        state.editingId = null;
+        renderAll();
+        setStatus("Bloque eliminado.", "ok");
+      }
+
+      function resetExample() {
+        state.elements = defaultSampleElements();
+        state.selectedId = state.elements[0]?.id || null;
+        state.editingId = null;
+        renderAll();
+        setStatus("Plantilla restaurada con un ejemplo editable.", "ok");
+      }
+
+      function mmToEditorPx(mm) {
+        return mm * EDITOR_PX_PER_MM;
+      }
+
+      function keepElementInside(element) {
+        const maxWidth = mmToEditorPx(state.config.labelWidthMM);
+        const maxHeight = mmToEditorPx(state.config.labelHeightMM);
+        element.width = clamp(element.width, 28, maxWidth);
+        element.height = clamp(element.height, 22, maxHeight);
+        element.x = clamp(element.x, 0, maxWidth - element.width);
+        element.y = clamp(element.y, 0, maxHeight - element.height);
+      }
+
+      function bindStageEvents(node, element) {
+        node.addEventListener("pointerdown", (event) => {
+          // #region debug-point D:pointerdown
+          debugEmit("D", "bindStageEvents:pointerdown", "pointerdown en bloque", {
+            id: element.id,
+            type: element.type,
+            detail: event.detail,
+            editingId: state.editingId,
+            targetClass: event.target.className || null
+          });
+          // #endregion
+          if (event.target.classList.contains("resize-handle")) {
+            startResize(event, element.id);
+            return;
+          }
+
+          if (element.type === "text" && state.editingId === element.id) {
+            return;
+          }
+
+          if (element.type === "text") {
+            const now = Date.now();
+            const repeatedClick =
+              state.selectedId === element.id &&
+              textClickState.id === element.id &&
+              now - textClickState.ts < 420;
+
+            textClickState.id = element.id;
+            textClickState.ts = now;
+
+            if (repeatedClick || event.detail > 1) {
+              // #region debug-point A:repeat-click-edit
+              debugEmit("A", "bindStageEvents:repeat-click", "segundo clic detectado para editar", {
+                id: element.id,
+                repeatedClick,
+                detail: event.detail
+              });
+              // #endregion
+              enterTextEdit(element.id, repeatedClick ? "repeat-click" : "dblclick");
+              return;
+            }
+          }
+
+          startDrag(event, element.id);
+        });
+
+        node.addEventListener("dblclick", (event) => {
+          if (element.type !== "text") return;
+          event.preventDefault();
+          event.stopPropagation();
+          enterTextEdit(element.id, "dblclick-event");
+        });
+      }
+
+      function enterTextEdit(id, source) {
+        interaction.mode = null;
+        interaction.id = null;
+        state.selectedId = id;
+        state.editingId = id;
+        // #region debug-point A:enter-edit
+        debugEmit("A", "enterTextEdit", "entrando a modo edicion", {
+          id,
+          source,
+          selectedId: state.selectedId,
+          editingId: state.editingId
+        });
+        // #endregion
+        renderStage();
+        focusEditableText(id);
+      }
+
+      function focusEditableText(id) {
+        const attemptFocus = () => {
+          const editable = dom.ticketStage.querySelector('[data-editor-id="' + id + '"]');
+          // #region debug-point B:focus-editable
+          debugEmit("B", "focusEditableText:frame", "intentando enfocar editable", {
+            id,
+            found: Boolean(editable),
+            activeElementTag: document.activeElement?.tagName || null
+          });
+          // #endregion
+          if (!editable) return false;
+
+          editable.focus({ preventScroll: true });
+          if (typeof editable.selectionStart === "number") {
+            const length = editable.value.length;
+            editable.selectionStart = length;
+            editable.selectionEnd = length;
+          }
+          // #region debug-point B:focus-result
+          debugEmit("B", "focusEditableText:result", "editable enfocado", {
+            id,
+            activeEditorId: document.activeElement?.dataset?.editorId || null,
+            textLength: typeof editable.value === "string" ? editable.value.length : editable.textContent.length
+          });
+          // #endregion
+          return document.activeElement === editable;
+        };
+
+        requestAnimationFrame(() => {
+          if (attemptFocus()) return;
+          setTimeout(() => {
+            if (attemptFocus()) return;
+            setTimeout(() => {
+              attemptFocus();
+            }, 60);
+          }, 0);
+        });
+      }
+
+      function startDrag(event, id) {
+        event.preventDefault();
+        const element = state.elements.find((item) => item.id === id);
+        if (!element) return;
+
+        state.editingId = null;
+        setSelected(id);
+        interaction.mode = "drag";
+        interaction.id = id;
+        interaction.startX = event.clientX;
+        interaction.startY = event.clientY;
+        interaction.originalX = element.x;
+        interaction.originalY = element.y;
+        // #region debug-point D:start-drag
+        debugEmit("D", "startDrag", "inicio de arrastre", {
+          id,
+          editingId: state.editingId,
+          x: element.x,
+          y: element.y
+        });
+        // #endregion
+      }
+
+      function startResize(event, id) {
+        event.preventDefault();
+        event.stopPropagation();
+        const element = state.elements.find((item) => item.id === id);
+        if (!element) return;
+
+        state.editingId = null;
+        setSelected(id);
+        interaction.mode = "resize";
+        interaction.id = id;
+        interaction.startX = event.clientX;
+        interaction.startY = event.clientY;
+        interaction.originalWidth = element.width;
+        interaction.originalHeight = element.height;
+        interaction.originalFontSize = element.fontSize || 14;
+        // #region debug-point C:start-resize
+        debugEmit("C", "startResize", "inicio de resize", {
+          id,
+          width: element.width,
+          height: element.height,
+          fontSize: element.fontSize || null,
+          type: element.type
+        });
+        // #endregion
+      }
+
+      function onPointerMove(event) {
+        if (!interaction.mode || !interaction.id) return;
+        const element = state.elements.find((item) => item.id === interaction.id);
+        if (!element) return;
+
+        const deltaX = event.clientX - interaction.startX;
+        const deltaY = event.clientY - interaction.startY;
+
+        if (interaction.mode === "drag") {
+          element.x = interaction.originalX + deltaX;
+          element.y = interaction.originalY + deltaY;
+        }
+
+        if (interaction.mode === "resize") {
+          element.width = interaction.originalWidth + deltaX;
+          element.height = interaction.originalHeight + deltaY;
+          if (element.type === "text") {
+            const widthScale = element.width / Math.max(1, interaction.originalWidth);
+            const heightScale = element.height / Math.max(1, interaction.originalHeight);
+            const nextScale = Math.max(widthScale, heightScale);
+            element.fontSize = clamp(Math.round(interaction.originalFontSize * nextScale), 8, 180);
+          }
+        }
+
+        keepElementInside(element);
+        renderStage();
+        renderPreview();
+        renderInspector();
+      }
+
+      function onPointerUp() {
+        if (!interaction.mode) return;
+        const element = state.elements.find((item) => item.id === interaction.id);
+        // #region debug-point C:pointer-up
+        debugEmit(interaction.mode === "resize" ? "C" : "D", "onPointerUp", "fin de interaccion", {
+          mode: interaction.mode,
+          id: interaction.id,
+          width: element?.width || null,
+          height: element?.height || null,
+          fontSize: element?.fontSize || null
+        });
+        // #endregion
+        interaction.mode = null;
+        interaction.id = null;
+        setStatus("Posicion del bloque actualizada.", "ok");
+      }
+
+      function renderStage() {
+        dom.ticketStage.innerHTML = "";
+
+        state.elements.forEach((element) => {
+          keepElementInside(element);
+
+          const wrapper = document.createElement("div");
+          wrapper.className = "ticket-element";
+          if (state.selectedId === element.id) {
+            wrapper.classList.add("selected");
+          }
+          if (element.showBorder) {
+            wrapper.classList.add("show-border");
+          }
+          wrapper.style.left = element.x + "px";
+          wrapper.style.top = element.y + "px";
+          wrapper.style.width = element.width + "px";
+          wrapper.style.height = element.height + "px";
+          wrapper.dataset.elementId = element.id;
+
+          const badge = document.createElement("div");
+          badge.className = "drag-badge";
+          badge.textContent = "Mover";
+          wrapper.appendChild(badge);
+
+          if (element.type === "text") {
+            const textNode = document.createElement("div");
+            if (state.editingId === element.id) {
+              const editor = document.createElement("textarea");
+              editor.className = "ticket-text-editor";
+              editor.value = element.text;
+              editor.spellcheck = false;
+              editor.tabIndex = -1;
+              editor.autofocus = true;
+              editor.dataset.editorId = element.id;
+              editor.style.fontSize = element.fontSize + "px";
+              editor.style.fontWeight = element.fontWeight;
+              editor.style.textAlign = element.textAlign;
+              editor.addEventListener("input", () => {
+                element.text = editor.value;
+                // #region debug-point A:text-input
+                debugEmit("A", "textNode:input", "texto editado", {
+                  id: element.id,
+                  textLength: editor.value.length
+                });
+                // #endregion
+                renderPreview();
+                renderInspector();
+              });
+              editor.addEventListener("blur", () => {
+                // #region debug-point A:text-blur
+                debugEmit("A", "textNode:blur", "editable pierde foco", {
+                  id: element.id,
+                  editingId: state.editingId,
+                  textLength: editor.value.length
+                });
+                // #endregion
+                if (state.editingId === element.id) {
+                  element.text = editor.value;
+                  state.editingId = null;
+                  renderAll();
+                  setStatus("Texto actualizado.", "ok");
+                }
+              });
+              editor.addEventListener("keydown", (event) => {
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  editor.blur();
+                }
+              });
+              editor.addEventListener("pointerdown", (event) => {
+                event.stopPropagation();
+              });
+              wrapper.appendChild(editor);
+            } else {
+              textNode.className = "ticket-element-text";
+              textNode.style.fontSize = element.fontSize + "px";
+              textNode.style.fontWeight = element.fontWeight;
+              textNode.style.textAlign = element.textAlign;
+              textNode.style.height = "100%";
+              textNode.dataset.editorId = element.id;
+              textNode.textContent = element.text;
+              wrapper.appendChild(textNode);
+            }
+          }
+
+          if (element.type === "image") {
+            const imageBox = document.createElement("div");
+            imageBox.className = "ticket-element-image";
+            imageBox.style.height = "100%";
+            const image = document.createElement("img");
+            image.src = element.src;
+            image.alt = "Elemento imagen";
+            image.style.objectFit = element.fit || "contain";
+            imageBox.appendChild(image);
+            wrapper.appendChild(imageBox);
+          }
+
+          const resizeHandle = document.createElement("div");
+          resizeHandle.className = "resize-handle";
+          wrapper.appendChild(resizeHandle);
+
+          bindStageEvents(wrapper, element);
+          dom.ticketStage.appendChild(wrapper);
+        });
+      }
+
+      function renderInspector() {
+        const selected = getSelectedElement();
+        if (!selected) {
+          dom.inspector.innerHTML = '<p class="inspector-empty">Selecciona un bloque para editar su contenido, tamaño, alineacion o borde.</p>';
+          return;
+        }
+
+        let html = "";
+
+        html += '<div class="field-grid">';
+        html += '<div class="field"><label>X</label><input data-prop="x" type="number" value="' + Math.round(selected.x) + '"></div>';
+        html += '<div class="field"><label>Y</label><input data-prop="y" type="number" value="' + Math.round(selected.y) + '"></div>';
+        html += '<div class="field"><label>Ancho</label><input data-prop="width" type="number" value="' + Math.round(selected.width) + '"></div>';
+        html += '<div class="field"><label>Alto</label><input data-prop="height" type="number" value="' + Math.round(selected.height) + '"></div>';
+        html += "</div>";
+
+        if (selected.type === "text") {
+          html += '<div class="field-full"><label>Contenido</label><textarea data-prop="text">' + escapeHtml(selected.text) + "</textarea></div>";
+          html += '<div class="field-grid">';
+          html += '<div class="field"><label>Tamano fuente</label><input data-prop="fontSize" type="number" min="8" max="72" value="' + selected.fontSize + '"></div>';
+          html += '<div class="field"><label>Alineacion</label><select data-prop="textAlign"><option value="left"' + (selected.textAlign === "left" ? " selected" : "") + '>Izquierda</option><option value="center"' + (selected.textAlign === "center" ? " selected" : "") + '>Centro</option><option value="right"' + (selected.textAlign === "right" ? " selected" : "") + '>Derecha</option></select></div>';
+          html += "</div>";
+          html += '<div class="checkbox-row"><input id="weightToggle" type="checkbox"' + (selected.fontWeight === "700" ? " checked" : "") + '><label for="weightToggle">Negrita</label></div>';
+        }
+
+        if (selected.type === "image") {
+          html += '<div class="field-full"><label>Ajuste imagen</label><select data-prop="fit"><option value="contain"' + (selected.fit === "contain" ? " selected" : "") + '>Contain</option><option value="cover"' + (selected.fit === "cover" ? " selected" : "") + '>Cover</option><option value="fill"' + (selected.fit === "fill" ? " selected" : "") + '>Fill</option></select></div>';
+          html += '<button id="replaceImageBtn" class="btn-secondary btn-full" type="button">Reemplazar imagen</button>';
+        }
+
+        html += '<div class="checkbox-row"><input id="borderToggle" type="checkbox"' + (selected.showBorder ? " checked" : "") + '><label for="borderToggle">Mostrar borde</label></div>';
+
+        dom.inspector.innerHTML = html;
+
+        dom.inspector.querySelectorAll("[data-prop]").forEach((input) => {
+          input.addEventListener("input", () => {
+            updateSelectedProperty(input.dataset.prop, input.value);
+          });
+        });
+
+        const weightToggle = document.getElementById("weightToggle");
+        if (weightToggle) {
+          weightToggle.addEventListener("change", () => {
+            updateSelectedProperty("fontWeight", weightToggle.checked ? "700" : "400");
+          });
+        }
+
+        const borderToggle = document.getElementById("borderToggle");
+        if (borderToggle) {
+          borderToggle.addEventListener("change", () => {
+            updateSelectedProperty("showBorder", borderToggle.checked);
+          });
+        }
+
+        const replaceImageBtn = document.getElementById("replaceImageBtn");
+        if (replaceImageBtn) {
+          replaceImageBtn.addEventListener("click", () => {
+            dom.imagePicker.dataset.mode = "replace";
+            dom.imagePicker.click();
+          });
+        }
+      }
+
+      function updateSelectedProperty(prop, value) {
+        const selected = getSelectedElement();
+        if (!selected) return;
+
+        if (["x", "y", "width", "height", "fontSize"].includes(prop)) {
+          selected[prop] = Number(value) || 0;
+        } else if (prop === "showBorder") {
+          selected[prop] = Boolean(value);
+        } else {
+          selected[prop] = value;
+        }
+
+        if (prop === "fontSize") {
+          selected.fontSize = clamp(selected.fontSize, 8, 72);
+        }
+
+        keepElementInside(selected);
+        renderAll();
+      }
+
+      function createPreviewElement(element) {
+        const ticketWidthPx = mmToEditorPx(state.config.labelWidthMM);
+        const ticketHeightPx = mmToEditorPx(state.config.labelHeightMM);
+
+        const node = document.createElement("div");
+        node.className = "preview-element";
+        if (element.showBorder) {
+          node.style.border = "1px solid #111827";
+        }
+        node.style.left = (element.x / ticketWidthPx) * 100 + "%";
+        node.style.top = (element.y / ticketHeightPx) * 100 + "%";
+        node.style.width = (element.width / ticketWidthPx) * 100 + "%";
+        node.style.height = (element.height / ticketHeightPx) * 100 + "%";
+
+        if (element.type === "text") {
+          node.style.fontSize = Math.max(7, element.fontSize * 0.38) + "px";
+          node.style.fontWeight = element.fontWeight;
+          node.style.textAlign = element.textAlign;
+          node.style.padding = "2px 4px";
+          node.textContent = element.text;
+        }
+
+        if (element.type === "image") {
+          const image = document.createElement("img");
+          image.src = element.src;
+          image.alt = "Vista previa";
+          image.style.objectFit = element.fit || "contain";
+          node.appendChild(image);
+        }
+
+        return node;
+      }
+
+      function renderPreview() {
+        dom.previewGrid.innerHTML = "";
+        const rows = getRowsCount();
+
+        for (let rowIndex = 0; rowIndex < rows; rowIndex += 1) {
+          const row = document.createElement("div");
+          row.className = "preview-row";
+          row.style.gridTemplateColumns = "repeat(" + state.config.columns + ", minmax(0, 1fr))";
+
+          for (let columnIndex = 0; columnIndex < state.config.columns; columnIndex += 1) {
+            const ticket = document.createElement("div");
+            ticket.className = "preview-ticket";
+            state.elements.forEach((element) => {
+              ticket.appendChild(createPreviewElement(element));
+            });
+            row.appendChild(ticket);
+          }
+
+          dom.previewGrid.appendChild(row);
+        }
+      }
+
+      function renderAll() {
+        normalizeConfig();
+        syncStageSize();
+        updateStats();
+        renderStage();
+        renderPreview();
+        renderInspector();
+      }
+
+      function wireConfigEvents() {
+        [
+          ["labelWidth", "labelWidthMM"],
+          ["labelHeight", "labelHeightMM"],
+          ["rowWidth", "rowWidthMM"],
+          ["columns", "columns"],
+          ["quantity", "quantity"],
+          ["dotsPerMm", "dotsPerMM"]
+        ].forEach(([id, prop]) => {
+          dom[id].addEventListener("input", () => {
+            state.config[prop] = Number(dom[id].value);
+            renderAll();
+            setStatus("Configuracion actualizada.", "ok");
+          });
+        });
+      }
+
+      function loadFileAsDataUrl(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
+
+      async function handleImageUpload(event) {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        try {
+          const dataUrl = await loadFileAsDataUrl(file);
+          if (event.target.dataset.mode === "replace") {
+            const selected = getSelectedElement();
+            if (selected && selected.type === "image") {
+              selected.src = dataUrl;
+              renderAll();
+              setStatus("Imagen reemplazada correctamente.", "ok");
+            } else {
+              setStatus("Selecciona primero una imagen para reemplazarla.", "warn");
+            }
+          } else {
+            addImageElement(dataUrl);
+          }
+        } catch (error) {
+          setStatus("No se pudo leer la imagen seleccionada.", "error");
+        } finally {
+          event.target.value = "";
+          event.target.dataset.mode = "";
+        }
+      }
+
+      function downloadBlob(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      }
+
+      function saveLayout() {
+        const payload = {
+          exportedAt: new Date().toISOString(),
+          config: state.config,
+          elements: state.elements
+        };
+        downloadBlob(new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }), "ticket-layout.json");
+        setStatus("Plantilla exportada a JSON.", "ok");
+      }
+
+      function loadLayout(event) {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const data = JSON.parse(reader.result);
+            state.config = { ...state.config, ...(data.config || {}) };
+            state.elements = Array.isArray(data.elements) ? data.elements : [];
+            state.selectedId = state.elements[0]?.id || null;
+            state.editingId = null;
+            renderAll();
+            setStatus("Plantilla JSON cargada correctamente.", "ok");
+          } catch (error) {
+            setStatus("El archivo JSON no es valido.", "error");
+          } finally {
+            event.target.value = "";
+          }
+        };
+        reader.readAsText(file);
+      }
+
+      function getImage(src) {
+        if (imageCache.has(src)) {
+          return imageCache.get(src);
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const image = new Image();
+          image.onload = () => resolve(image);
+          image.onerror = reject;
+          image.src = src;
+        });
+        imageCache.set(src, promise);
+        return promise;
+      }
+
+      function drawWrappedText(ctx, text, x, y, width, height, fontSize, fontWeight, textAlign) {
+        ctx.save();
+        ctx.fillStyle = "#000000";
+        ctx.font = fontWeight + " " + fontSize + "px Arial";
+        ctx.textAlign = textAlign;
+        ctx.textBaseline = "top";
+
+        const words = String(text).split(/\s+/);
+        const lines = [];
+        let currentLine = "";
+
+        words.forEach((word) => {
+          const testLine = currentLine ? currentLine + " " + word : word;
+          if (ctx.measureText(testLine).width <= width || currentLine === "") {
+            currentLine = testLine;
+          } else {
+            lines.push(currentLine);
+            currentLine = word;
+          }
+        });
+
+        if (currentLine) {
+          lines.push(currentLine);
+        }
+
+        const explicitLines = String(text).split("\n");
+        const finalLines = explicitLines.length > 1 ? explicitLines.flatMap((line) => wrapSingleLine(ctx, line, width)) : lines;
+        const lineHeight = fontSize * 1.15;
+
+        finalLines.forEach((line, index) => {
+          const yy = y + index * lineHeight;
+          if (yy + lineHeight > y + height) return;
+          let xx = x;
+          if (textAlign === "center") xx = x + width / 2;
+          if (textAlign === "right") xx = x + width;
+          ctx.fillText(line, xx, yy);
+        });
+        ctx.restore();
+      }
+
+      function wrapSingleLine(ctx, line, width) {
+        const pieces = [];
+        const words = String(line).split(/\s+/);
+        let currentLine = "";
+
+        words.forEach((word) => {
+          const testLine = currentLine ? currentLine + " " + word : word;
+          if (ctx.measureText(testLine).width <= width || currentLine === "") {
+            currentLine = testLine;
+          } else {
+            pieces.push(currentLine);
+            currentLine = word;
+          }
+        });
+
+        if (currentLine) {
+          pieces.push(currentLine);
+        }
+
+        return pieces.length ? pieces : [""];
+      }
+
+      async function drawElementOnCanvas(ctx, element, scale, offsetX, offsetY) {
+        const x = offsetX + element.x * scale;
+        const y = offsetY + element.y * scale;
+        const width = element.width * scale;
+        const height = element.height * scale;
+
+        if (element.showBorder) {
+          ctx.save();
+          ctx.strokeStyle = "#000000";
+          ctx.lineWidth = Math.max(1, scale);
+          ctx.strokeRect(x, y, width, height);
+          ctx.restore();
+        }
+
+        if (element.type === "text") {
+          drawWrappedText(
+            ctx,
+            element.text,
+            x + 2 * scale,
+            y + 2 * scale,
+            Math.max(4, width - 4 * scale),
+            Math.max(4, height - 4 * scale),
+            Math.max(8, element.fontSize * scale),
+            element.fontWeight,
+            element.textAlign
+          );
+          return;
+        }
+
+        if (element.type === "image") {
+          try {
+            const image = await getImage(element.src);
+            const fit = element.fit || "contain";
+            let drawX = x;
+            let drawY = y;
+            let drawWidth = width;
+            let drawHeight = height;
+
+            if (fit !== "fill") {
+              const imageRatio = image.width / image.height;
+              const boxRatio = width / height;
+
+              if ((fit === "contain" && imageRatio > boxRatio) || (fit === "cover" && imageRatio < boxRatio)) {
+                drawHeight = width / imageRatio;
+                drawY = fit === "cover" ? y - (drawHeight - height) / 2 : y + (height - drawHeight) / 2;
+              } else {
+                drawWidth = height * imageRatio;
+                drawX = fit === "cover" ? x - (drawWidth - width) / 2 : x + (width - drawWidth) / 2;
+              }
+            }
+
+            ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight);
+          } catch (error) {
+            ctx.save();
+            ctx.strokeStyle = "#000000";
+            ctx.strokeRect(x, y, width, height);
+            ctx.font = Math.max(8, 8 * scale) + "px Arial";
+            ctx.fillStyle = "#000000";
+            ctx.fillText("IMG", x + 3 * scale, y + 3 * scale);
+            ctx.restore();
+          }
+        }
+      }
+
+      async function buildPrintCanvas() {
+        const rows = getRowsCount();
+        const dotsPerMM = state.config.dotsPerMM;
+        const labelWidthDots = Math.round(state.config.labelWidthMM * dotsPerMM);
+        const labelHeightDots = Math.round(state.config.labelHeightMM * dotsPerMM);
+        const rowWidthDots = Math.round(state.config.rowWidthMM * dotsPerMM);
+        const totalHeightDots = rows * labelHeightDots;
+        const canvas = document.createElement("canvas");
+        canvas.width = rowWidthDots;
+        canvas.height = totalHeightDots;
+
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.imageSmoothingEnabled = false;
+
+        const scale = dotsPerMM / EDITOR_PX_PER_MM;
+        const horizontalGap = state.config.columns > 1
+          ? Math.max(0, (rowWidthDots - state.config.columns * labelWidthDots) / (state.config.columns - 1))
+          : 0;
+
+        for (let row = 0; row < rows; row += 1) {
+          for (let column = 0; column < state.config.columns; column += 1) {
+            const offsetX = column * (labelWidthDots + horizontalGap);
+            const offsetY = row * labelHeightDots;
+
+            for (const element of state.elements) {
+              await drawElementOnCanvas(ctx, element, scale, offsetX, offsetY);
+            }
+          }
+        }
+
+        return {
+          canvas,
+          widthBytes: Math.ceil(canvas.width / 8),
+          rows,
+          labelWidthDots,
+          labelHeightDots,
+          rowWidthDots,
+          totalHeightDots
+        };
+      }
+
+      function canvasToMonochromeBytes(canvas) {
+        const ctx = canvas.getContext("2d");
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+        const widthBytes = Math.ceil(canvas.width / 8);
+        const output = new Uint8Array(widthBytes * canvas.height);
+
+        for (let y = 0; y < canvas.height; y += 1) {
+          for (let xByte = 0; xByte < widthBytes; xByte += 1) {
+            let value = 0;
+            for (let bit = 0; bit < 8; bit += 1) {
+              const x = xByte * 8 + bit;
+              if (x >= canvas.width) continue;
+
+              const index = (y * canvas.width + x) * 4;
+              const r = imageData[index];
+              const g = imageData[index + 1];
+              const b = imageData[index + 2];
+              const alpha = imageData[index + 3];
+              const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+              const isBlack = alpha > 0 && luminance < 200;
+              if (isBlack) {
+                value |= (0x80 >> bit);
+              }
+            }
+            output[y * widthBytes + xByte] = value;
+          }
+        }
+
+        return { bytes: output, widthBytes };
+      }
+
+      function buildTsplBinary(bitmapBytes, widthBytes, canvasHeight) {
+        const rows = getRowsCount();
+        const header =
+          "SIZE " + state.config.rowWidthMM + " mm," + (rows * state.config.labelHeightMM) + " mm\r\n" +
+          "GAP 0 mm,0 mm\r\n" +
+          "DIRECTION 1\r\n" +
+          "CLS\r\n" +
+          "BITMAP 0,0," + widthBytes + "," + canvasHeight + ",0,";
+        const footer = "\r\nPRINT 1,1\r\n";
+        const headerBytes = textEncoder.encode(header);
+        const footerBytes = textEncoder.encode(footer);
+        const output = new Uint8Array(headerBytes.length + bitmapBytes.length + footerBytes.length);
+        output.set(headerBytes, 0);
+        output.set(bitmapBytes, headerBytes.length);
+        output.set(footerBytes, headerBytes.length + bitmapBytes.length);
+        return output;
+      }
+
+      function bytesToHexPreview(bytes, limit = 512) {
+        return Array.from(bytes.slice(0, limit))
+          .map((byte) => byte.toString(16).padStart(2, "0"))
+          .join(" ");
+      }
+
+      async function exportTspl() {
+        try {
+          setStatus("Generando bitmap TSPL...", "warn");
+          const { canvas, widthBytes, rows, totalHeightDots, rowWidthDots } = await buildPrintCanvas();
+          const { bytes } = canvasToMonochromeBytes(canvas);
+          const binary = buildTsplBinary(bytes, widthBytes, canvas.height);
+          downloadBlob(new Blob([binary], { type: "application/octet-stream" }), "ticket-tspl.bin");
+
+          dom.monoBox.textContent =
+            "TSPL BIN generado\n" +
+            "Fila dots: " + rowWidthDots + "\n" +
+            "Alto total dots: " + totalHeightDots + "\n" +
+            "Filas impresas: " + rows + "\n" +
+            "Width bytes: " + widthBytes + "\n" +
+            "Bytes bitmap: " + bytes.length + "\n\n" +
+            "Vista hexadecimal inicial:\n" +
+            bytesToHexPreview(bytes);
+
+          setStatus("TSPL binario descargado. Puedes enviarlo por Python con win32print.WritePrinter.", "ok");
+        } catch (error) {
+          console.error(error);
+          setStatus("Falló la exportacion TSPL. Revisa si alguna imagen no pudo procesarse.", "error");
+        }
+      }
+
+      async function openPrintPreview() {
+        const printWindow = window.open("", "_blank");
+        if (!printWindow) {
+          setStatus("El navegador bloqueo la ventana de impresion.", "error");
+          return;
+        }
+
+        try {
+          setStatus("Preparando vista de impresion...", "warn");
+          const { canvas } = await buildPrintCanvas();
+          const dataUrl = canvas.toDataURL("image/png");
+          const totalHeightMm = getRowsCount() * state.config.labelHeightMM;
+
+          printWindow.document.write(
+            "<!DOCTYPE html><html><head><title>Impresion ticket</title>" +
+            "<style>@page{size:" + state.config.rowWidthMM + "mm " + totalHeightMm + "mm;margin:0;}html,body{margin:0;padding:0;background:#fff;}img{display:block;width:" + state.config.rowWidthMM + "mm;height:auto;}</style>" +
+            "</head><body><img src='" + dataUrl + "' alt='Ticket listo para imprimir'></body></html>"
+          );
+          printWindow.document.close();
+          printWindow.focus();
+          printWindow.print();
+          setStatus("Vista de impresion abierta en una ventana nueva.", "ok");
+        } catch (error) {
+          console.error(error);
+          setStatus("No se pudo generar la vista de impresion.", "error");
+        }
+      }
+
+      function setupActions() {
+        document.getElementById("addTextBtn").addEventListener("click", addTextElement);
+        document.getElementById("addImageBtn").addEventListener("click", () => {
+          dom.imagePicker.dataset.mode = "add";
+          dom.imagePicker.click();
+        });
+        document.getElementById("quickLogoBtn").addEventListener("click", (event) => {
+          const button = event.currentTarget;
+          addPresetImage(button.dataset.src, {
+            width: Number(button.dataset.width) || 82,
+            height: Number(button.dataset.height) || 82,
+            fit: "contain"
+          });
+        });
+        document.getElementById("duplicateBtn").addEventListener("click", duplicateSelected);
+        document.getElementById("deleteBtn").addEventListener("click", deleteSelected);
+        document.getElementById("resetBtn").addEventListener("click", resetExample);
+        document.getElementById("saveLayoutBtn").addEventListener("click", saveLayout);
+        document.getElementById("loadLayoutBtn").addEventListener("click", () => dom.layoutPicker.click());
+        document.getElementById("printBtn").addEventListener("click", openPrintPreview);
+        document.getElementById("tsplBtn").addEventListener("click", exportTspl);
+
+        dom.imagePicker.addEventListener("change", handleImageUpload);
+        dom.layoutPicker.addEventListener("change", loadLayout);
+
+        dom.ticketStage.addEventListener("pointerdown", (event) => {
+          if (event.target === dom.ticketStage) {
+            deselectAll();
+          }
+        });
+
+        document.addEventListener("pointermove", onPointerMove);
+        document.addEventListener("pointerup", onPointerUp);
+        document.addEventListener("keydown", (event) => {
+          if (event.key === "Delete") {
+            deleteSelected();
+          }
+        });
+      }
+
+      function init() {
+        state.elements = defaultSampleElements();
+        state.selectedId = state.elements[0]?.id || null;
+        normalizeConfig();
+        syncStageSize();
+        updateStats();
+        wireConfigEvents();
+        setupActions();
+        renderAll();
+        dom.monoBox.textContent =
+          "Resumen tecnico pendiente.\n" +
+          "Cuando descargues TSPL se mostraran aqui los bytes iniciales del bitmap.";
+        if (window.location.protocol === "file:") {
+          setStatus("Estas abriendo el editor como archivo local. Para evitar advertencias del navegador al imprimir, abre la pagina desde un servidor local como http://localhost.", "warn");
+        }
+      }
+
+      init();
+    })();
+  </script>
+</body>
+</html>

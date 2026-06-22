@@ -67,6 +67,7 @@
   <a href="#inicio" class="tab">Sobre Nosotros</a>
   <a href="./PROYECTOS.html" class="tab">Proyectos</a>
   <a href="./servicios.html" class="tab">Servicios</a>
+  <a href="#" class="tab" id="ticketEditorAccess" title="Abrir editor de tickets">&#128196; Tickets</a>
 
   <div class="dropdown tab" id="cotizarDropdown"> <!-- Aquí agregamos el ID -->
     <a href="#contacto" class="tab dropdown-button" onclick="toggleDropdown(event)">Cotizar</a>
@@ -461,15 +462,29 @@ window.addEventListener('resize', updateNavButtonsVisibility);
     document.querySelector('.testimonial-container').style.display = 'none';
   }
 
-  // Validación de contraseña para acceso a remisión
-  document.getElementById('remision').addEventListener('click', function () {
+  function solicitarClaveYRedirigir(destino) {
     const claveCorrecta = '79333587';
     const claveUsuario = prompt('Por favor, ingresa la clave de acceso:');
     if (claveUsuario === claveCorrecta) {
-      window.location.href = 'remision.html';
-    } else {
+      window.location.href = destino;
+      return;
+    }
+
+    if (claveUsuario !== null) {
       alert('Contraseña incorrecta. Acceso denegado.');
     }
+  }
+
+  // Validación de contraseña para acceso a remisión
+  document.getElementById('remision').addEventListener('click', function (event) {
+    event.preventDefault();
+    solicitarClaveYRedirigir('remision.html');
+  });
+
+  // Validación de contraseña para acceso al editor de tickets
+  document.getElementById('ticketEditorAccess').addEventListener('click', function (event) {
+    event.preventDefault();
+    solicitarClaveYRedirigir('ticket-editor.html');
   });
 
   // Rotación automática de testimonios
