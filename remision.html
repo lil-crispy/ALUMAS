@@ -172,6 +172,15 @@
       text-align: center;
     }
 
+    .aviso-transporte {
+      display: none;
+      margin: 8px 0 0;
+      text-align: center;
+      font-size: 1.35em;
+      font-weight: bold;
+      color: #000;
+    }
+
     .logo-grande {
       width: 250px;
       max-width: 550px;
@@ -225,6 +234,10 @@
         width: 80px;
       }
       .total {
+        font-size: 1em;
+      }
+
+      .aviso-transporte {
         font-size: 1em;
       }
     }
@@ -293,6 +306,12 @@
       .total {
         font-size: 1.5em;
         margin-top: 10px;
+      }
+
+      .aviso-transporte {
+        display: block !important;
+        font-size: 1.3em;
+        margin-top: 6px;
       }
       
       .mensaje-motivacional {
@@ -914,6 +933,7 @@
     <div style="margin-top: 10px;">
         <div style="text-align: center;">
             <div style="font-size: 16px; font-weight: bold; margin-bottom: 8px;" id="pdf-total">TOTAL: $ 0</div>
+            <div id="pdf-aviso-transporte" style="display: none; font-size: 18px; font-weight: 900; margin-bottom: 8px; text-align: center;">OJO: TRANSPORTE LIBRE DE CARGUE Y DESCARGUE</div>
             <div style="font-size: 10px; font-weight: bold; margin-bottom: 10px;">***GRACIAS POR SU COMPRA***</div>
         </div>
         <div style="position: relative; min-height: 62px; margin-top: 0;">
@@ -1153,6 +1173,7 @@
     </div>
   
     <p class="total" id="total-general">TOTAL: $ 0</p>
+    <p class="aviso-transporte" id="aviso-transporte">OJO: TRANSPORTE LIBRE DE CARGUE Y DESCARGUE</p>
     
 
     <img src="./img/LOGO3.webp" alt="Logo ALUMAS" class="logo-grande">
@@ -1389,7 +1410,85 @@
       });
 
       document.getElementById('total-general').innerText = 'TOTAL: ' + formatearPesos(totalGeneral);
+      actualizarAvisoTransporte();
       calcularCambio();
+    }
+
+    const AVISO_TRANSPORTE_TEXTO = 'OJO: TRANSPORTE LIBRE DE CARGUE Y DESCARGUE';
+
+    function normalizarTextoTransporte(texto) {
+      return String(texto || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, ' ')
+        .trim();
+    }
+
+    function calcularDistanciaLevenshtein(a, b) {
+      const origen = String(a || '');
+      const destino = String(b || '');
+      const filas = Array.from({ length: origen.length + 1 }, (_, i) => [i]);
+
+      for (let j = 0; j <= destino.length; j++) {
+        filas[0][j] = j;
+      }
+
+      for (let i = 1; i <= origen.length; i++) {
+        for (let j = 1; j <= destino.length; j++) {
+          const costo = origen[i - 1] === destino[j - 1] ? 0 : 1;
+          filas[i][j] = Math.min(
+            filas[i - 1][j] + 1,
+            filas[i][j - 1] + 1,
+            filas[i - 1][j - 1] + costo
+          );
+        }
+      }
+
+      return filas[origen.length][destino.length];
+    }
+
+    function tokenPareceTransporte(token) {
+      const valor = normalizarTextoTransporte(token).replace(/\s+/g, '');
+      if (!valor) return false;
+
+      const clavesDirectas = ['tran', 'trans', 'transp', 'transpo', 'transpor', 'transport', 'transporte', 'trsoporte'];
+      if (clavesDirectas.includes(valor)) return true;
+      if (valor.includes('transport') || valor.includes('trsoporte')) return true;
+
+      if (valor.length >= 7 && calcularDistanciaLevenshtein(valor, 'transporte') <= 3) {
+        return true;
+      }
+
+      return false;
+    }
+
+    function descripcionActivaAvisoTransporte(texto) {
+      const normalizado = normalizarTextoTransporte(texto);
+      if (!normalizado) return false;
+      if (normalizado.includes('transport') || normalizado.includes('trsoporte')) return true;
+      return normalizado.split(/\s+/).some(tokenPareceTransporte);
+    }
+
+    function tablaTieneAvisoTransporte() {
+      return Array.from(document.querySelectorAll('#tabla-productos tr td:nth-child(2)'))
+        .some(celda => descripcionActivaAvisoTransporte(celda.innerText || celda.textContent || ''));
+    }
+
+    function actualizarAvisoTransporte() {
+      const mostrar = tablaTieneAvisoTransporte();
+      const avisoPrint = document.getElementById('aviso-transporte');
+      const avisoPdf = document.getElementById('pdf-aviso-transporte');
+
+      if (avisoPrint) {
+        avisoPrint.textContent = AVISO_TRANSPORTE_TEXTO;
+        avisoPrint.style.display = mostrar ? 'block' : 'none';
+      }
+
+      if (avisoPdf) {
+        avisoPdf.textContent = AVISO_TRANSPORTE_TEXTO;
+        avisoPdf.style.display = mostrar ? 'block' : 'none';
+      }
     }
   
     let inputDebounceTimer = null;
@@ -1410,6 +1509,7 @@
       if (indiceCelda === 1) {
         delete celda.dataset.id;
         const texto = celda.textContent.trim();
+        actualizarAvisoTransporte();
         celdaProductoActiva = celda;
         if (texto.length < 2) {
           ocultarDropdownProductos();
@@ -1754,6 +1854,7 @@
       const totalTxt = document.getElementById('total-general').innerText;
       const elTotal = document.getElementById('pdf-total');
       if (elTotal) elTotal.innerText = totalTxt;
+      actualizarAvisoTransporte();
 
       // 3. Preparar contenedor para impresión si es Bodega
       // Clonamos el template HTML del PDF y lo inyectamos en un div visible solo para impresión
