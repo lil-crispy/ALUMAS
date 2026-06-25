@@ -332,7 +332,7 @@ app.get('/api/productos', async (req, res) => {
     }
 
     const whereClause = whereParts.join(' AND ')
-    const sql = `SELECT id_producto AS id, codigo_barras, nombre, stock, precio_final, precio_mayorista 
+    const sql = `SELECT id_producto AS id, codigo_barras, nombre, stock, precio_final, precio_mayorista, precio_3, cantidad_precio_3
                  FROM productos 
                  WHERE ${whereClause} 
                  ORDER BY nombre LIMIT 50`

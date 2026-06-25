@@ -1398,9 +1398,16 @@
 
       tabla.querySelectorAll('tr').forEach(fila => {
         const cant = parseInt(fila.querySelector('.cant')?.innerText || 0);
+        const celdaDesc = fila.cells[1];
         const valorUCell = fila.querySelector('.valor-u');
         const valorUTxt = valorUCell?.innerText.replace(/[^\d]/g, '') || '0';
-        const valorU = parseInt(valorUTxt);
+        let valorU = parseInt(valorUTxt);
+        const productoFila = obtenerProductoDesdeCelda(celdaDesc);
+
+        if (productoFila && valorUCell) {
+          valorU = precioPorCliente(productoFila, cant);
+          valorUCell.innerText = formatearPesos(valorU);
+        }
 
         const totalFila = cant * valorU;
         const totalCelda = fila.querySelector('.valor-t');
@@ -1521,6 +1528,43 @@
       }
     }
   
+    function limpiarMetadatosProductoEnCelda(celda) {
+      if (!celda || !celda.dataset) return;
+      delete celda.dataset.id;
+      delete celda.dataset.precioFinal;
+      delete celda.dataset.precioMayorista;
+      delete celda.dataset.precio3;
+      delete celda.dataset.cantidadPrecio3;
+    }
+
+    function guardarMetadatosProductoEnCelda(celda, producto) {
+      if (!celda || !celda.dataset || !producto) return;
+      celda.dataset.id = producto.id;
+      celda.dataset.precioFinal = producto.precio_final ?? '';
+      celda.dataset.precioMayorista = producto.precio_mayorista ?? '';
+      if (producto.precio_3 !== null && producto.precio_3 !== undefined && String(producto.precio_3).trim() !== '') {
+        celda.dataset.precio3 = producto.precio_3;
+      } else {
+        delete celda.dataset.precio3;
+      }
+      if (producto.cantidad_precio_3 !== null && producto.cantidad_precio_3 !== undefined && String(producto.cantidad_precio_3).trim() !== '') {
+        celda.dataset.cantidadPrecio3 = producto.cantidad_precio_3;
+      } else {
+        delete celda.dataset.cantidadPrecio3;
+      }
+    }
+
+    function obtenerProductoDesdeCelda(celda) {
+      if (!celda || !celda.dataset || !celda.dataset.id) return null;
+      return {
+        id: celda.dataset.id,
+        precio_final: Number(celda.dataset.precioFinal || 0),
+        precio_mayorista: Number(celda.dataset.precioMayorista || 0),
+        precio_3: celda.dataset.precio3 !== undefined ? Number(celda.dataset.precio3) : null,
+        cantidad_precio_3: celda.dataset.cantidadPrecio3 !== undefined ? Number(celda.dataset.cantidadPrecio3) : null
+      };
+    }
+
     let inputDebounceTimer = null;
 
     tabla.addEventListener('input', async (e) => {
@@ -1537,7 +1581,7 @@
       const celdas = Array.from(fila.children);
       const indiceCelda = celdas.indexOf(celda);
       if (indiceCelda === 1) {
-        delete celda.dataset.id;
+        limpiarMetadatosProductoEnCelda(celda);
         autocorregirCeldaTransporte(celda);
         const texto = celda.textContent.trim();
         actualizarAvisoTransporte();
@@ -2021,7 +2065,7 @@
         return [];
       }
     }
-    function precioPorCliente(producto) {
+    function precioBasePorCliente(producto) {
       try {
         const tipo = (clienteSeleccionado && clienteSeleccionado.tipo_cliente) ? String(clienteSeleccionado.tipo_cliente).toLowerCase() : '';
         const esMayorista = tipo.includes('mayor');
@@ -2031,6 +2075,25 @@
         return Number(producto.precio_final || 0);
       }
     }
+
+    function precioPorCliente(producto, cantidad = 1) {
+      const cantidadNum = Number(cantidad || 0);
+      const precio3Raw = producto?.precio_3;
+      const cantidadPrecio3Raw = producto?.cantidad_precio_3;
+      const tienePrecio3 = precio3Raw !== null && precio3Raw !== undefined && String(precio3Raw).trim() !== '';
+      const tieneCantidadPrecio3 = cantidadPrecio3Raw !== null && cantidadPrecio3Raw !== undefined && String(cantidadPrecio3Raw).trim() !== '';
+
+      if (tienePrecio3 && tieneCantidadPrecio3) {
+        const precio3 = Number(precio3Raw);
+        const cantidadPrecio3 = Number(cantidadPrecio3Raw);
+        if (Number.isFinite(precio3) && Number.isFinite(cantidadPrecio3) && cantidadNum >= cantidadPrecio3) {
+          return precio3;
+        }
+      }
+
+      return precioBasePorCliente(producto);
+    }
+
     function mostrarDropdownProductos(productos, celda) {
       const dropdown = document.getElementById('producto-autocomplete-dropdown');
       const panel = document.getElementById('panel-sugerencias');
@@ -2055,10 +2118,13 @@
         
         const precioFinal = Number(producto.precio_final || 0);
         const precioMayor = Number(producto.precio_mayorista || 0);
+        const precio3 = Number(producto.precio_3 || 0);
+        const cantidadPrecio3 = Number(producto.cantidad_precio_3 || 0);
         item.innerHTML = `
           <div class="producto-nombre">${producto.nombre}</div>
           <div class="producto-info">ID: ${producto.id || ''} | Stock: ${producto.stock || 0}</div>
           <div class="producto-info">Final: ${formatearPesos(precioFinal)} | Mayor: ${formatearPesos(precioMayor)}</div>
+          ${producto.precio_3 != null && producto.cantidad_precio_3 != null ? `<div class="producto-info">Especial: ${formatearPesos(precio3)} desde ${cantidadPrecio3} und</div>` : ''}
         `;
         
         // Eventos Mouse para Selección
@@ -2132,20 +2198,16 @@
       if (filaExistente) {
          // --- YA EXISTE: INCREMENTAR ---
          const celdaCant = filaExistente.querySelector('.cant');
+         const celdaDescExistente = filaExistente.querySelector('td:nth-child(2)');
          let cantActual = parseInt(celdaCant.innerText) || 0;
          cantActual += 1;
          celdaCant.innerText = cantActual;
-         
-         // Actualizar total fila
-         const celdaValorU = filaExistente.querySelector('.valor-u');
-         const valorUTxt = celdaValorU?.innerText.replace(/[^\d]/g, '') || '0';
-         const valorU = parseInt(valorUTxt);
-         const celdaTotal = filaExistente.querySelector('.valor-t');
-         if (celdaTotal) celdaTotal.innerText = formatearPesos(cantActual * valorU);
+
+         guardarMetadatosProductoEnCelda(celdaDescExistente, producto);
          
          // Limpiar celda actual
          celda.textContent = '';
-         delete celda.dataset.id;
+         limpiarMetadatosProductoEnCelda(celda);
          
          cerrarPanelSugerencias();
          actualizarTotales();
@@ -2155,7 +2217,7 @@
 
       // --- NO EXISTE: LLENAR FILA ACTUAL ---
       celda.textContent = producto.nombre;
-      celda.dataset.id = producto.id;
+      guardarMetadatosProductoEnCelda(celda, producto);
       const fila = celda.parentElement;
       if (!fila) return;
       const celdas = Array.from(fila.children);
@@ -2170,7 +2232,8 @@
       if (indiceCelda === 1) {
         const celdaPrecio = celdas[2];
         if (celdaPrecio) {
-          const precio = precioPorCliente(producto);
+          const cantidadActual = parseInt(celdaCant?.innerText || '0') || 0;
+          const precio = precioPorCliente(producto, cantidadActual);
           celdaPrecio.textContent = String(precio);
         }
       }
@@ -3440,6 +3503,7 @@
         dropdown.style.display = 'none'
         dropdown.innerHTML = ''
       }
+      actualizarTotales()
       if (tablaTieneAvisoTransporte()) {
         marcarTransporteNoProgramado()
       }
