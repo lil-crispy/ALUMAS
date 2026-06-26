@@ -98,7 +98,7 @@
             </form>
 
             <div class="support-links">
-              <a href="./certificacion-instaladores.html">Volver a certificación</a>
+              <a href="./certificacion-instaladores.html">¿Olvidaste tu contraseña?</a>
               <a href="./index.html">¿Necesitas ayuda para iniciar sesión?</a>
             </div>
           </div>
@@ -186,7 +186,7 @@
           window.location.href = redirectTarget;
         }, 700);
       } catch (error) {
-        if (error.message === 'usuario_no_encontrado') {
+        if (error.message === 'usuario_no_encontrado' || error.message === 'credenciales_invalidas') {
           secureBlankAndClose();
           return;
         }
