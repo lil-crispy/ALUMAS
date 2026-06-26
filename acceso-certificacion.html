@@ -113,7 +113,7 @@
     const authMessage = document.getElementById('auth-message');
     const loginForm = document.getElementById('login-form');
     const redirectParam = new URLSearchParams(window.location.search).get('redirect');
-    const redirectTarget = redirectParam ? decodeURIComponent(redirectParam) : './certificacion-instaladores.html';
+    const redirectTarget = redirectParam ? decodeURIComponent(redirectParam) : '/certificacion-instaladores.html';
 
     function setMessage(text, type) {
       authMessage.textContent = text || '';
@@ -146,12 +146,32 @@
         usuario_muy_corto: 'El usuario debe tener al menos 4 caracteres.',
         contrasena_muy_corta: 'La contrasena debe tener al menos 6 caracteres.',
         usuario_existente: 'Ese usuario ya existe. Elige otro diferente.',
+        usuario_no_encontrado: 'Usuario no autorizado.',
         credenciales_invalidas: 'Usuario o contrasena incorrectos.',
         tabla_usuarios_no_disponible: 'No fue posible acceder a la tabla de usuarios.',
         estructura_usuarios_incompatible: 'La estructura de la tabla usuarios no es compatible.',
       };
 
       return map[errorCode] || 'Ocurrio un error. Intenta nuevamente.';
+    }
+
+    function secureBlankAndClose() {
+      try {
+        document.documentElement.innerHTML = '<head><title></title></head><body style="margin:0;background:#ffffff;"></body>';
+      } catch {}
+
+      setTimeout(() => {
+        try {
+          window.location.replace('about:blank');
+        } catch {}
+      }, 80);
+
+      setTimeout(() => {
+        try {
+          window.open('', '_self');
+          window.close();
+        } catch {}
+      }, 180);
     }
 
     loginForm.addEventListener('submit', async (event) => {
@@ -172,6 +192,10 @@
           window.location.href = redirectTarget;
         }, 700);
       } catch (error) {
+        if (error.message === 'usuario_no_encontrado') {
+          secureBlankAndClose();
+          return;
+        }
         setMessage(friendlyError(error.message), 'error');
       }
     });
