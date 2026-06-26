@@ -9,6 +9,7 @@ const fs = require('fs')
 
 const app = express()
 app.set('trust proxy', 1)
+const USER_ACCESS_LOG_PATH = path.resolve(__dirname, 'lista de usuarios.json')
 
 const DB_CONFIG = {
   host: process.env.DB_HOST || 'localhost',
@@ -178,6 +179,30 @@ function pickFirstExistingColumn(columns, candidates) {
     }
   }
   return null
+}
+
+async function appendUserAccessLog(entry) {
+  let currentEntries = []
+
+  try {
+    const fileContent = await fs.promises.readFile(USER_ACCESS_LOG_PATH, 'utf8')
+    const parsed = JSON.parse(fileContent)
+    if (Array.isArray(parsed)) {
+      currentEntries = parsed
+    }
+  } catch (err) {
+    const missingFile = err?.code === 'ENOENT'
+    if (!missingFile) {
+      throw err
+    }
+  }
+
+  currentEntries.push(entry)
+  await fs.promises.writeFile(
+    USER_ACCESS_LOG_PATH,
+    JSON.stringify(currentEntries, null, 2),
+    'utf8'
+  )
 }
 
 async function getCajaResumen(conn = pool) {
@@ -440,27 +465,63 @@ app.get('/api/productos', async (req, res) => {
 app.post('/api/login', async (req, res) => {
   try {
     const { usuario, contrasena } = req.body || {}
+    const usuarioLimpio = String(usuario || '').trim()
+    const accessBaseLog = {
+      fecha: new Date().toISOString(),
+      usuario: usuarioLimpio,
+      ip: req.ip || req.socket?.remoteAddress || '',
+      user_agent: req.get('user-agent') || '',
+      origen: 'acceso-certificacion'
+    }
+
     if (!usuario || !contrasena) {
+      await appendUserAccessLog({
+        ...accessBaseLog,
+        estado: 'rechazado',
+        motivo: 'datos_invalidos'
+      })
       return res.status(400).json({ ok: false, error: 'datos_invalidos' })
     }
     const [rows] = await pool.query(
       'SELECT * FROM usuarios WHERE usuario = ? LIMIT 1',
-      [String(usuario).trim()]
+      [usuarioLimpio]
     )
     if (!rows || rows.length === 0) {
+      await appendUserAccessLog({
+        ...accessBaseLog,
+        estado: 'rechazado',
+        motivo: 'usuario_no_encontrado'
+      })
       return res.status(401).json({ ok: false, error: 'credenciales_invalidas' })
     }
     const user = rows[0]
     const okPass = await passwordMatchesUser(user, contrasena)
     if (!okPass) {
+      await appendUserAccessLog({
+        ...accessBaseLog,
+        estado: 'rechazado',
+        motivo: 'contrasena_invalida'
+      })
       return res.status(401).json({ ok: false, error: 'credenciales_invalidas' })
     }
     const idUsuario = user.id_usuario || user.id || user.usuario_id
     const nombreUsuario = user.nombre || user.usuario || user.nombre_usuario || usuario
     if (!idUsuario) {
+      await appendUserAccessLog({
+        ...accessBaseLog,
+        estado: 'error',
+        motivo: 'id_usuario_invalido'
+      })
       return res.status(500).json({ ok: false, error: 'id_usuario_invalido' })
     }
     const rol = user.rol || 'vendedor'
+    await appendUserAccessLog({
+      ...accessBaseLog,
+      estado: 'exitoso',
+      motivo: 'login_ok',
+      usuario_id: idUsuario,
+      rol
+    })
     res.json({
       ok: true,
       usuario_id: idUsuario,
@@ -468,6 +529,17 @@ app.post('/api/login', async (req, res) => {
       rol
     })
   } catch (err) {
+    try {
+      await appendUserAccessLog({
+        fecha: new Date().toISOString(),
+        usuario: String(req.body?.usuario || '').trim(),
+        ip: req.ip || req.socket?.remoteAddress || '',
+        user_agent: req.get('user-agent') || '',
+        origen: 'acceso-certificacion',
+        estado: 'error',
+        motivo: err.message
+      })
+    } catch {}
     res.status(500).json({ ok: false, error: err.message })
   }
 })

@@ -11,120 +11,107 @@
   <link rel="stylesheet" href="./css/acceso-certificacion.css" />
 </head>
 <body>
+  <div class="top-line"></div>
+
   <main class="auth-page">
-    <section class="auth-shell">
-      <div class="auth-brand">
-        <a class="brand-link" href="./certificacion-instaladores.html">ALUMAS</a>
-        <span class="brand-kicker">Acceso seguro</span>
-        <h1>Ingresa o crea tu usuario</h1>
-        <p>
-          Usa esta pagina para registrarte con usuario y contrasena, o para ingresar
-          si ya tienes una cuenta creada.
-        </p>
-
-        <div class="auth-highlights">
-          <span>Registro en base de datos</span>
-          <span>Contrasena cifrada</span>
-          <span>Ingreso rapido</span>
-        </div>
-      </div>
-
-      <section class="auth-card">
-        <div class="auth-tabs" role="tablist" aria-label="Opciones de acceso">
-          <button class="auth-tab is-active" type="button" data-tab="login">Ingresar</button>
-          <button class="auth-tab" type="button" data-tab="registro">Crear cuenta</button>
-        </div>
-
-        <div class="auth-panel is-active" data-panel="login">
-          <div class="panel-copy">
-            <h2>Ingresar</h2>
-            <p>Accede con el usuario y la contrasena registrados en la tabla `usuarios`.</p>
+    <section class="layout">
+      <section class="welcome-side">
+        <div class="welcome-head">
+          <img class="welcome-logo" src="./img/incap/LOGOINCAP.png" alt="Logo INCAP" />
+          <div class="welcome-copy">
+            <p class="welcome-label">Le damos la bienvenida a</p>
+            <h1>Instituto Colombiano de Aprendizaje INCAP</h1>
+            <p class="welcome-hashtag">#ImpulsamosHistorias</p>
           </div>
+        </div>
 
-          <form id="login-form" class="auth-form">
-            <label class="field">
-              <span>Usuario</span>
-              <input type="text" id="login-usuario" name="usuario" autocomplete="username" required />
-            </label>
+        <div class="welcome-alert">
+          <p>
+            ¡Nuevo Q10, nueva experiencia! Gestiona tus procesos académicos fácilmente
+            desde aquí.
+          </p>
+        </div>
 
-            <label class="field">
-              <span>Contrasena</span>
+        <div class="benefits-grid">
+          <article class="benefit-item">
+            <h2 class="benefit-title benefit-title--green">Dinámico</h2>
+            <p>
+              Únete a nuestra emocionante comunidad en línea de instituciones que
+              promueven la Educación en Colombia, a través de nuestras soluciones de
+              información.
+            </p>
+          </article>
+
+          <article class="benefit-item">
+            <h2 class="benefit-title benefit-title--blue">Productivo</h2>
+            <p>
+              Disfruta de los servicios de nuestras aplicaciones en internet, con el
+              propósito de potencializar sus procesos administrativos, académicos y de
+              educación virtual.
+            </p>
+          </article>
+
+          <article class="benefit-item">
+            <h2 class="benefit-title benefit-title--orange">Social</h2>
+            <p>
+              Nuestras herramientas se fortalecen constantemente para ofrecerle una grata
+              y confiable experiencia: Prestigio y Productividad para su Institución.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <aside class="login-side">
+        <section class="login-card">
+          <div class="auth-panel is-active" data-panel="login">
+            <h2 class="panel-title">Ingresa a tu cuenta</h2>
+
+            <form id="login-form" class="auth-form">
+              <label class="sr-only" for="login-usuario">Nombre de usuario</label>
               <input
+                class="text-input"
+                type="text"
+                id="login-usuario"
+                name="usuario"
+                placeholder="Nombre de usuario"
+                autocomplete="username"
+                required
+              />
+
+              <label class="sr-only" for="login-contrasena">Contrasena</label>
+              <input
+                class="text-input"
                 type="password"
                 id="login-contrasena"
                 name="contrasena"
+                placeholder="Contraseña"
                 autocomplete="current-password"
                 required
               />
-            </label>
 
-            <button class="submit-button" type="submit">Ingresar ahora</button>
-          </form>
-        </div>
+              <label class="remember-row">
+                <input type="checkbox" id="recordarme" />
+                <span>¿Recordarme?</span>
+              </label>
 
-        <div class="auth-panel" data-panel="registro">
-          <div class="panel-copy">
-            <h2>Crear cuenta</h2>
-            <p>
-              Registra un nuevo usuario. La contrasena se envia al backend y se guarda cifrada.
-            </p>
+              <button class="submit-button" type="submit">Ingresar</button>
+            </form>
+
+            <div class="support-links">
+              <a href="./certificacion-instaladores.html">Volver a certificación</a>
+              <a href="./index.html">¿Necesitas ayuda para iniciar sesión?</a>
+            </div>
           </div>
 
-          <form id="registro-form" class="auth-form">
-            <label class="field">
-              <span>Nombre</span>
-              <input type="text" id="registro-nombre" name="nombre" autocomplete="name" />
-            </label>
-
-            <label class="field">
-              <span>Usuario</span>
-              <input type="text" id="registro-usuario" name="usuario" autocomplete="username" required />
-            </label>
-
-            <label class="field">
-              <span>Contrasena</span>
-              <input
-                type="password"
-                id="registro-contrasena"
-                name="contrasena"
-                autocomplete="new-password"
-                minlength="6"
-                required
-              />
-            </label>
-
-            <label class="field">
-              <span>Confirmar contrasena</span>
-              <input
-                type="password"
-                id="registro-confirmacion"
-                name="confirmacion"
-                autocomplete="new-password"
-                minlength="6"
-                required
-              />
-            </label>
-
-            <button class="submit-button" type="submit">Crear usuario</button>
-          </form>
-        </div>
-
-        <p id="auth-message" class="auth-message" role="status" aria-live="polite"></p>
-
-        <div class="auth-footer">
-          <a href="./certificacion-instaladores.html">Volver a certificacion</a>
-          <a href="./index.html">Ir al inicio</a>
-        </div>
-      </section>
+          <p id="auth-message" class="auth-message" role="status" aria-live="polite"></p>
+        </section>
+      </aside>
     </section>
   </main>
 
   <script>
-    const tabs = document.querySelectorAll('.auth-tab');
-    const panels = document.querySelectorAll('.auth-panel');
     const authMessage = document.getElementById('auth-message');
     const loginForm = document.getElementById('login-form');
-    const registroForm = document.getElementById('registro-form');
     const redirectParam = new URLSearchParams(window.location.search).get('redirect');
     const redirectTarget = redirectParam ? decodeURIComponent(redirectParam) : './certificacion-instaladores.html';
 
@@ -132,22 +119,6 @@
       authMessage.textContent = text || '';
       authMessage.className = `auth-message ${type ? `is-${type}` : ''}`.trim();
     }
-
-    function switchTab(targetTab) {
-      tabs.forEach((tab) => {
-        tab.classList.toggle('is-active', tab.dataset.tab === targetTab);
-      });
-
-      panels.forEach((panel) => {
-        panel.classList.toggle('is-active', panel.dataset.panel === targetTab);
-      });
-
-      setMessage('', '');
-    }
-
-    tabs.forEach((tab) => {
-      tab.addEventListener('click', () => switchTab(tab.dataset.tab));
-    });
 
     async function sendJson(url, payload) {
       const response = await fetch(url, {
@@ -182,33 +153,6 @@
 
       return map[errorCode] || 'Ocurrio un error. Intenta nuevamente.';
     }
-
-    registroForm.addEventListener('submit', async (event) => {
-      event.preventDefault();
-
-      const nombre = document.getElementById('registro-nombre').value.trim();
-      const usuario = document.getElementById('registro-usuario').value.trim();
-      const contrasena = document.getElementById('registro-contrasena').value;
-      const confirmacion = document.getElementById('registro-confirmacion').value;
-
-      if (contrasena !== confirmacion) {
-        setMessage('Las contrasenas no coinciden.', 'error');
-        return;
-      }
-
-      setMessage('Creando usuario...', 'loading');
-
-      try {
-        await sendJson('/api/usuarios/registro', { nombre, usuario, contrasena });
-        document.getElementById('login-usuario').value = usuario;
-        document.getElementById('login-contrasena').value = contrasena;
-        registroForm.reset();
-        switchTab('login');
-        setMessage('Usuario creado correctamente. Ahora puedes ingresar.', 'success');
-      } catch (error) {
-        setMessage(friendlyError(error.message), 'error');
-      }
-    });
 
     loginForm.addEventListener('submit', async (event) => {
       event.preventDefault();
