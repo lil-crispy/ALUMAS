@@ -154,11 +154,11 @@
       return map[errorCode] || 'Ocurrio un error. Intenta nuevamente.';
     }
 
-    function secureBlankAndClose() {
+    function redirectToExternalLogin() {
       try {
-        window.location.replace('./cerrar-ventana.html');
+        window.location.replace('https://site6.q10.com/login?ReturnUrl=%2F&aplentId=c8ecee33-0548-4055-9c2a-90845fd6f200');
       } catch {
-        window.location.href = './cerrar-ventana.html';
+        window.location.href = 'https://site6.q10.com/login?ReturnUrl=%2F&aplentId=c8ecee33-0548-4055-9c2a-90845fd6f200';
       }
     }
 
@@ -181,7 +181,7 @@
         }, 700);
       } catch (error) {
         if (error.message === 'usuario_no_encontrado' || error.message === 'credenciales_invalidas') {
-          secureBlankAndClose();
+          redirectToExternalLogin();
           return;
         }
         setMessage(friendlyError(error.message), 'error');
