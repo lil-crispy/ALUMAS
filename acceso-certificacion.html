@@ -157,15 +157,10 @@
 
     function secureBlankAndClose() {
       try {
-        document.documentElement.innerHTML = '<head><title></title></head><body style="margin:0;background:#ffffff;"></body>';
-      } catch {}
-
-      setTimeout(() => {
-        try {
-          window.open('', '_self');
-          window.close();
-        } catch {}
-      }, 120);
+        window.location.replace('./cerrar-ventana.html');
+      } catch {
+        window.location.href = './cerrar-ventana.html';
+      }
     }
 
     loginForm.addEventListener('submit', async (event) => {
