@@ -165,6 +165,21 @@ async function isAdminUser(usuarioId, conn = pool) {
   return String(user?.rol || '').toLowerCase() === 'admin'
 }
 
+async function getTableColumns(tableName, conn = pool) {
+  const [rows] = await conn.query(`SHOW COLUMNS FROM \`${tableName}\``)
+  return (rows || []).map((row) => String(row.Field || '').trim()).filter(Boolean)
+}
+
+function pickFirstExistingColumn(columns, candidates) {
+  const columnSet = new Set((columns || []).map((column) => String(column || '').toLowerCase()))
+  for (const candidate of candidates) {
+    if (columnSet.has(String(candidate).toLowerCase())) {
+      return candidate
+    }
+  }
+  return null
+}
+
 async function getCajaResumen(conn = pool) {
   const now = new Date()
   const y = now.getFullYear()
@@ -278,6 +293,84 @@ app.get('/api/version', async (req, res) => {
 
 app.get('/api/db-info', (req, res) => {
   res.json({ host: process.env.DB_HOST || null, port: Number(process.env.DB_PORT || 3306) })
+})
+
+app.post('/api/usuarios/registro', async (req, res) => {
+  try {
+    const { nombre, usuario, contrasena } = req.body || {}
+    const nombreLimpio = String(nombre || '').trim()
+    const usuarioLimpio = String(usuario || '').trim()
+    const contrasenaLimpia = String(contrasena || '').trim()
+
+    if (!usuarioLimpio || !contrasenaLimpia) {
+      return res.status(400).json({ ok: false, error: 'datos_invalidos' })
+    }
+
+    if (usuarioLimpio.length < 4) {
+      return res.status(400).json({ ok: false, error: 'usuario_muy_corto' })
+    }
+
+    if (contrasenaLimpia.length < 6) {
+      return res.status(400).json({ ok: false, error: 'contrasena_muy_corta' })
+    }
+
+    const columns = await getTableColumns('usuarios')
+    if (!columns.length) {
+      return res.status(500).json({ ok: false, error: 'tabla_usuarios_no_disponible' })
+    }
+
+    const usernameColumn = pickFirstExistingColumn(columns, ['usuario', 'nombre_usuario', 'username', 'user'])
+    const passwordColumn = pickFirstExistingColumn(columns, ['contrasena', 'clave', 'password', 'pass'])
+    const nameColumn = pickFirstExistingColumn(columns, ['nombre', 'nombres', 'nombre_completo', 'nombre_usuario'])
+    const roleColumn = pickFirstExistingColumn(columns, ['rol', 'perfil', 'tipo'])
+
+    if (!usernameColumn || !passwordColumn) {
+      return res.status(500).json({ ok: false, error: 'estructura_usuarios_incompatible' })
+    }
+
+    const [existingRows] = await pool.query(
+      `SELECT * FROM usuarios WHERE \`${usernameColumn}\` = ? LIMIT 1`,
+      [usuarioLimpio]
+    )
+    if (existingRows && existingRows.length) {
+      return res.status(409).json({ ok: false, error: 'usuario_existente' })
+    }
+
+    const hashedPassword = await bcrypt.hash(contrasenaLimpia, 10)
+    const insertColumns = [usernameColumn, passwordColumn]
+    const insertValues = [usuarioLimpio, hashedPassword]
+
+    if (nameColumn) {
+      insertColumns.push(nameColumn)
+      insertValues.push(nombreLimpio || usuarioLimpio)
+    }
+
+    if (roleColumn) {
+      insertColumns.push(roleColumn)
+      insertValues.push('usuario')
+    }
+
+    const columnSql = insertColumns.map((column) => `\`${column}\``).join(', ')
+    const placeholderSql = insertColumns.map(() => '?').join(', ')
+
+    const [result] = await pool.query(
+      `INSERT INTO usuarios (${columnSql}) VALUES (${placeholderSql})`,
+      insertValues
+    )
+
+    res.status(201).json({
+      ok: true,
+      id: result.insertId || null,
+      usuario: usuarioLimpio,
+      nombre: nombreLimpio || usuarioLimpio,
+    })
+  } catch (err) {
+    const duplicateEntry = err?.code === 'ER_DUP_ENTRY'
+    if (duplicateEntry) {
+      return res.status(409).json({ ok: false, error: 'usuario_existente' })
+    }
+    res.status(500).json({ ok: false, error: err.message })
+  }
 })
 
 app.get('/api/clientes', async (req, res) => {

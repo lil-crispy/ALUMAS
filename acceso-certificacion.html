@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Acceso de Usuarios | ALUMAS</title>
+  <meta
+    name="description"
+    content="Ingreso y registro de usuarios para ALUMAS con almacenamiento en base de datos."
+  />
+  <link rel="stylesheet" href="./css/acceso-certificacion.css" />
+</head>
+<body>
+  <main class="auth-page">
+    <section class="auth-shell">
+      <div class="auth-brand">
+        <a class="brand-link" href="./certificacion-instaladores.html">ALUMAS</a>
+        <span class="brand-kicker">Acceso seguro</span>
+        <h1>Ingresa o crea tu usuario</h1>
+        <p>
+          Usa esta pagina para registrarte con usuario y contrasena, o para ingresar
+          si ya tienes una cuenta creada.
+        </p>
+
+        <div class="auth-highlights">
+          <span>Registro en base de datos</span>
+          <span>Contrasena cifrada</span>
+          <span>Ingreso rapido</span>
+        </div>
+      </div>
+
+      <section class="auth-card">
+        <div class="auth-tabs" role="tablist" aria-label="Opciones de acceso">
+          <button class="auth-tab is-active" type="button" data-tab="login">Ingresar</button>
+          <button class="auth-tab" type="button" data-tab="registro">Crear cuenta</button>
+        </div>
+
+        <div class="auth-panel is-active" data-panel="login">
+          <div class="panel-copy">
+            <h2>Ingresar</h2>
+            <p>Accede con el usuario y la contrasena registrados en la tabla `usuarios`.</p>
+          </div>
+
+          <form id="login-form" class="auth-form">
+            <label class="field">
+              <span>Usuario</span>
+              <input type="text" id="login-usuario" name="usuario" autocomplete="username" required />
+            </label>
+
+            <label class="field">
+              <span>Contrasena</span>
+              <input
+                type="password"
+                id="login-contrasena"
+                name="contrasena"
+                autocomplete="current-password"
+                required
+              />
+            </label>
+
+            <button class="submit-button" type="submit">Ingresar ahora</button>
+          </form>
+        </div>
+
+        <div class="auth-panel" data-panel="registro">
+          <div class="panel-copy">
+            <h2>Crear cuenta</h2>
+            <p>
+              Registra un nuevo usuario. La contrasena se envia al backend y se guarda cifrada.
+            </p>
+          </div>
+
+          <form id="registro-form" class="auth-form">
+            <label class="field">
+              <span>Nombre</span>
+              <input type="text" id="registro-nombre" name="nombre" autocomplete="name" />
+            </label>
+
+            <label class="field">
+              <span>Usuario</span>
+              <input type="text" id="registro-usuario" name="usuario" autocomplete="username" required />
+            </label>
+
+            <label class="field">
+              <span>Contrasena</span>
+              <input
+                type="password"
+                id="registro-contrasena"
+                name="contrasena"
+                autocomplete="new-password"
+                minlength="6"
+                required
+              />
+            </label>
+
+            <label class="field">
+              <span>Confirmar contrasena</span>
+              <input
+                type="password"
+                id="registro-confirmacion"
+                name="confirmacion"
+                autocomplete="new-password"
+                minlength="6"
+                required
+              />
+            </label>
+
+            <button class="submit-button" type="submit">Crear usuario</button>
+          </form>
+        </div>
+
+        <p id="auth-message" class="auth-message" role="status" aria-live="polite"></p>
+
+        <div class="auth-footer">
+          <a href="./certificacion-instaladores.html">Volver a certificacion</a>
+          <a href="./index.html">Ir al inicio</a>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const tabs = document.querySelectorAll('.auth-tab');
+    const panels = document.querySelectorAll('.auth-panel');
+    const authMessage = document.getElementById('auth-message');
+    const loginForm = document.getElementById('login-form');
+    const registroForm = document.getElementById('registro-form');
+    const redirectParam = new URLSearchParams(window.location.search).get('redirect');
+    const redirectTarget = redirectParam ? decodeURIComponent(redirectParam) : './certificacion-instaladores.html';
+
+    function setMessage(text, type) {
+      authMessage.textContent = text || '';
+      authMessage.className = `auth-message ${type ? `is-${type}` : ''}`.trim();
+    }
+
+    function switchTab(targetTab) {
+      tabs.forEach((tab) => {
+        tab.classList.toggle('is-active', tab.dataset.tab === targetTab);
+      });
+
+      panels.forEach((panel) => {
+        panel.classList.toggle('is-active', panel.dataset.panel === targetTab);
+      });
+
+      setMessage('', '');
+    }
+
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+    });
+
+    async function sendJson(url, payload) {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      let data = {};
+      try {
+        data = await response.json();
+      } catch {}
+
+      if (!response.ok || !data.ok) {
+        const error = data.error || 'error_desconocido';
+        throw new Error(error);
+      }
+
+      return data;
+    }
+
+    function friendlyError(errorCode) {
+      const map = {
+        datos_invalidos: 'Completa los campos requeridos.',
+        usuario_muy_corto: 'El usuario debe tener al menos 4 caracteres.',
+        contrasena_muy_corta: 'La contrasena debe tener al menos 6 caracteres.',
+        usuario_existente: 'Ese usuario ya existe. Elige otro diferente.',
+        credenciales_invalidas: 'Usuario o contrasena incorrectos.',
+        tabla_usuarios_no_disponible: 'No fue posible acceder a la tabla de usuarios.',
+        estructura_usuarios_incompatible: 'La estructura de la tabla usuarios no es compatible.',
+      };
+
+      return map[errorCode] || 'Ocurrio un error. Intenta nuevamente.';
+    }
+
+    registroForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const nombre = document.getElementById('registro-nombre').value.trim();
+      const usuario = document.getElementById('registro-usuario').value.trim();
+      const contrasena = document.getElementById('registro-contrasena').value;
+      const confirmacion = document.getElementById('registro-confirmacion').value;
+
+      if (contrasena !== confirmacion) {
+        setMessage('Las contrasenas no coinciden.', 'error');
+        return;
+      }
+
+      setMessage('Creando usuario...', 'loading');
+
+      try {
+        await sendJson('/api/usuarios/registro', { nombre, usuario, contrasena });
+        document.getElementById('login-usuario').value = usuario;
+        document.getElementById('login-contrasena').value = contrasena;
+        registroForm.reset();
+        switchTab('login');
+        setMessage('Usuario creado correctamente. Ahora puedes ingresar.', 'success');
+      } catch (error) {
+        setMessage(friendlyError(error.message), 'error');
+      }
+    });
+
+    loginForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const usuario = document.getElementById('login-usuario').value.trim();
+      const contrasena = document.getElementById('login-contrasena').value;
+
+      setMessage('Validando acceso...', 'loading');
+
+      try {
+        const data = await sendJson('/api/login', { usuario, contrasena });
+        localStorage.setItem('USUARIO_ID', data.usuario_id || '');
+        localStorage.setItem('USUARIO_NOMBRE', data.usuario || usuario);
+        localStorage.setItem('USUARIO_ROL', data.rol || 'usuario');
+        setMessage('Ingreso exitoso. Redirigiendo...', 'success');
+        setTimeout(() => {
+          window.location.href = redirectTarget;
+        }, 700);
+      } catch (error) {
+        setMessage(friendlyError(error.message), 'error');
+      }
+    });
+  </script>
+</body>
+</html>
