@@ -1035,7 +1035,7 @@
       <p>
         <strong>CLIENTE:</strong>
         <span class="cliente-container">
-          <input type="text" id="nombre-cliente" class="cliente-input" placeholder="Buscar cliente por nombre o NIT...">
+          <input type="text" id="nombre-cliente" class="cliente-input" placeholder="Buscar cliente por nombre o NIT..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="cliente_busqueda_remision">
           <div id="autocomplete-dropdown" class="autocomplete-dropdown"></div>
         </span>
       </p>
@@ -1499,6 +1499,22 @@
       if (!seleccion) return;
       seleccion.removeAllRanges();
       seleccion.addRange(rango);
+    }
+
+    function seleccionarContenidoCelda(celda) {
+      if (!celda) return;
+      const rango = document.createRange();
+      rango.selectNodeContents(celda);
+      const seleccion = window.getSelection();
+      if (!seleccion) return;
+      seleccion.removeAllRanges();
+      seleccion.addRange(rango);
+    }
+
+    function celdaValorUEsSoloCero(celda) {
+      if (!celda || !celda.classList.contains('valor-u')) return false;
+      const valorNormalizado = String(celda.textContent || '').replace(/[^\d]/g, '');
+      return valorNormalizado === '0';
     }
 
     function autocorregirCeldaTransporte(celda) {
@@ -2288,6 +2304,13 @@
       const celda = e.target.closest('td');
       if (celda && !celda.classList.contains('valor-t')) {
         celdaActiva = celda;
+        if (celdaValorUEsSoloCero(celda)) {
+          setTimeout(() => {
+            if (document.activeElement === celda) {
+              seleccionarContenidoCelda(celda);
+            }
+          }, 0);
+        }
       }
     });
 
@@ -2298,6 +2321,13 @@
       celda.setAttribute('contenteditable', 'true');
       celda.focus();
       celdaActiva = celda;
+      if (celdaValorUEsSoloCero(celda)) {
+        setTimeout(() => {
+          if (document.activeElement === celda) {
+            seleccionarContenidoCelda(celda);
+          }
+        }, 0);
+      }
     });
   
     tabla.addEventListener('dblclick', (e) => {
@@ -3536,6 +3566,10 @@
       const input = document.getElementById('nombre-cliente')
       const dropdown = document.getElementById('autocomplete-dropdown')
       if (!input || !dropdown) return
+      input.setAttribute('autocomplete', 'off')
+      input.setAttribute('autocorrect', 'off')
+      input.setAttribute('autocapitalize', 'off')
+      input.setAttribute('spellcheck', 'false')
       input.addEventListener('input', () => {
         const term = input.value.trim()
         clienteSeleccionado = null
