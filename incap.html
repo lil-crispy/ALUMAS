@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>INCAP</title>
+  <meta
+    name="description"
+    content="Acceso de usuarios para el Instituto Colombiano de Aprendizaje INCAP."
+  />
+  <link rel="stylesheet" href="./css/acceso-certificacion.css" />
+</head>
+<body>
+  <div class="top-line"></div>
+
+  <main class="auth-page">
+    <section class="layout">
+      <section class="welcome-side">
+        <div class="welcome-head">
+          <img class="welcome-logo" src="./img/incap/LOGOINCAP.png" alt="Logo INCAP" />
+          <div class="welcome-copy">
+            <p class="welcome-label">Le damos la bienvenida a</p>
+            <h1>Instituto Colombiano de Aprendizaje INCAP</h1>
+            <p class="welcome-hashtag">#ImpulsamosHistorias</p>
+          </div>
+        </div>
+
+        <div class="welcome-alert">
+          <p>
+            ¡Nuevo Q10, nueva experiencia! Gestiona tus procesos académicos fácilmente
+            desde aquí.
+          </p>
+        </div>
+
+        <div class="benefits-grid">
+          <article class="benefit-item">
+            <h2 class="benefit-title benefit-title--green">Dinámico</h2>
+            <p>
+              Únete a nuestra emocionante comunidad en línea de instituciones que
+              promueven la Educación en Colombia, a través de nuestras soluciones de
+              información.
+            </p>
+          </article>
+
+          <article class="benefit-item">
+            <h2 class="benefit-title benefit-title--blue">Productivo</h2>
+            <p>
+              Disfruta de los servicios de nuestras aplicaciones en internet, con el
+              propósito de potencializar sus procesos administrativos, académicos y de
+              educación virtual.
+            </p>
+          </article>
+
+          <article class="benefit-item">
+            <h2 class="benefit-title benefit-title--orange">Social</h2>
+            <p>
+              Nuestras herramientas se fortalecen constantemente para ofrecerle una grata
+              y confiable experiencia: Prestigio y Productividad para su Institución.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <aside class="login-side">
+        <section class="login-card">
+          <div class="auth-panel is-active" data-panel="login">
+            <h2 class="panel-title">Ingresa a tu cuenta</h2>
+
+            <form id="login-form" class="auth-form">
+              <label class="sr-only" for="login-usuario">Nombre de usuario</label>
+              <input
+                class="text-input"
+                type="text"
+                id="login-usuario"
+                name="usuario"
+                placeholder="Nombre de usuario"
+                autocomplete="username"
+                required
+              />
+
+              <label class="sr-only" for="login-contrasena">Contrasena</label>
+              <input
+                class="text-input"
+                type="password"
+                id="login-contrasena"
+                name="contrasena"
+                placeholder="Contraseña"
+                autocomplete="current-password"
+                required
+              />
+
+              <label class="remember-row">
+                <input type="checkbox" id="recordarme" />
+                <span>¿Recordarme?</span>
+              </label>
+
+              <button class="submit-button" type="submit">Ingresar</button>
+            </form>
+
+            <div class="support-links">
+              <a href="./certificacion-instaladores.html">¿Olvidaste tu contraseña?</a>
+              <a href="./index.html">¿Necesitas ayuda para iniciar sesión?</a>
+            </div>
+          </div>
+
+          <p id="auth-message" class="auth-message" role="status" aria-live="polite"></p>
+        </section>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const authMessage = document.getElementById('auth-message');
+    const loginForm = document.getElementById('login-form');
+    const redirectTarget = './certificacion-instaladores.html';
+
+    function setMessage(text, type) {
+      authMessage.textContent = text || '';
+      authMessage.className = `auth-message ${type ? `is-${type}` : ''}`.trim();
+    }
+
+    async function sendJson(url, payload) {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      let data = {};
+      try {
+        data = await response.json();
+      } catch {}
+
+      if (!response.ok || !data.ok) {
+        const error = data.error || 'error_desconocido';
+        throw new Error(error);
+      }
+
+      return data;
+    }
+
+    function friendlyError(errorCode) {
+      const map = {
+        datos_invalidos: 'Completa los campos requeridos.',
+        usuario_muy_corto: 'El usuario debe tener al menos 4 caracteres.',
+        contrasena_muy_corta: 'La contrasena debe tener al menos 6 caracteres.',
+        usuario_existente: 'Ese usuario ya existe. Elige otro diferente.',
+        usuario_no_encontrado: 'Usuario no autorizado.',
+        credenciales_invalidas: 'Usuario o contrasena incorrectos.',
+        tabla_usuarios_no_disponible: 'No fue posible acceder a la tabla de usuarios.',
+        estructura_usuarios_incompatible: 'La estructura de la tabla usuarios no es compatible.',
+      };
+
+      return map[errorCode] || 'Ocurrio un error. Intenta nuevamente.';
+    }
+
+    function redirectToExternalLogin() {
+      try {
+        window.location.replace('https://site6.q10.com/login?ReturnUrl=%2F&aplentId=c8ecee33-0548-4055-9c2a-90845fd6f200');
+      } catch {
+        window.location.href = 'https://site6.q10.com/login?ReturnUrl=%2F&aplentId=c8ecee33-0548-4055-9c2a-90845fd6f200';
+      }
+    }
+
+    loginForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const usuario = document.getElementById('login-usuario').value.trim();
+      const contrasena = document.getElementById('login-contrasena').value;
+
+      setMessage('Validando acceso...', 'loading');
+
+      try {
+        const data = await sendJson('/api/login', { usuario, contrasena });
+        localStorage.setItem('USUARIO_ID', data.usuario_id || '');
+        localStorage.setItem('USUARIO_NOMBRE', data.usuario || usuario);
+        localStorage.setItem('USUARIO_ROL', data.rol || 'usuario');
+        setMessage('Ingreso exitoso. Redirigiendo...', 'success');
+        setTimeout(() => {
+          window.location.href = redirectTarget;
+        }, 700);
+      } catch (error) {
+        if (error.message === 'usuario_no_encontrado' || error.message === 'credenciales_invalidas') {
+          redirectToExternalLogin();
+          return;
+        }
+        setMessage(friendlyError(error.message), 'error');
+      }
+    });
+  </script>
+</body>
+</html>

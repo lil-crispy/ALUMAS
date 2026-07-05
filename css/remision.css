@@ -257,17 +257,38 @@ th, td {
 
 .report-toggle {
   position: fixed;
-  top: 50%;
-  left: 0;
-  background: linear-gradient(135deg, #f59e0b, #b45309);
+  top: 92px;
+  right: 10px;
+  left: auto;
+  min-width: 180px;
+  background: linear-gradient(135deg, #0f766e, #0ea5a4);
   color: #fff;
-  padding: 10px 14px;
-  border-radius: 0 10px 10px 0;
-  box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+  padding: 11px 16px;
+  border-radius: 12px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
   cursor: pointer;
   z-index: 10000;
-  transform: translateY(-50%);
+  transform: none;
   user-select: none;
+  text-align: center;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.report-toggle:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.22);
+  background: linear-gradient(135deg, #115e59, #14b8a6);
+}
+
+@media screen and (max-width: 700px) {
+  .report-toggle {
+    right: 8px;
+    left: 8px;
+    min-width: 0;
+    width: auto;
+  }
 }
 
 .modal-overlay {
@@ -583,14 +604,16 @@ th, td {
 }
 .report-panel {
   position: fixed;
-  top: 50%;
-  left: 0;
+  top: 140px;
+  right: 10px;
   width: 340px;
   max-height: 70vh;
   background: #ffffff;
   box-shadow: 0 12px 24px rgba(0,0,0,0.15);
-  border-radius: 0 12px 12px 0;
-  transform: translate(-100%, -50%);
+  border-radius: 14px;
+  transform: translateY(-8px);
+  opacity: 0;
+  pointer-events: none;
   transition: transform 200ms ease;
   display: flex;
   flex-direction: column;
@@ -598,7 +621,9 @@ th, td {
 }
 
 .report-panel.open {
-  transform: translate(0, -50%);
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .report-header {
@@ -855,6 +880,11 @@ body.login-active .user-bar {
 
 .producto-item.selected {
   background: #2563eb;
+  color: #ffffff;
+}
+
+.producto-item.selected .producto-nombre,
+.producto-item.selected .producto-info {
   color: #ffffff;
 }
 

@@ -7,6 +7,829 @@
   <link rel="icon" type="image/svg+xml" href="./img/LOGO3.webp" />
 
   <!-- Estilos personalizados -->
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #fff;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .contenedor-principal {
+      width: 90%;
+      max-width: 800px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .encabezado .titulo {
+      font-family: 'Bauhaus', sans-serif;
+      font-size: 2.5em;
+      font-weight: bold;
+      line-height: 1;
+    }
+
+    .encabezado .subtitulo {
+      font-family: 'Bauhaus', sans-serif;
+      font-size: 2em;
+      line-height: 1;
+    }
+
+    .info {
+      text-align: left;
+      margin-top: 10px;
+    }
+
+    .editable-linea {
+      border-bottom: 1px solid #000;
+      padding: 2px 5px;
+      min-width: 200px;
+      display: inline-block;
+      text-transform: uppercase;
+    }
+
+    .contenedor-tabla {
+      margin-top: 20px;
+      overflow-x: auto;
+    }
+
+    .acciones-tabla {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 5px;
+    }
+
+    .acciones-izquierda {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .acciones-tabla .botones-derecha {
+      text-align: right;
+    }
+
+    .acciones-tabla button {
+      margin-left: 5px;
+      padding: 5px 10px;
+      cursor: pointer;
+    }
+
+    .acciones-tabla .acciones-izquierda button {
+      margin-left: 0;
+    }
+
+    .cotizador-techo-rapido {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .cotizador-techo-rapido label {
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .cotizador-techo-rapido input {
+      width: 70px;
+      padding: 5px 6px;
+      text-align: center;
+    }
+
+    /* Estilos para modo bloqueado */
+    body.bloqueado .contenedor-principal {
+      pointer-events: none;
+    }
+    
+    body.bloqueado #btn-lock {
+      pointer-events: auto;
+      background-color: #f44336; /* Rojo para indicar bloqueo */
+      color: white;
+      border: 1px solid #d32f2f;
+      z-index: 1001; /* Asegurar que esté por encima */
+    }
+
+    body.bloqueado [contenteditable="true"],
+    body.bloqueado input,
+    body.bloqueado select {
+      background-color: #eee;
+      color: #777;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    th, td {
+      border: 1px solid #000;
+      padding: 5px;
+      text-align: center;
+      word-wrap: break-word;
+      text-transform: uppercase;
+    }
+
+    td[contenteditable="true"] {
+      direction: ltr;
+      text-align: left;
+    }
+
+    .col-cant {
+      width: 5%;
+      text-align: left;
+      direction: ltr;
+    }
+
+    .col-desc {
+      width: 40%;
+      text-align: left;
+    }
+
+    .col-valor {
+      width: 12%;
+    }
+
+    .valor-u input {
+      text-align: left;
+      direction: ltr;
+      padding-left: 5px;
+    }
+
+    .valor-t {
+      background-color: #f0f0f0;
+      font-weight: bold;
+    }
+
+    .total {
+      font-size: 1.5em;
+      margin-top: 10px;
+      text-align: center;
+    }
+
+    .aviso-transporte {
+      display: none;
+      margin: 8px 0 0;
+      text-align: center;
+      font-size: 1.35em;
+      font-weight: bold;
+      color: #000;
+    }
+
+    .logo-grande {
+      width: 250px;
+      max-width: 550px;
+      margin: 20px auto;
+      display: block;
+    }
+
+    .mensaje {
+      margin-top: 10px;
+      font-size: 0.9em;
+      text-align: center;
+      line-height: 1.1;
+    }
+
+    .mensaje p,
+    .mensaje small {
+      margin: 0;
+      padding: 0;
+    }
+
+    .boton-imprimir {
+      margin-top: 15px;
+    }
+
+    .mensaje-motivacional {
+      display: none;
+    }
+
+    /* Responsive */
+    @media screen and (max-width: 600px) {
+      .encabezado .titulo {
+        font-size: 1.8em;
+      }
+      .encabezado .subtitulo {
+        font-size: 1.5em;
+      }
+      th, td {
+        font-size: 0.8em;
+        padding: 3px;
+        text-transform: uppercase;
+      }
+      td[contenteditable="true"] {
+        direction: ltr;
+        text-align: left;
+      }
+      .acciones-tabla button {
+        padding: 4px 6px;
+        font-size: 0.8em;
+      }
+      .logo-grande {
+        width: 80px;
+      }
+      .total {
+        font-size: 1em;
+      }
+
+      .aviso-transporte {
+        font-size: 1em;
+      }
+    }
+
+    /* ---------- FORMATOS DE IMPRESIÓN ---------- */
+    @media print {
+      @page {
+        margin: 0; /* Eliminar márgenes del navegador/impresora */
+        size: auto; /* Adaptarse al papel seleccionado */
+      }
+
+      body {
+        width: 100%;
+        max-width: 100%;
+        min-width: 100%;
+        margin: 0;
+        padding: 0;
+        background: white;
+        font-size: 11px; /* Ajuste para legibilidad */
+      }
+
+      /* Ocultar TODO lo que no sea la factura */
+      #dashboard-programacion,
+      .modal-programacion,
+      .boton-imprimir,
+      .acciones-tabla,
+      .acciones-tabla button,
+      .punto-venta-container,
+      .report-toggle,
+      .report-panel,
+      #caja-admin-widget,
+      #user-bar,
+      #conn-status,
+      #login-overlay,
+      .panel-sugerencias {
+         display: none !important;
+      }
+
+      .contenedor-principal {
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
+        padding: 2mm; /* Pequeño margen interno de seguridad */
+        box-sizing: border-box;
+      }
+
+      .encabezado .titulo { font-size: 1.4em; }
+      .encabezado .subtitulo { font-size: 1.2em; }
+      
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      
+      th, td {
+        padding: 2px;
+        font-size: 10px;
+        border: 1px solid #000;
+      }
+
+      .logo-grande {
+        width: 50%;
+        margin: 10px auto;
+      }
+
+      .total {
+        font-size: 1.5em;
+        margin-top: 10px;
+      }
+
+      .aviso-transporte {
+        display: block !important;
+        font-size: 1.3em;
+        margin-top: 6px;
+      }
+      
+      .mensaje-motivacional {
+        display: block !important;
+        font-size: 1.1em;
+        color: #000;
+        font-weight: bold;
+        font-style: italic;
+        text-align: center;
+        margin-top: 5px;
+        width: 100%;
+      }
+    }
+
+      /* ---------- Estilos específicos para formato bodega ---------- */
+      /* Cuando se imprime en modo bodega, ocultamos todo y mostramos solo el template PDF */
+      
+      body.formato-bodega {
+        page: bodega; 
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
+      }
+
+      body.formato-bodega .contenedor-principal,
+      body.formato-bodega #login-overlay,
+      body.formato-bodega .conn-status,
+      body.formato-bodega .user-bar,
+      body.formato-bodega #caja-admin-widget,
+      body.formato-bodega .report-toggle,
+      body.formato-bodega .panel-sugerencias,
+      body.formato-bodega .report-panel {
+        display: none !important;
+      }
+
+      /* El ocultamiento debe ocurrir SOLO durante la impresión */
+      body.formato-bodega .contenedor-principal {
+        display: none !important;
+      }
+
+      body.formato-bodega #print-bodega-container {
+        display: block !important;
+        width: 100% !important;
+        height: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      
+      /* Ajustes internos para que el template clonado se vea bien impreso */
+      body.formato-bodega #print-bodega-container > div {
+          display: block !important;
+          position: relative !important;
+          width: 21cm !important; /* Mantiene la estructura de diseño original */
+          
+          /* Escalar al 65% para ajustar 21cm en una hoja A5 (aprox 13.6cm visuales) */
+          transform: scale(0.65);
+          transform-origin: top left;
+          
+          padding: 0 !important;
+          margin: 0 !important;
+          box-shadow: none !important;
+          background: white !important;
+          zoom: 1 !important; /* Resetear zoom para usar transform */
+          overflow: visible !important;
+      }
+
+    /* Corrección de dirección de escritura y cursor */
+    .cant, .valor-u {
+      direction: ltr;
+      text-align: left;
+      unicode-bidi: plaintext;
+    }
+
+    .edit-consecutivo {
+      cursor: pointer;
+      font-size: 14px;
+      margin-left: 8px;
+      opacity: 0.5;
+      transition: opacity 0.2s;
+    }
+    .edit-consecutivo:hover {
+      opacity: 1;
+    }
+    .fila-seleccionada {
+      background-color: #e0f7fa !important;
+      outline: 2px solid #00acc1;
+    }
+
+    /* --- ESTILOS DASHBOARD PROGRAMACIÓN --- */
+    #dashboard-programacion {
+      position: fixed;
+      left: 0;
+      top: 0;
+      width: 250px;
+      height: 100%;
+      background: #f8f9fa;
+      border-right: 2px solid #ddd;
+      box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+      padding: 10px;
+      overflow-y: auto;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
+    }
+
+    /* MODO TRANSPORTADOR: Dashboard pantalla completa y exclusivo */
+     body.transportador-mode #dashboard-programacion {
+       width: 100% !important;
+       height: 100% !important;
+       z-index: 5000;
+       border-right: none;
+       left: 0;
+       top: 0;
+     }
+
+     body.transportador-mode #contenido-factura,
+     body.transportador-mode .report-toggle,
+     body.transportador-mode #panel-sugerencias,
+     body.transportador-mode .boton-imprimir {
+        display: none !important;
+     }
+
+     /* Ensure user bar is hidden in Transportador Mode as we use the dedicated button */
+     body.transportador-mode #user-bar {
+        display: none !important;
+     }
+
+     body.transportador-mode #caja-admin-widget {
+        display: none !important;
+     }
+
+     /* Show the specific logout button only in Transportador Mode */
+     body.transportador-mode #btn-logout-transportador {
+        display: block !important;
+     }
+
+     .caja-admin-widget {
+      position: fixed;
+      top: 42px;
+      right: 10px;
+      width: 320px;
+      max-width: calc(100vw - 20px);
+      background: linear-gradient(180deg, #16a34a 0%, #15803d 100%);
+      color: #fff;
+      border-radius: 12px;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+      z-index: 1200;
+      overflow: hidden;
+      display: none;
+    }
+
+    .caja-admin-resumen {
+      padding: 12px 14px 10px;
+      text-align: left;
+    }
+
+    .caja-admin-etiqueta {
+      font-size: 12px;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      opacity: 0.95;
+    }
+
+    .caja-admin-saldo {
+      margin-top: 4px;
+      font-size: 28px;
+      font-weight: bold;
+      line-height: 1.1;
+    }
+
+    .caja-admin-meta {
+      margin-top: 4px;
+      font-size: 11px;
+      opacity: 0.92;
+      text-transform: none;
+    }
+
+    .caja-admin-toggle {
+      width: 100%;
+      border: none;
+      background: rgba(0, 0, 0, 0.12);
+      color: #fff;
+      cursor: pointer;
+      padding: 8px 12px;
+      font-weight: bold;
+      font-size: 13px;
+    }
+
+    .caja-admin-toggle:hover {
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    .caja-admin-detalle {
+      background: #fff;
+      color: #111827;
+      padding: 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .caja-admin-detalle[hidden] {
+      display: none !important;
+    }
+
+    .caja-admin-form {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .caja-admin-form input {
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 13px;
+      text-transform: none;
+    }
+
+    .caja-admin-form button {
+      border: none;
+      border-radius: 8px;
+      background: #15803d;
+      color: #fff;
+      padding: 9px 10px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .caja-admin-form button:hover {
+      background: #166534;
+    }
+
+    .caja-admin-lista {
+      max-height: 220px;
+      overflow-y: auto;
+      display: grid;
+      gap: 8px;
+    }
+
+    .caja-admin-item {
+      display: grid;
+      grid-template-columns: 26px 1fr;
+      gap: 8px;
+      align-items: start;
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 8px;
+    }
+
+    .caja-admin-delete {
+      border: none;
+      border-radius: 999px;
+      width: 26px;
+      height: 26px;
+      background: #ef4444;
+      color: #fff;
+      font-weight: bold;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .caja-admin-delete:hover {
+      background: #dc2626;
+    }
+
+    .caja-admin-item-titulo {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: bold;
+      text-transform: none;
+    }
+
+    .caja-admin-item-motivo {
+      margin-top: 2px;
+      font-size: 12px;
+      color: #374151;
+      text-transform: none;
+    }
+
+    .caja-admin-item-meta {
+      margin-top: 3px;
+      font-size: 11px;
+      color: #6b7280;
+      text-transform: none;
+    }
+
+    .caja-admin-vacio {
+      font-size: 12px;
+      color: #6b7280;
+      padding: 6px 2px;
+      text-transform: none;
+    }
+
+    body.login-active #caja-admin-widget {
+      filter: blur(4px);
+      pointer-events: none;
+    }
+
+    @media screen and (max-width: 700px) {
+      .caja-admin-widget {
+        top: 42px;
+        right: 8px;
+        left: 8px;
+        width: auto;
+      }
+    }
+     
+     /* Responsive Dashboard Logic */
+     @media screen and (max-width: 768px) {
+        .pedido-item {
+            padding: 15px;
+            margin-bottom: 12px;
+        }
+        .pedido-status {
+            font-size: 1.1em;
+            padding: 5px 10px;
+        }
+        
+        /* Buttons bigger for touch */
+        .btn-despachado, .btn-reprogramar, .btn-cancelar-pedido {
+            padding: 12px;
+            font-size: 1.1em;
+            margin-bottom: 8px;
+        }
+     }
+    
+    /* Mostrar botón de cerrar sesión en modo transportador de alguna forma? 
+       El usuario dijo "solo tendrán acceso a ver el dashboard".
+       Pero necesitan poder salir. 
+       Podríamos mover el user-bar DENTRO del dashboard o hacerlo flotante visible.
+       Por ahora, ocultamos el user-bar estándar para cumplir "solo ver dashboard".
+       Pero añadiremos un botón de logout dentro del dashboard dinámicamente o lo haremos visible.
+       
+       Mejor opción: Dejar el user-bar visible pero con z-index mayor?
+       El user-bar está en top:0 (position static/fixed?).
+       Veamos user-bar styles.
+    */
+    
+    #dashboard-programacion h3 {
+      font-family: 'Bauhaus', sans-serif;
+      font-size: 1.2em;
+      text-align: center;
+      margin-bottom: 10px;
+      border-bottom: 2px solid #00acc1;
+      padding-bottom: 5px;
+      margin-top: 0;
+    }
+
+    .pedido-item {
+      background: white;
+      border: 1px solid #ddd;
+      padding: 10px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all 0.2s;
+      font-size: 0.9em;
+    }
+
+    .pedido-item:hover {
+      background: #e0f7fa;
+      transform: translateX(-2px);
+    }
+
+    .pedido-item.selected {
+      border-color: #00acc1;
+      background: #b2ebf2;
+      box-shadow: 0 0 5px rgba(0,172,193,0.5);
+    }
+
+    .pedido-info {
+      margin-bottom: 3px;
+    }
+    
+    .pedido-status {
+      font-weight: bold;
+      color: #00acc1;
+      font-size: 0.8em;
+      text-transform: uppercase;
+    }
+
+    .btn-despachado {
+      background: #4caf50;
+      color: white;
+      border: none;
+      padding: 10px;
+      width: 100%;
+      cursor: pointer;
+      margin-top: auto;
+      font-weight: bold;
+      border-radius: 4px;
+      font-family: 'Bauhaus', sans-serif;
+      font-size: 1.1em;
+      margin-bottom: 5px;
+    }
+
+    .btn-despachado:hover {
+      background: #45a049;
+    }
+    
+    .btn-reprogramar {
+      background: #ff9800;
+      color: white;
+      border: none;
+      padding: 8px;
+      width: 100%;
+      cursor: pointer;
+      font-weight: bold;
+      border-radius: 4px;
+      margin-bottom: 5px;
+    }
+    .btn-reprogramar:hover { background: #f57c00; }
+    
+    .btn-cancelar-pedido {
+      background: #f44336;
+      color: white;
+      border: none;
+      padding: 8px;
+      width: 100%;
+      cursor: pointer;
+      font-weight: bold;
+      border-radius: 4px;
+    }
+    .btn-cancelar-pedido:hover { background: #d32f2f; }
+
+    /* Modal Programación */
+    .modal-programacion {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 2000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      width: 300px;
+      text-align: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+      text-align: left;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 8px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    .btn-guardar-prog {
+      background: #00acc1;
+      color: white;
+      border: none;
+      padding: 8px 20px;
+      cursor: pointer;
+      font-size: 1em;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+    
+    .btn-guardar-prog:hover { background: #00838f; }
+
+    .btn-cancelar-prog {
+      background: #ccc;
+      border: none;
+      padding: 8px 15px;
+      cursor: pointer;
+      margin-left: 10px;
+      border-radius: 4px;
+    }
+    
+    .btn-cancelar-prog:hover { background: #bbb; }
+
+    /* Botones nuevos */
+    .btn-aux {
+      background-color: #607d8b;
+      color: white;
+    }
+    .btn-aux:hover { background-color: #546e7a; }
+    
+    .btn-programar {
+      background-color: #ff9800;
+      color: white;
+    }
+    .btn-programar:hover { background-color: #f57c00; }
+
+    /* Estilos generales de botones (si no existen) */
+    .btn {
+        padding: 8px 15px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+        margin: 0 5px;
+    }
+  </style>
   <link rel="stylesheet" href="./css/remision.css?v=20251209">
 
   <!-- Cargar fuentes personalizadas -->
@@ -48,10 +871,93 @@
   <!-- Librerías para PDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- Librería para Código de Barras -->
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
+  <div id="pdf-template" style="display:none; width: 21cm; background: white; padding: 1cm; box-sizing: border-box; font-family: Arial, sans-serif; position: absolute; top: 0; left: 0; z-index: -1000; color: black;">
+    <!-- Header -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+        <!-- Logos -->
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <img src="./img/LOGO4.webp" style="height: 60px; object-fit: contain;">
+            <img src="./img/LOGO3.webp" style="height: 80px; object-fit: contain;">
+        </div>
+        <!-- Remission Box -->
+        <div style="border: 1px solid #000; padding: 5px; border-radius: 10px; width: 220px; text-align: center; background: #f8f8f8;">
+            <div style="font-size: 14px; font-weight: bold; margin-bottom: 2px;" id="pdf-header-date">FEC --/--/----</div>
+            <div style="font-size: 20px; font-weight: bold; background: #e8e8e8; margin: 2px 0; padding: 4px; border-radius: 5px;" id="pdf-header-rem">REM ----</div>
+            <div style="font-size: 14px; font-weight: bold;" id="pdf-header-cel">CEL 3197245235</div>
+        </div>
+    </div>
+
+    <!-- Mensaje motivacional (aleatorio) -->
+    <div id="pdf-mensaje-motivacional" style="text-align: center; font-style: italic; color: #000; font-weight: bold; font-size: 13px; margin-top: 5px; margin-bottom: 8px;"></div>
+
+    <div style="border-top: 1px solid #000; margin-bottom: 15px;"></div>
+
+    <!-- Info -->
+    <div style="font-size: 11px; margin-bottom: 15px; line-height: 1.5;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+            <div id="pdf-info-fecha" style="font-weight: bold;">FECHA: --</div>
+            <div style="display: flex; align-items: flex-start;">
+                <strong style="margin-right: 5px; margin-top: 2px;">CLIENTE:</strong>
+                <div id="pdf-info-cliente" style="border: 1px solid #ccc; padding: 2px 5px; width: 280px; background: #fff; min-height: 16px;"></div>
+            </div>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+            <div>
+                <div><strong>NIT:</strong> 901797743-2</div>
+                <div><strong>DIR:</strong> CALLE 139#109-46</div>
+            </div>
+            <div style="text-align: right;">
+                <strong>CEL:</strong> 3015827791 / 3197245235
+            </div>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 11px;">
+        <thead>
+            <tr style="background: #f0f0f0;">
+                <th style="border: 1px solid #999; padding: 6px; width: 8%;">CANT</th>
+                <th style="border: 1px solid #999; padding: 6px; width: 52%; text-align: left;">PRODUCTO</th>
+                <th style="border: 1px solid #999; padding: 6px; width: 20%; text-align: right;">V.UNI</th>
+                <th style="border: 1px solid #999; padding: 6px; width: 20%; text-align: right;">V. TOTAL</th>
+            </tr>
+        </thead>
+        <tbody id="pdf-table-body">
+            <!-- Rows will be populated here -->
+        </tbody>
+    </table>
+
+    <!-- Footer -->
+    <div style="margin-top: 10px;">
+        <div style="text-align: center;">
+            <div style="font-size: 16px; font-weight: bold; margin-bottom: 8px;" id="pdf-total">TOTAL: $ 0</div>
+            <div id="pdf-aviso-transporte" style="display: none; font-size: 18px; font-weight: 900; margin-bottom: 8px; text-align: center;">OJO: TRANSPORTE LIBRE DE CARGUE Y DESCARGUE</div>
+            <div style="font-size: 10px; font-weight: bold; margin-bottom: 10px;">***GRACIAS POR SU COMPRA***</div>
+        </div>
+        <div style="position: relative; min-height: 62px; margin-top: 0;">
+            <div style="text-align: center; padding-top: 30px;">
+                <div style="border-top: 1px solid #000; width: 250px; margin: 0 auto; padding-top: 5px; font-size: 11px;">Firma/Sello de Recibido</div>
+            </div>
+            <div style="position: absolute; right: 6px; top: 0; width: 160px; text-align: right;">
+                <img src="./img/firma.webp" alt="Firma" style="width: 155px; max-width: 100%; opacity: 1; filter: brightness(0) saturate(100%) contrast(1700); -webkit-print-color-adjust: exact; print-color-adjust: exact; mix-blend-mode: multiply;">
+            </div>
+        </div>
+    </div>
+  </div>
+  
+  <!-- Contenedor clonado para impresión Bodega (se llenará dinámicamente al imprimir) -->
+  <div id="print-bodega-container" style="display:none;"></div>
+
   <script>
     window.jsPDF = window.jspdf.jsPDF;
   </script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script>
+    function logDebug(msg) {
+      console.log(msg);
+    }
+  </script>
 </head>
 
 <body>
@@ -72,6 +978,24 @@
     <span id="user-name-prefix">USUARIO:</span>
     <span id="user-name"></span>
     <button type="button" id="logout-btn" onclick="logoutUsuario()">Cerrar sesión</button>
+  </div>
+  <div id="caja-admin-widget" class="caja-admin-widget">
+    <div class="caja-admin-resumen">
+      <div class="caja-admin-etiqueta">Saldo En Caja</div>
+      <div id="caja-admin-saldo" class="caja-admin-saldo">$ 0</div>
+      <div id="caja-admin-meta" class="caja-admin-meta">Efectivo: $ 0 | Egresos: $ 0</div>
+    </div>
+    <button id="caja-admin-toggle" class="caja-admin-toggle" type="button" onclick="toggleCajaAdminDetalle()">▼ Egresos de caja</button>
+    <div id="caja-admin-detalle" class="caja-admin-detalle" hidden>
+      <div class="caja-admin-form">
+        <input type="number" id="caja-egreso-valor" min="0" step="1" placeholder="Valor de egreso">
+        <input type="text" id="caja-egreso-justificacion" maxlength="255" placeholder="Justificación, ej: pago gas">
+        <button type="button" onclick="registrarEgresoCaja()">Registrar egreso</button>
+      </div>
+      <div id="caja-egresos-lista" class="caja-admin-lista">
+        <div class="caja-admin-vacio">No hay egresos registrados.</div>
+      </div>
+    </div>
   </div>
   <div class="conn-spacer"></div>
 
@@ -94,11 +1018,16 @@
       <div>
         <div class="titulo"></div>
         <img src="./img/LOGO4.webp" alt="Logo ALUMAS" style="max-width: 300px; display: block; margin: 0 auto;">
+        <div id="mensaje-motivacional" class="mensaje-motivacional"></div>
+        <div id="barcode-container" style="text-align: center; margin-top: 10px; display: none;">
+          <svg id="barcode"></svg>
+        </div>
       </div>
     </div>
 
     <div class="consecutivo-display" id="consecutivo-display">
       CONSECUTIVO: <span id="numero-consecutivo">----</span>
+      <span class="edit-consecutivo" onclick="editarConsecutivo()" title="Editar consecutivo">✏️</span>
     </div>
 
     <div class="info">
@@ -106,7 +1035,7 @@
       <p>
         <strong>CLIENTE:</strong>
         <span class="cliente-container">
-          <input type="text" id="nombre-cliente" class="cliente-input" placeholder="Buscar cliente por nombre o NIT...">
+          <input type="text" id="nombre-cliente" class="cliente-input" placeholder="Buscar cliente por nombre o NIT..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="cliente_busqueda_remision">
           <div id="autocomplete-dropdown" class="autocomplete-dropdown"></div>
         </span>
       </p>
@@ -118,13 +1047,18 @@
       <div id="info-transporte"></div>
     </div>
 
-    <div class="checkbox-transporte">
-      <input type="checkbox" id="activar-transporte" onchange="toggleTransporte()"> <label for="activar-transporte">Añadir transporte</label>
-    </div>
     <div class="metodos-pago">
       <label><input type="checkbox" id="pago-efectivo"> Efectivo</label>
       <label><input type="checkbox" id="pago-tarjeta"> Tarjeta</label>
       <label><input type="checkbox" id="pago-qr"> QR</label>
+    </div>
+
+    <div id="detalle-pago-efectivo" style="display: none; margin-top: 5px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <label for="valor-pagado" style="font-weight: bold; margin: 0;">Pagó:</label>
+        <input type="number" id="valor-pagado" placeholder="$ 0" style="padding: 4px; width: 120px; border: 1px solid #ccc; border-radius: 4px;">
+        <span id="valor-cambio" style="font-weight: bold; color: #2e7d32;">Cambio: $ 0</span>
+      </div>
     </div>
 
     <div class="tipo-pago-selector" style="margin-top: 10px; margin-bottom: 10px;">
@@ -135,6 +1069,63 @@
       </select>
     </div>
 
+    <div class="scanner-cotizacion-container">
+      <span class="scanner-icon">📷</span>
+      <input type="text" id="scannerCotizacion" class="scanner-input" placeholder="Escanear código...">
+      <button id="btn-buscar-cot" class="btn-buscar-scan" title="Buscar cotización">✔️</button>
+    </div>
+
+    <style>
+      .scanner-cotizacion-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 10px auto;
+        width: fit-content;
+        background: #f9f9f9;
+        padding: 5px 10px;
+        border-radius: 20px;
+        border: 1px solid #ddd;
+        transition: all 0.3s ease;
+      }
+      .scanner-cotizacion-container:hover,
+      .scanner-cotizacion-container:focus-within {
+        border-color: #00acc1;
+        background: #fff;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      }
+      .scanner-icon {
+        font-size: 1.2em;
+        margin-right: 8px;
+        opacity: 0.6;
+      }
+      .scanner-input {
+        border: none;
+        background: transparent;
+        outline: none;
+        width: 150px;
+        font-size: 0.9em;
+        color: #333;
+      }
+      .scanner-input::placeholder {
+        color: #aaa;
+      }
+      .btn-buscar-scan {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 1.1em;
+        color: #00acc1;
+        margin-left: 5px;
+        padding: 0 5px;
+        transition: transform 0.2s;
+      }
+      .btn-buscar-scan:hover {
+        transform: scale(1.2);
+        color: #00838f;
+      }
+    </style>
+
     <div class="punto-venta-selector" style="margin-top: 10px; margin-bottom: 10px;">
       <label for="select-punto-venta"><strong>Punto de Venta:</strong></label>
       <select id="select-punto-venta" onchange="actualizarPuntoVenta(this.value)" style="padding: 5px; border-radius: 4px; border: 1px solid #ccc;">
@@ -143,31 +1134,21 @@
       </select>
     </div>
 
-    <div id="form-transporte">
-      <div class="campo-form">
-        <label>Nombre del cliente:</label>
-        <input type="text" id="trans-nombre">
-      </div>
-      <div class="campo-form">
-        <label>Dirección de envío:</label>
-        <input type="text" id="trans-direccion">
-      </div>
-      <div class="campo-form">
-        <label>Teléfono:</label>
-        <input type="text" id="trans-telefono">
-      </div>
-      <div class="campo-form">
-        <label>Costo del transporte:</label>
-        <input type="number" id="trans-costo">
-      </div>
-      <button onclick="guardarTransporte()">Guardar transporte</button>
-    </div>
-
     <div class="contenedor-tabla">
       <div class="acciones-tabla">
-        <button onclick="agregarFila()">➕</button>
-        <button onclick="eliminarFila()">➖</button>
-        <button onclick="limpiarTabla()">🧹 Limpiar</button>
+        <div class="acciones-izquierda">
+          <button id="btn-lock" onclick="toggleBloqueo()" title="Bloquear edición">🔓</button>
+          <div class="cotizador-techo-rapido">
+            <label for="metros-techo">m² techo</label>
+            <input type="number" id="metros-techo" min="0" step="0.01" placeholder="0">
+            <button type="button" onclick="cargarCotizadorTechoPVCEnRemision()">Techo PVC</button>
+          </div>
+        </div>
+        <div class="botones-derecha">
+          <button onclick="agregarFila()">➕</button>
+          <button onclick="eliminarFila()">➖</button>
+          <button onclick="limpiarTabla()">🧹 Limpiar</button>
+        </div>
       </div>
       <table>
         <thead>
@@ -192,6 +1173,7 @@
     </div>
   
     <p class="total" id="total-general">TOTAL: $ 0</p>
+    <p class="aviso-transporte" id="aviso-transporte">OJO: TRANSPORTE LIBRE DE CARGUE Y DESCARGUE</p>
     
 
     <img src="./img/LOGO3.webp" alt="Logo ALUMAS" class="logo-grande">
@@ -212,6 +1194,8 @@
       <button class="btn btn-cotizar" onclick="imprimirCotizacion()">Cotizar</button>
       <button class="btn btn-vender" onclick="imprimirVenta()">Vender</button>
       <button class="btn btn-pdf" onclick="descargarPDF()">Descargar PDF</button>
+      <!-- <button class="btn btn-aux" onclick="descargarPDF(true)">⚡ PDF Rápido</button> -->
+      <button class="btn btn-programar" onclick="abrirModalProgramacion()">📅 Programar</button>
     </div>
     <div id="report-panel" class="report-panel">
       <div class="report-header">
@@ -233,37 +1217,398 @@
 
   <script>
     const tabla = document.getElementById('tabla-productos');
+    const PRODUCTOS_TECHO_PVC = [
+      { descripcion: 'LÁMINA TECHO PVC 30cm', factor: 1 / 1.8, valorU: 26500 },
+      { descripcion: 'CORNIZA', factor: 1 / 5.95, valorU: 15000 },
+      { descripcion: 'OMEGA', factor: 1 * 59 / 100, valorU: 4500 },
+      { descripcion: 'VIGUETA', factor: 0.33, valorU: 4500 },
+      { descripcion: 'ANGULO', factor: 0.50, valorU: 3500 },
+      { descripcion: 'TORNILLO PVC', factor: 9, valorU: 50 },
+      { descripcion: 'TORNILLO ESTRUCTURA', factor: 7, valorU: 50 }
+    ];
     let celdaActiva = null;
     let celdaProductoActiva = null;
+
+    // --- VARIABLES Y FUNCIONES PARA MULTI-SELECCIÓN ---
+    let currentSuggestedProducts = [];
+    let isMouseDown = false;
+
+    function seleccionarProductosMultiples(listaProductos, celdaInicial) {
+       if (!listaProductos || listaProductos.length === 0) return;
+       
+       let celdaDestino = celdaInicial;
+       
+       for (let i = 0; i < listaProductos.length; i++) {
+           const prod = listaProductos[i];
+           
+           // Intentar usar la celda destino
+           seleccionarProducto(prod, celdaDestino);
+           
+           // Verificar si efectivamente se llenó esta celda (o si se unificó en otra parte)
+           // Si se unificó, celdaDestino estará vacía (porque seleccionarProducto la limpia si unifica)
+           // O mantendrá su valor anterior si falló algo.
+           // Pero seleccionarProducto pone el nombre si inserta.
+           const seInsertoAqui = (celdaDestino.textContent === prod.nombre);
+           
+           if (seInsertoAqui) {
+               // Si se ocupó esta celda, avanzamos a la siguiente fila para el próximo producto
+               if (i < listaProductos.length - 1) {
+                   let filaActual = celdaDestino.parentElement;
+                   let filaSiguiente = filaActual.nextElementSibling;
+                   
+                   // Si no hay siguiente fila, crearla
+                   if (!filaSiguiente) {
+                       agregarFila();
+                       filaSiguiente = filaActual.nextElementSibling;
+                   }
+                   
+                   // Verificar si la siguiente fila está ocupada
+                   let descSig = filaSiguiente.querySelector('td:nth-child(2)');
+                   if (descSig.textContent.trim() !== '' || descSig.dataset.id) {
+                       // Si está ocupada, insertar una nueva fila en medio para no sobrescribir
+                       const nuevaFila = document.createElement('tr');
+                       nuevaFila.innerHTML = `
+                        <td class="cant"></td>
+                        <td></td>
+                        <td class="valor-u"></td>
+                        <td class="valor-t"></td>
+                       `;
+                       filaActual.after(nuevaFila);
+                       filaSiguiente = nuevaFila;
+                   }
+                   
+                   celdaDestino = filaSiguiente.querySelector('td:nth-child(2)');
+               }
+           } else {
+               // Si NO se insertó aquí (se unificó arriba), reutilizamos celdaDestino para el siguiente
+               // No hacemos nada, el loop continúa con el siguiente producto usando la misma celdaDestino
+           }
+       }
+       
+       // Asegurar foco en la última celda usada o la siguiente disponible
+       if (celdaDestino) {
+           // Si quedó vacía (último unificado), intentar ir a la anterior o dejarlo ahí
+           celdaDestino.focus();
+       }
+    }
   
     function formatearPesos(valor) {
       const numero = parseInt(valor);
       if (isNaN(numero)) return '$ 0';
       return '$ ' + numero.toLocaleString('es-CO');
     }
-  
+
+    function asegurarFilasTabla(cantidadNecesaria) {
+      while (tabla.querySelectorAll('tr').length < cantidadNecesaria) {
+        const nuevaFila = document.createElement('tr');
+        nuevaFila.innerHTML = `
+          <td class="cant"></td>
+          <td></td>
+          <td class="valor-u"></td>
+          <td class="valor-t"></td>
+        `;
+        tabla.appendChild(nuevaFila);
+      }
+    }
+
+    function limpiarFilaProducto(fila) {
+      const celdas = fila.querySelectorAll('td');
+      celdas.forEach((celda, indice) => {
+        celda.textContent = '';
+        if (indice !== 3) {
+          delete celda.dataset.id;
+        }
+        if (indice === 2) {
+          delete celda.dataset.precioManual;
+        }
+      });
+    }
+
+    function cargarCotizadorTechoPVCEnRemision() {
+      if (document.body.classList.contains('bloqueado')) return;
+
+      const inputMetros = document.getElementById('metros-techo');
+      const metros = parseFloat((inputMetros.value || '').replace(',', '.'));
+
+      if (isNaN(metros) || metros <= 0) {
+        alert('Ingresa una cantidad valida de metros cuadrados para cargar el techo PVC.');
+        inputMetros.focus();
+        return;
+      }
+
+      const items = PRODUCTOS_TECHO_PVC.map(producto => ({
+        cantidad: Math.ceil(metros * producto.factor),
+        descripcion: producto.descripcion,
+        valorU: producto.valorU
+      }));
+
+      asegurarFilasTabla(items.length);
+
+      const filas = Array.from(tabla.querySelectorAll('tr'));
+      filas.forEach((fila, indice) => {
+        if (indice < items.length) {
+          const item = items[indice];
+          const celdas = fila.querySelectorAll('td');
+          const celdaCantidad = celdas[0];
+          const celdaDescripcion = celdas[1];
+          const celdaValorU = celdas[2];
+          const celdaTotal = celdas[3];
+
+          celdaCantidad.textContent = item.cantidad;
+          celdaDescripcion.textContent = item.descripcion;
+          delete celdaDescripcion.dataset.id;
+          celdaValorU.textContent = formatearPesos(item.valorU);
+          if (celdaTotal) celdaTotal.textContent = '';
+        } else {
+          limpiarFilaProducto(fila);
+        }
+      });
+
+      actualizarTotales();
+      actualizarFechaHora();
+    }
+
+    function calcularCambio() {
+      const totalEl = document.getElementById('total-general');
+      const pagadoEl = document.getElementById('valor-pagado');
+      const cambioEl = document.getElementById('valor-cambio');
+      
+      if (!totalEl || !pagadoEl || !cambioEl) return;
+      
+      const totalTxt = totalEl.innerText.replace(/[^\d]/g, '');
+      const total = parseInt(totalTxt) || 0;
+      
+      const pagadoVal = pagadoEl.value;
+      if (!pagadoVal) {
+          cambioEl.innerText = 'Cambio: $ 0';
+          return;
+      }
+      const pagado = parseInt(pagadoVal) || 0;
+      
+      const cambio = pagado - total;
+      
+      cambioEl.innerText = 'Cambio: ' + formatearPesos(cambio);
+      
+      if (cambio < 0) {
+        cambioEl.style.color = '#d32f2f'; // Rojo para cambio negativo
+      } else {
+        cambioEl.style.color = '#2e7d32'; // Verde para cambio positivo
+      }
+    }
+
     function actualizarTotales() {
       let totalGeneral = 0;
-  
+
       tabla.querySelectorAll('tr').forEach(fila => {
         const cant = parseInt(fila.querySelector('.cant')?.innerText || 0);
+        const celdaDesc = fila.cells[1];
         const valorUCell = fila.querySelector('.valor-u');
         const valorUTxt = valorUCell?.innerText.replace(/[^\d]/g, '') || '0';
-        const valorU = parseInt(valorUTxt);
-  
+        let valorU = parseInt(valorUTxt);
+        const productoFila = obtenerProductoDesdeCelda(celdaDesc);
+
+        if (productoFila && valorUCell && !precioEsManual(valorUCell)) {
+          valorU = precioPorCliente(productoFila, cant);
+          valorUCell.innerText = formatearPesos(valorU);
+        }
+
         const totalFila = cant * valorU;
         const totalCelda = fila.querySelector('.valor-t');
         if (totalCelda) totalCelda.innerText = formatearPesos(totalFila);
-  
+
         if (!isNaN(totalFila)) totalGeneral += totalFila;
       });
-  
+
       document.getElementById('total-general').innerText = 'TOTAL: ' + formatearPesos(totalGeneral);
+      actualizarAvisoTransporte();
+      calcularCambio();
+    }
+
+    const AVISO_TRANSPORTE_TEXTO = 'OJO: TRANSPORTE LIBRE DE CARGUE Y DESCARGUE';
+
+    function normalizarTextoTransporte(texto) {
+      return String(texto || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, ' ')
+        .trim();
+    }
+
+    function calcularDistanciaLevenshtein(a, b) {
+      const origen = String(a || '');
+      const destino = String(b || '');
+      const filas = Array.from({ length: origen.length + 1 }, (_, i) => [i]);
+
+      for (let j = 0; j <= destino.length; j++) {
+        filas[0][j] = j;
+      }
+
+      for (let i = 1; i <= origen.length; i++) {
+        for (let j = 1; j <= destino.length; j++) {
+          const costo = origen[i - 1] === destino[j - 1] ? 0 : 1;
+          filas[i][j] = Math.min(
+            filas[i - 1][j] + 1,
+            filas[i][j - 1] + 1,
+            filas[i - 1][j - 1] + costo
+          );
+        }
+      }
+
+      return filas[origen.length][destino.length];
+    }
+
+    function tokenPareceTransporte(token) {
+      const valor = normalizarTextoTransporte(token).replace(/\s+/g, '');
+      if (!valor) return false;
+
+      const clavesDirectas = ['tran', 'trans', 'transp', 'transpo', 'transpor', 'transport', 'transporte', 'trsoporte'];
+      if (clavesDirectas.includes(valor)) return true;
+      if (valor.includes('transport') || valor.includes('trsoporte')) return true;
+
+      if (valor.length >= 7 && calcularDistanciaLevenshtein(valor, 'transporte') <= 3) {
+        return true;
+      }
+
+      return false;
+    }
+
+    function descripcionActivaAvisoTransporte(texto) {
+      const normalizado = normalizarTextoTransporte(texto);
+      if (!normalizado) return false;
+      if (normalizado.includes('transport') || normalizado.includes('trsoporte')) return true;
+      return normalizado.split(/\s+/).some(tokenPareceTransporte);
+    }
+
+    function canonicalizarDescripcionTransporte(texto) {
+      const valor = String(texto || '').trim();
+      return descripcionActivaAvisoTransporte(valor) ? 'TRANSPORTE' : valor;
+    }
+
+    function tablaTieneAvisoTransporte() {
+      return Array.from(document.querySelectorAll('#tabla-productos tr td:nth-child(2)'))
+        .some(celda => descripcionActivaAvisoTransporte(celda.innerText || celda.textContent || ''));
+    }
+
+    function moverCursorAlFinal(elemento) {
+      if (!elemento) return;
+      const rango = document.createRange();
+      rango.selectNodeContents(elemento);
+      rango.collapse(false);
+      const seleccion = window.getSelection();
+      if (!seleccion) return;
+      seleccion.removeAllRanges();
+      seleccion.addRange(rango);
+    }
+
+    function seleccionarContenidoCelda(celda) {
+      if (!celda) return;
+      const rango = document.createRange();
+      rango.selectNodeContents(celda);
+      const seleccion = window.getSelection();
+      if (!seleccion) return;
+      seleccion.removeAllRanges();
+      seleccion.addRange(rango);
+    }
+
+    function celdaValorUEsSoloCero(celda) {
+      if (!celda || !celda.classList.contains('valor-u')) return false;
+      const valorNormalizado = String(celda.textContent || '').replace(/[^\d]/g, '');
+      return valorNormalizado === '0';
+    }
+
+    function autocorregirCeldaTransporte(celda) {
+      if (!celda) return false;
+      const textoActual = String(celda.textContent || '').trim();
+      const textoCorregido = canonicalizarDescripcionTransporte(textoActual);
+      if (!textoActual || textoCorregido !== 'TRANSPORTE') return false;
+      if (celda.textContent.trim() !== 'TRANSPORTE') {
+        celda.textContent = 'TRANSPORTE';
+      }
+      delete celda.dataset.id;
+      ocultarDropdownProductos();
+      moverCursorAlFinal(celda);
+      return true;
+    }
+
+    function actualizarAvisoTransporte() {
+      const mostrar = tablaTieneAvisoTransporte();
+      const avisoPrint = document.getElementById('aviso-transporte');
+      const avisoPdf = document.getElementById('pdf-aviso-transporte');
+
+      if (avisoPrint) {
+        avisoPrint.textContent = AVISO_TRANSPORTE_TEXTO;
+        avisoPrint.style.display = mostrar ? 'block' : 'none';
+      }
+
+      if (avisoPdf) {
+        avisoPdf.textContent = AVISO_TRANSPORTE_TEXTO;
+        avisoPdf.style.display = mostrar ? 'block' : 'none';
+      }
+    }
+
+    function marcarPrecioManual(celda, esManual) {
+      if (!celda || !celda.dataset) return;
+      if (esManual) {
+        celda.dataset.precioManual = 'true';
+      } else {
+        delete celda.dataset.precioManual;
+      }
+    }
+
+    function precioEsManual(celda) {
+      return Boolean(celda?.dataset && celda.dataset.precioManual === 'true');
     }
   
+    function limpiarMetadatosProductoEnCelda(celda) {
+      if (!celda || !celda.dataset) return;
+      delete celda.dataset.id;
+      delete celda.dataset.precioFinal;
+      delete celda.dataset.precioMayorista;
+      delete celda.dataset.precio3;
+      delete celda.dataset.cantidadPrecio3;
+    }
+
+    function guardarMetadatosProductoEnCelda(celda, producto) {
+      if (!celda || !celda.dataset || !producto) return;
+      celda.dataset.id = producto.id;
+      celda.dataset.precioFinal = producto.precio_final ?? '';
+      celda.dataset.precioMayorista = producto.precio_mayorista ?? '';
+      if (producto.precio_3 !== null && producto.precio_3 !== undefined && String(producto.precio_3).trim() !== '') {
+        celda.dataset.precio3 = producto.precio_3;
+      } else {
+        delete celda.dataset.precio3;
+      }
+      if (producto.cantidad_precio_3 !== null && producto.cantidad_precio_3 !== undefined && String(producto.cantidad_precio_3).trim() !== '') {
+        celda.dataset.cantidadPrecio3 = producto.cantidad_precio_3;
+      } else {
+        delete celda.dataset.cantidadPrecio3;
+      }
+    }
+
+    function obtenerProductoDesdeCelda(celda) {
+      if (!celda || !celda.dataset || !celda.dataset.id) return null;
+      return {
+        id: celda.dataset.id,
+        precio_final: Number(celda.dataset.precioFinal || 0),
+        precio_mayorista: Number(celda.dataset.precioMayorista || 0),
+        precio_3: celda.dataset.precio3 !== undefined ? Number(celda.dataset.precio3) : null,
+        cantidad_precio_3: celda.dataset.cantidadPrecio3 !== undefined ? Number(celda.dataset.cantidadPrecio3) : null
+      };
+    }
+
+    let inputDebounceTimer = null;
+
     tabla.addEventListener('input', async (e) => {
+      if (document.body.classList.contains('bloqueado')) {
+        e.preventDefault();
+        return;
+      }
       const celda = e.target;
-      if (celda.classList.contains('cant') || celda.classList.contains('valor-u')) {
+      if (celda.classList.contains('valor-u')) {
+        marcarPrecioManual(celda, true);
+        actualizarTotales();
+      } else if (celda.classList.contains('cant')) {
         actualizarTotales();
       }
       const fila = celda.parentElement;
@@ -271,18 +1616,126 @@
       const celdas = Array.from(fila.children);
       const indiceCelda = celdas.indexOf(celda);
       if (indiceCelda === 1) {
+        limpiarMetadatosProductoEnCelda(celda);
+        autocorregirCeldaTransporte(celda);
         const texto = celda.textContent.trim();
+        actualizarAvisoTransporte();
+        if (!tablaTieneAvisoTransporte()) {
+          marcarTransporteNoProgramado();
+        }
         celdaProductoActiva = celda;
         if (texto.length < 2) {
           ocultarDropdownProductos();
           return;
         }
-        const productos = await buscarProductos(texto);
-        mostrarDropdownProductos(productos, celda);
+        
+        if (inputDebounceTimer) clearTimeout(inputDebounceTimer);
+        inputDebounceTimer = setTimeout(async () => {
+             const productos = await buscarProductos(texto);
+             
+             // Auto-seleccionar si hay coincidencia exacta de código de barras
+             const exacto = productos.find(p => String(p.codigo_barras || '').trim().toLowerCase() === texto.toLowerCase());
+             if (exacto) {
+                // --- LÓGICA DE UNIFICACIÓN (Barcode - Input) ---
+                let filaExistente = null;
+                const filas = Array.from(tabla.querySelectorAll('tr'));
+                
+                for (let i = 0; i < filas.length; i++) {
+                   const f = filas[i];
+                   const celdaDesc = f.querySelector('td:nth-child(2)');
+                   if (!celdaDesc) continue;
+                   
+                   if (f === fila) continue; 
+                   
+                   const idEnCelda = celdaDesc.dataset.id;
+                   const nombreEnCelda = celdaDesc.textContent.trim();
+                   
+                   const coincideID = idEnCelda && String(idEnCelda) === String(exacto.id);
+                   const coincideNombre = !idEnCelda && nombreEnCelda === exacto.nombre;
+                   
+                   if (coincideID || coincideNombre) {
+                      filaExistente = f;
+                      break;
+                   }
+                }
+                
+                if (filaExistente) {
+                   const celdaCant = filaExistente.querySelector('.cant');
+                   let cantActual = parseInt(celdaCant.innerText) || 0;
+                   cantActual += 1;
+                   celdaCant.innerText = cantActual;
+                   
+                   const celdaValorU = filaExistente.querySelector('.valor-u');
+                   const valorUTxt = celdaValorU?.innerText.replace(/[^\d]/g, '') || '0';
+                   const valorU = parseInt(valorUTxt);
+                   const celdaTotal = filaExistente.querySelector('.valor-t');
+                   if (celdaTotal) celdaTotal.innerText = formatearPesos(cantActual * valorU);
+                   
+                   // Limpiar la celda actual y mantener el foco para siguiente lectura
+                   celda.textContent = '';
+                   delete celda.dataset.id;
+                   actualizarTotales();
+                   return;
+                }
+
+                seleccionarProducto(exacto, celda);
+                
+                // Lógica para preparar siguiente línea (similar a Enter)
+                const fila = celda.parentElement;
+                if (!fila.nextElementSibling) {
+                  agregarFila();
+                }
+                const siguienteFila = fila.nextElementSibling;
+                if (siguienteFila) {
+                   const nuevaCelda = siguienteFila.children[1]; // Columna descripción
+                   if (nuevaCelda) {
+                      nuevaCelda.setAttribute('contenteditable', 'true');
+                      nuevaCelda.focus();
+                      celdaActiva = nuevaCelda;
+                   }
+                }
+                return;
+             }
+
+             mostrarDropdownProductos(productos, celda);
+        }, 200);
       }
     });
   
+    // --- LÓGICA DE SELECCIÓN DE FILA (4 CLICKS) ---
+    tabla.addEventListener('click', (e) => {
+      if (document.body.classList.contains('bloqueado')) return;
+      // Manejar selección múltiple con clicks repetidos
+      if (e.detail === 4) { // Detectar 4 clicks
+        const fila = e.target.closest('tr');
+        if (fila) {
+           // Quitar selección previa
+           tabla.querySelectorAll('tr.fila-seleccionada').forEach(f => f.classList.remove('fila-seleccionada'));
+           
+           // Seleccionar nueva
+           fila.classList.add('fila-seleccionada');
+           
+           // Feedback visual temporal
+           fila.style.backgroundColor = '#e0f7fa'; // Color cyan suave
+        }
+      }
+    });
+
+    // Limpiar selección si se hace click fuera (opcional, pero buena UX)
+    document.addEventListener('click', (e) => {
+       if (!e.target.closest('#tabla-productos')) {
+          tabla.querySelectorAll('tr.fila-seleccionada').forEach(f => {
+             f.classList.remove('fila-seleccionada');
+             f.style.backgroundColor = ''; // Restaurar color
+          });
+       }
+    });
+
     function agregarFila() {
+      if (document.body.classList.contains('bloqueado')) return;
+      // Si hay una fila seleccionada, agregar DESPUÉS de ella
+      const seleccionada = tabla.querySelector('tr.fila-seleccionada');
+      
       const nuevaFila = document.createElement('tr');
       nuevaFila.innerHTML = `
         <td class="cant"></td>
@@ -290,12 +1743,33 @@
         <td class="valor-u"></td>
         <td class="valor-t"></td>
       `;
-      tabla.appendChild(nuevaFila);
+
+      if (seleccionada && seleccionada.parentNode === tabla) {
+          seleccionada.after(nuevaFila);
+          // Limpiar selección después de agregar
+          seleccionada.classList.remove('fila-seleccionada');
+          seleccionada.style.backgroundColor = '';
+      } else {
+          // Comportamiento normal: al final
+          tabla.appendChild(nuevaFila);
+      }
+      
       actualizarFechaHora();
       actualizarTotales();
     }
   
     function eliminarFila() {
+      if (document.body.classList.contains('bloqueado')) return;
+      // 1. Intentar eliminar fila seleccionada explícitamente
+      const seleccionada = tabla.querySelector('tr.fila-seleccionada');
+      if (seleccionada) {
+         seleccionada.remove();
+         actualizarTotales();
+         actualizarFechaHora();
+         return;
+      }
+
+      // 2. Comportamiento normal: eliminar la última
       const filas = tabla.querySelectorAll('tr');
       if (filas.length > 1) {
         tabla.removeChild(filas[filas.length - 1]);
@@ -305,10 +1779,19 @@
     }
   
     function limpiarTabla() {
+      if (document.body.classList.contains('bloqueado')) return;
+      
+      // Ocultar código de barras si existe
+      const barcodeContainer = document.getElementById('barcode-container');
+      if (barcodeContainer) barcodeContainer.style.display = 'none';
+      const tempId = document.getElementById('temp-cot-id');
+      if (tempId) tempId.remove();
+
       tabla.querySelectorAll('tr').forEach(fila => {
         fila.querySelectorAll('td').forEach(celda => {
           if (!celda.classList.contains('valor-t')) {
             celda.textContent = '';
+            delete celda.dataset.id;
           } else {
             celda.innerText = '';
           }
@@ -318,58 +1801,324 @@
   
       actualizarTotales();
   
-      // Limpiar transporte
-      document.getElementById('trans-nombre').value = '';
-      document.getElementById('trans-direccion').value = '';
-      document.getElementById('trans-telefono').value = '';
-      document.getElementById('trans-costo').value = '';
-      document.getElementById('nombre-cliente').innerText = '';
-      document.getElementById('info-transporte').innerHTML = '';
-  
+      // Limpiar datos en pantalla
+      const elNombre = document.getElementById('nombre-cliente');
+      if (elNombre) elNombre.value = '';
+
+      const elSelectPago = document.getElementById('select-tipo-pago');
+      if (elSelectPago) elSelectPago.value = 'CONTADO';
+
+      const elTotal = document.getElementById('total-general');
+      if (elTotal) elTotal.innerText = 'TOTAL: $ 0';
+      marcarTransporteNoProgramado();
+      
+      // Limpiar variable global de cliente
+      clienteSeleccionado = null; 
+      localStorage.removeItem('CLIENTE_ID'); 
+
+      // Limpiar transporte (Inputs del Modal)
+      // trans-costo eliminado del DOM pero lo dejamos en la lista para evitar errores si reaparece
+      const idsTrans = ['trans-nombre', 'trans-direccion', 'trans-telefono', 'trans-costo', 'trans-sector'];
+      idsTrans.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.value = '';
+      });
+
+      // Limpiar Info Transporte (Div visual)
+      const elInfo = document.getElementById('info-transporte');
+      if (elInfo) elInfo.innerHTML = '';
+
+      // Limpiar campos de fecha/hora modal
+      const elFecha = document.getElementById('prog-fecha');
+      if (elFecha) elFecha.value = '';
+      
+      const elHora = document.getElementById('prog-hora');
+      if (elHora) elHora.value = '08:00';
+
+      // Limpiar checkboxes de pago
+      ['pago-efectivo', 'pago-tarjeta', 'pago-qr'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.checked = false;
+      });
+
       tabla.querySelectorAll('tr').forEach(fila => {
-        const descripcion = fila.cells[1]?.textContent.trim();
-        if (descripcion === 'TRANSPORTE') {
-          tabla.removeChild(fila);
-        }
+          const descripcion = fila.cells[1]?.textContent.trim();
+          if (descripcion === 'TRANSPORTE') {
+            tabla.removeChild(fila);
+          }
       });
     }
   
-    function descargarPDF() {
-      const contenido = document.getElementById("contenido-factura");
-      html2canvas(contenido, { scale: 2, useCORS: true }).then(canvas => {
-        const imgData = canvas.toDataURL('image/jpeg', 1.0);
-        const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'letter' });
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        const pageHeight = pdf.internal.pageSize.getHeight();
-        const scaleFactor = 0.6;
-        const imgWidth = pageWidth * scaleFactor;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        const x = (pageWidth - imgWidth) / 2;
-        const y = (pageHeight - imgHeight) / 2;
-  
-        pdf.addImage(imgData, 'JPEG', x, y, imgWidth, imgHeight);
-        const pv = getPuntoVenta()
-        const nombre = (lastConsecutivo ? `${lastConsecutivo}_${pv}.pdf` : `remision_${pv}.pdf`)
-        pdf.save(nombre);
-      });
-    }
-    async function buscarProductos(termino) {
-      try {
-        const base = getApiBase().replace(/\/$/, '');
-        const resp = await fetch(base + '/api/productos?q=' + encodeURIComponent(termino));
-        if (!resp.ok) {
-          console.error('Error productos', resp.status);
-          return [];
+    function prepararDatosPDF() {
+      // Check context
+      const consecutivoDisplay = document.getElementById('consecutivo-display');
+      const isCotizacion = consecutivoDisplay && consecutivoDisplay.style.visibility === 'hidden';
+
+      // 1. Preparar datos en la plantilla oculta
+      const tbody = document.getElementById('pdf-table-body');
+      
+      // Fecha header
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const elDate = document.getElementById('pdf-header-date');
+      if (elDate) elDate.textContent = `FEC ${dateStr}`;
+      
+      // Consecutivo / Titulo
+      const elRem = document.getElementById('pdf-header-rem');
+      if (elRem) {
+          if (isCotizacion) {
+              elRem.textContent = 'COTIZACIÓN';
+          } else {
+              const consecutivo = document.getElementById('numero-consecutivo').textContent;
+              elRem.textContent = `REM ${consecutivo}`;
+          }
+      }
+      
+      // Fecha Info
+      const fullDateStr = now.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + 
+                          now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }).toLowerCase();
+      const elInfoFecha = document.getElementById('pdf-info-fecha');
+      if (elInfoFecha) elInfoFecha.innerHTML = `<strong>FECHA:</strong> ${fullDateStr}`;
+      
+      // Cliente
+      const clienteVal = document.getElementById('nombre-cliente').value || '';
+      const elInfoCliente = document.getElementById('pdf-info-cliente');
+      if (elInfoCliente) {
+          elInfoCliente.innerHTML = `<div style="font-weight:bold; font-size:1.1em; margin-bottom:2px;">${clienteVal}</div>`;
+          
+          // Lógica de datos extra: Prioridad Transporte > Base de Datos
+          let extraInfo = '';
+          
+          // Verificar si hay datos manuales en los inputs de transporte (ahora en el modal)
+          const dirManual = document.getElementById('trans-direccion')?.value || '';
+          const sectorManual = document.getElementById('trans-sector')?.value || '';
+          const telManual = document.getElementById('trans-telefono')?.value || '';
+          
+          if (dirManual || telManual || sectorManual) {
+             let dirDisplay = dirManual;
+             if (sectorManual) {
+                 // Formato resaltado en PDF
+                 dirDisplay += ` <span style="font-weight:bold; font-size:1.3em; background-color:#ffeb3b; padding:0 3px; text-transform:uppercase;">(${sectorManual})</span>`;
+             }
+             extraInfo = `<div style="font-size:0.85em; color:#333;">${dirDisplay} ${telManual ? ' · ' + telManual : ''}</div>`;
+          } else if (clienteSeleccionado) {
+             // Si no hay transporte manual, usar datos de cliente seleccionado en BD
+             const dir = clienteSeleccionado.direccion || '';
+             const tel = clienteSeleccionado.telefono || '';
+             // Si el cliente tiene sector guardado (futuro)
+             const sector = clienteSeleccionado.sector || ''; 
+             
+             let dirFull = dir;
+             if (sector) {
+                 dirFull += ` <span style="font-weight:bold; font-size:1.3em; background-color:#ffeb3b; padding:0 3px; text-transform:uppercase;">(${sector})</span>`;
+             }
+             
+             if (dir || tel) {
+                extraInfo = `<div style="font-size:0.85em; color:#333;">${dirFull} ${tel ? ' · ' + tel : ''}</div>`;
+             }
+          }
+          
+          if (extraInfo) {
+             elInfoCliente.innerHTML += extraInfo;
+          }
+      }
+      
+      // Tabla
+      if (tbody) {
+        tbody.innerHTML = '';
+        const filas = document.querySelectorAll('#tabla-productos tr');
+        
+        let totalFilas = 0;
+        filas.forEach(fila => {
+            const cels = fila.querySelectorAll('td');
+            const cant = cels[0]?.innerText || '';
+            const desc = cels[1]?.innerText || '';
+            const vuni = cels[2]?.innerText || '';
+            const vtot = cels[3]?.innerText || '';
+            
+            // Solo agregar si tiene contenido
+            if (cant || desc || vuni || vtot) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="border: 1px solid #999; padding: 6px; text-align: center;">${cant}</td>
+                    <td style="border: 1px solid #999; padding: 6px; text-align: left;">${desc}</td>
+                    <td style="border: 1px solid #999; padding: 6px; text-align: right;">${vuni}</td>
+                    <td style="border: 1px solid #999; padding: 6px; text-align: right; font-weight: bold;">${vtot}</td>
+                `;
+                tbody.appendChild(tr);
+                totalFilas++;
+            }
+        });
+        
+        // Rellenar líneas vacías hasta completar 8 filas visuales
+        while (totalFilas < 8) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="border: 1px solid #999; padding: 6px; height: 18px;"></td>
+                    <td style="border: 1px solid #999; padding: 6px;"></td>
+                    <td style="border: 1px solid #999; padding: 6px;"></td>
+                    <td style="border: 1px solid #999; padding: 6px;"></td>
+                `;
+                tbody.appendChild(tr);
+                totalFilas++;
         }
-        const data = await resp.json();
-        if (!data || !Array.isArray(data.productos)) return [];
-        return data.productos;
-      } catch (e) {
-        console.error('Error buscando productos', e);
-        return [];
+      }
+      
+      // Total
+      const totalTxt = document.getElementById('total-general').innerText;
+      const elTotal = document.getElementById('pdf-total');
+      if (elTotal) elTotal.innerText = totalTxt;
+      actualizarAvisoTransporte();
+
+      // 3. Preparar contenedor para impresión si es Bodega
+      // Clonamos el template HTML del PDF y lo inyectamos en un div visible solo para impresión
+      const template = document.getElementById('pdf-template');
+      const container = document.getElementById('print-bodega-container');
+      if (template && container) {
+          container.innerHTML = '';
+          const clone = template.cloneNode(true);
+          clone.id = 'pdf-template-clone';
+          clone.style.display = 'block';
+          container.appendChild(clone);
       }
     }
-    function precioPorCliente(producto) {
+
+    async function descargarPDF(silent = false) {
+      // 1. Preparar datos en la plantilla oculta
+      prepararDatosPDF();
+      const template = document.getElementById('pdf-template');
+
+      // Mostrar temporalmente para html2canvas
+      template.style.display = 'block';
+      
+      try {
+        const canvas = await html2canvas(template, {
+            scale: 2,
+            useCORS: true
+        });
+        
+        const imgData = canvas.toDataURL('image/jpeg', 1.0);
+        const pdf = new jsPDF({ 
+          orientation: 'portrait', 
+          unit: 'mm', 
+          format: 'a5' // Media carta aprox
+        });
+        
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+        
+        const pv = getPuntoVenta();
+        const nombre = (lastConsecutivo ? `${lastConsecutivo}_${pv}.pdf` : `remision_${pv}.pdf`);
+        
+        // Descarga directa local (El navegador gestionará la ubicación)
+        // Por seguridad, los navegadores no permiten forzar la ruta G:\...
+        // El usuario debe configurar su navegador o elegir la ruta al guardar.
+        if (!silent) {
+            alert(`⚠️ Para guardar en la unidad G:, selecciona esa carpeta cuando aparezca la ventana de guardar.\n\nArchivo: ${nombre}`);
+        }
+        pdf.save(nombre);
+        
+      } catch (e) {
+        console.error(e);
+        alert('Error generando PDF');
+      } finally {
+        template.style.display = 'none';
+      }
+    }
+    async function guardarPDFAutoServer() {
+      // Reutiliza la lógica de generación pero envía al servidor
+      prepararDatosPDF();
+      const template = document.getElementById('pdf-template');
+
+      template.style.display = 'block';
+      
+      try {
+        const canvas = await html2canvas(template, {
+            scale: 2,
+            useCORS: true
+        });
+        
+        const imgData = canvas.toDataURL('image/jpeg', 1.0);
+        const pdf = new jsPDF({ 
+          orientation: 'portrait', 
+          unit: 'mm', 
+          format: 'a5' 
+        });
+        
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+        
+        const pv = getPuntoVenta();
+        const nombre = (lastConsecutivo ? `${lastConsecutivo}_${pv}.pdf` : `remision_${pv}.pdf`);
+        
+        // Convertir a base64 para enviar
+        const pdfBase64 = pdf.output('datauristring').split(',')[1];
+        
+        // Enviar al servidor
+        const resp = await fetch(getApiBase() + '/api/save-pdf', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filename: nombre, data: pdfBase64 })
+        });
+        
+        if (resp.ok) {
+            console.log("PDF guardado en servidor correctamente");
+        } else {
+            const errInfo = await resp.json();
+            console.error("Error guardando PDF en servidor:", errInfo);
+            alert("Error del servidor al guardar PDF: " + (errInfo.error || 'Desconocido'));
+        }
+
+      } catch (e) {
+        console.error('Error generando/guardando PDF auto:', e);
+      } finally {
+        template.style.display = 'none';
+      }
+    }
+
+    async function buscarProductos(termino) {
+try {
+    const base = getApiBase().replace(/\/$/, '');
+    const url = base + '/api/productos?q=' + encodeURIComponent(termino);
+
+    // logDebug('Fetch URL: ' + url);
+
+    const resp = await fetch(url);
+
+    if (!resp.ok) {
+        console.error('Error API:', resp.status);
+        if (typeof logDebug === 'function') {
+            logDebug('Error API: ' + resp.status);
+        }
+        return [];
+    }
+
+    const data = await resp.json();
+
+    if (!data || !Array.isArray(data.productos)) {
+        if (typeof logDebug === 'function') {
+            logDebug('API sin productos');
+        }
+        return [];
+    }
+
+    return data.productos;
+
+} catch (e) {
+    console.error('Error buscando productos', e);
+
+    if (typeof logDebug === 'function') {
+        logDebug('Excepcion buscarProductos: ' + e.message);
+    }
+
+    return [];
+}
+    }
+    function precioBasePorCliente(producto) {
       try {
         const tipo = (clienteSeleccionado && clienteSeleccionado.tipo_cliente) ? String(clienteSeleccionado.tipo_cliente).toLowerCase() : '';
         const esMayorista = tipo.includes('mayor');
@@ -379,33 +2128,89 @@
         return Number(producto.precio_final || 0);
       }
     }
+
+    function precioPorCliente(producto, cantidad = 1) {
+      const cantidadNum = Number(cantidad || 0);
+      const precio3Raw = producto?.precio_3;
+      const cantidadPrecio3Raw = producto?.cantidad_precio_3;
+      const tienePrecio3 = precio3Raw !== null && precio3Raw !== undefined && String(precio3Raw).trim() !== '';
+      const tieneCantidadPrecio3 = cantidadPrecio3Raw !== null && cantidadPrecio3Raw !== undefined && String(cantidadPrecio3Raw).trim() !== '';
+
+      if (tienePrecio3 && tieneCantidadPrecio3) {
+        const precio3 = Number(precio3Raw);
+        const cantidadPrecio3 = Number(cantidadPrecio3Raw);
+        if (Number.isFinite(precio3) && Number.isFinite(cantidadPrecio3) && cantidadNum >= cantidadPrecio3) {
+          return precio3;
+        }
+      }
+
+      return precioBasePorCliente(producto);
+    }
+
     function mostrarDropdownProductos(productos, celda) {
       const dropdown = document.getElementById('producto-autocomplete-dropdown');
       const panel = document.getElementById('panel-sugerencias');
       if (!dropdown || !panel) return;
       celdaProductoActiva = celda;
+      currentSuggestedProducts = productos; // Guardar referencia
       dropdown.innerHTML = '';
       if (!productos || productos.length === 0) {
         dropdown.innerHTML = '<div class="no-productos">No se encontraron productos que coincidan con la búsqueda.</div>';
         panel.style.display = 'block';
         return;
       }
+      
+      isMouseDown = false; // Reset
+
       productos.forEach((producto, index) => {
         const item = document.createElement('div');
         item.className = 'producto-item';
+        item.dataset.index = index;
+        
         if (index === 0) item.classList.add('selected');
+        
         const precioFinal = Number(producto.precio_final || 0);
         const precioMayor = Number(producto.precio_mayorista || 0);
+        const precio3 = Number(producto.precio_3 || 0);
+        const cantidadPrecio3 = Number(producto.cantidad_precio_3 || 0);
         item.innerHTML = `
           <div class="producto-nombre">${producto.nombre}</div>
           <div class="producto-info">ID: ${producto.id || ''} | Stock: ${producto.stock || 0}</div>
           <div class="producto-info">Final: ${formatearPesos(precioFinal)} | Mayor: ${formatearPesos(precioMayor)}</div>
+          ${producto.precio_3 != null && producto.cantidad_precio_3 != null ? `<div class="producto-info">Especial: ${formatearPesos(precio3)} desde ${cantidadPrecio3} und</div>` : ''}
         `;
-        item.addEventListener('click', () => {
-          seleccionarProducto(producto, celda);
+        
+        // Eventos Mouse para Selección
+        item.addEventListener('mousedown', (e) => {
+             isMouseDown = true;
+             // Si no presiona Ctrl/Shift, limpiar selección previa
+             if (!e.ctrlKey && !e.shiftKey) {
+                 dropdown.querySelectorAll('.producto-item.selected').forEach(el => el.classList.remove('selected'));
+             }
+             item.classList.add('selected');
         });
+        
+        item.addEventListener('mouseenter', () => {
+             if (isMouseDown) {
+                 item.classList.add('selected');
+             }
+        });
+        
+        item.addEventListener('click', (e) => {
+             const selected = dropdown.querySelectorAll('.producto-item.selected');
+             if (selected.length > 1) {
+                 // Si hay varios seleccionados (por arrastre), esperamos ENTER
+                 return; 
+             }
+             seleccionarProducto(producto, celda);
+        });
+
         dropdown.appendChild(item);
       });
+      
+      // Listener para terminar arrastre
+      document.addEventListener('mouseup', () => { isMouseDown = false; }, { once: true });
+
       panel.style.display = 'block';
     }
     function cerrarPanelSugerencias() {
@@ -418,85 +2223,133 @@
       celdaProductoActiva = null;
     }
     function seleccionarProducto(producto, celda) {
+      // 1. Verificar si el producto ya existe en otra fila (Unificación)
+      let filaExistente = null;
+      const filas = Array.from(tabla.querySelectorAll('tr'));
+      
+      for (let i = 0; i < filas.length; i++) {
+         const f = filas[i];
+         const celdaDesc = f.querySelector('td:nth-child(2)');
+         if (!celdaDesc) continue;
+         
+         // Ignorar la fila actual
+         if (f === celda.parentElement) continue; 
+         
+         const idEnCelda = celdaDesc.dataset.id;
+         const nombreEnCelda = celdaDesc.textContent.trim();
+         
+         // Coincidencia por ID o Nombre exacto
+         const coincideID = idEnCelda && String(idEnCelda) === String(producto.id);
+         const coincideNombre = !idEnCelda && nombreEnCelda === producto.nombre;
+         
+         if (coincideID || coincideNombre) {
+            filaExistente = f;
+            break;
+         }
+      }
+      
+      if (filaExistente) {
+         // --- YA EXISTE: INCREMENTAR ---
+         const celdaCant = filaExistente.querySelector('.cant');
+         const celdaDescExistente = filaExistente.querySelector('td:nth-child(2)');
+         let cantActual = parseInt(celdaCant.innerText) || 0;
+         cantActual += 1;
+         celdaCant.innerText = cantActual;
+
+         guardarMetadatosProductoEnCelda(celdaDescExistente, producto);
+         
+         // Limpiar celda actual
+         celda.textContent = '';
+         limpiarMetadatosProductoEnCelda(celda);
+         
+         cerrarPanelSugerencias();
+         actualizarTotales();
+         celda.focus(); // Mantener foco para seguir escaneando/buscando
+         return;
+      }
+
+      // --- NO EXISTE: LLENAR FILA ACTUAL ---
       celda.textContent = producto.nombre;
+      guardarMetadatosProductoEnCelda(celda, producto);
       const fila = celda.parentElement;
       if (!fila) return;
       const celdas = Array.from(fila.children);
       const indiceCelda = celdas.indexOf(celda);
+      
+      // Asignar cantidad 1 si vacía
+      let celdaCant = fila.querySelector('.cant'); // Cambiado a 'let' o reutilizar variable existente
+      if (celdaCant && (celdaCant.innerText.trim() === '' || celdaCant.innerText.trim() === '0')) {
+         celdaCant.innerText = '1';
+      }
+
       if (indiceCelda === 1) {
         const celdaPrecio = celdas[2];
         if (celdaPrecio) {
-          const precio = precioPorCliente(producto);
+          const cantidadActual = parseInt(celdaCant?.innerText || '0') || 0;
+          const precio = precioPorCliente(producto, cantidadActual);
+          marcarPrecioManual(celdaPrecio, false);
           celdaPrecio.textContent = String(precio);
         }
       }
       cerrarPanelSugerencias();
       actualizarTotales();
-    }
-  function toggleTransporte() {
-  const form = document.getElementById('form-transporte');
-  const mensajeTransporte = document.getElementById('mensaje-transporte');
 
-  form.style.display = document.getElementById('activar-transporte').checked ? 'block' : 'none';
-
-  if (document.getElementById('activar-transporte').checked) {
-    // Si hay un cliente seleccionado, rellenar datos automáticamente
-    if (clienteSeleccionado) {
-      document.getElementById('trans-nombre').value = clienteSeleccionado.nombre || '';
-      document.getElementById('trans-direccion').value = clienteSeleccionado.direccion || '';
-      document.getElementById('trans-telefono').value = clienteSeleccionado.telefono || '';
+      // --- PREPARAR SIGUIENTE FILA (pero quedarse en CANTIDAD) ---
+      if (!fila.nextElementSibling) {
+        agregarFila();
+      }
+      
+      // Mover foco a CANTIDAD de la fila actual y seleccionar
+      // Volvemos a seleccionar porque pudo perderse referencia o por claridad
+      celdaCant = fila.querySelector('.cant'); 
+      if (celdaCant) {
+         // Asegurar contenteditable
+         celdaCant.setAttribute('contenteditable', 'true');
+         celdaCant.focus();
+         // Seleccionar todo el contenido (el "1")
+         const range = document.createRange();
+         range.selectNodeContents(celdaCant);
+         const sel = window.getSelection();
+         sel.removeAllRanges();
+         sel.addRange(range);
+         celdaActiva = celdaCant;
+      }
     }
-
-    if (!mensajeTransporte) {
-      const mensaje = document.createElement('div');
-      mensaje.id = 'mensaje-transporte';
-      mensaje.innerHTML = `
-        <p style="font-size: 22px; font-weight: bold; text-align: center; margin-top: 40px;">
-          IMPORTANTE: TODO ENVÍO O DOMICILIO SE ENTREGA HASTA DONDE TENGA ACCESO EL VEHÍCULO DE TRANSPORTE. 
-          EL CONDUCTOR O TRANSPORTADOR NO ESTÁ AUTORIZADO A MANIPULAR LA MERCANCÍA MÁS ALLÁ DEL PRIMER PISO. 
-          EN CASO DE HACER CASO OMISO A ESTA INSTRUCCIÓN, EL TRABAJADOR PUEDE SER SANCIONADO POR LA EMPRESA.
-        </p>
-      `;
-      const mensajeDiv = document.querySelector('.mensaje');
-      mensajeDiv.parentNode.insertBefore(mensaje, mensajeDiv);
-    }
-  } else {
-    if (mensajeTransporte) {
-      mensajeTransporte.remove();
-    }
-  }
-}
 
   
-    function guardarTransporte() {
-      const nombre = document.getElementById('trans-nombre').value;
-      const direccion = document.getElementById('trans-direccion').value;
-      const telefono = document.getElementById('trans-telefono').value;
-      const costo = parseInt(document.getElementById('trans-costo').value) || 0;
-  
-      document.getElementById('nombre-cliente').innerText = nombre;
-      document.getElementById('info-transporte').innerHTML = ``;
-  
-      const fila = document.createElement('tr');
-      fila.innerHTML = `
-        <td class="cant">1</td>
-        <td>TRANSPORTE</td>
-        <td class="valor-u">${costo}</td>
-        <td class="valor-t">${formatearPesos(costo)}</td>
-      `;
-      tabla.appendChild(fila);
-      actualizarTotales();
-    }
-  
+    tabla.addEventListener('focusin', (e) => {
+      if (document.body.classList.contains('bloqueado')) return;
+      const celda = e.target.closest('td');
+      if (celda && !celda.classList.contains('valor-t')) {
+        celdaActiva = celda;
+        if (celdaValorUEsSoloCero(celda)) {
+          setTimeout(() => {
+            if (document.activeElement === celda) {
+              seleccionarContenidoCelda(celda);
+            }
+          }, 0);
+        }
+      }
+    });
+
     tabla.addEventListener('click', (e) => {
+      if (document.body.classList.contains('bloqueado')) return;
       const celda = e.target.closest('td');
       if (!celda || celda.classList.contains('valor-t')) return;
       celda.setAttribute('contenteditable', 'true');
       celda.focus();
       celdaActiva = celda;
+      if (celdaValorUEsSoloCero(celda)) {
+        setTimeout(() => {
+          if (document.activeElement === celda) {
+            seleccionarContenidoCelda(celda);
+          }
+        }, 0);
+      }
     });
   
     tabla.addEventListener('dblclick', (e) => {
+      if (document.body.classList.contains('bloqueado')) return;
       const celda = e.target.closest('td');
       if (celda && !celda.classList.contains('valor-t')) {
         celda.setAttribute('contenteditable', 'true');
@@ -504,7 +2357,108 @@
       }
     });
   
-    tabla.addEventListener('keydown', (e) => {
+    tabla.addEventListener('keydown', async (e) => {
+      if (document.body.classList.contains('bloqueado')) {
+        e.preventDefault();
+        return;
+      }
+      // --- MANEJO DE SUGERENCIAS Y NAVEGACIÓN ---
+      const panel = document.getElementById('panel-sugerencias');
+      const dropdown = document.getElementById('producto-autocomplete-dropdown');
+      const sugerenciasVisibles = panel && panel.style.display !== 'none' && dropdown && dropdown.children.length > 0;
+
+      if (sugerenciasVisibles) {
+         const items = Array.from(dropdown.querySelectorAll('.producto-item'));
+         
+         if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (e.shiftKey) {
+                // Selección múltiple hacia abajo
+                let lastIdx = -1;
+                items.forEach((it, idx) => {
+                    if (it.classList.contains('selected')) lastIdx = idx;
+                });
+                
+                if (lastIdx < items.length - 1) {
+                    const next = items[lastIdx + 1];
+                    next.classList.add('selected');
+                    next.scrollIntoView({ block: 'nearest' });
+                }
+            } else {
+                // Navegación simple
+                let selectedIndex = items.findIndex(item => item.classList.contains('selected'));
+                if (selectedIndex === -1) selectedIndex = 0;
+                
+                const nextIndex = (selectedIndex + 1) % items.length;
+                items.forEach(i => i.classList.remove('selected'));
+                items[nextIndex].classList.add('selected');
+                items[nextIndex].scrollIntoView({ block: 'nearest' });
+            }
+            return;
+         }
+         
+         if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (e.shiftKey) {
+                // Selección múltiple hacia arriba
+                let firstIdx = items.length;
+                items.forEach((it, idx) => {
+                    if (it.classList.contains('selected') && idx < firstIdx) firstIdx = idx;
+                });
+                
+                if (firstIdx > 0) {
+                    const prev = items[firstIdx - 1];
+                    prev.classList.add('selected');
+                    prev.scrollIntoView({ block: 'nearest' });
+                }
+            } else {
+                // Navegación simple
+                let selectedIndex = items.findIndex(item => item.classList.contains('selected'));
+                if (selectedIndex === -1) selectedIndex = 0;
+                
+                const prevIndex = (selectedIndex - 1 + items.length) % items.length;
+                items.forEach(i => i.classList.remove('selected'));
+                items[prevIndex].classList.add('selected');
+                items[prevIndex].scrollIntoView({ block: 'nearest' });
+            }
+            return;
+         }
+
+         if (e.key === 'Enter') {
+            e.preventDefault();
+            const selectedItems = dropdown.querySelectorAll('.producto-item.selected');
+            if (selectedItems.length > 0) {
+                if (selectedItems.length === 1) {
+                     // Click simple
+                     selectedItems[0].click();
+                } else {
+                     // Múltiples
+                     const selectedProducts = [];
+                     selectedItems.forEach(item => {
+                         const idx = parseInt(item.dataset.index);
+                         if (currentSuggestedProducts[idx]) {
+                             selectedProducts.push(currentSuggestedProducts[idx]);
+                         }
+                     });
+                     seleccionarProductosMultiples(selectedProducts, celdaProductoActiva);
+                }
+                return;
+            }
+         }
+         
+         if (e.key === 'Escape') {
+            e.preventDefault();
+            cerrarPanelSugerencias();
+            return;
+         }
+      }
+
+      const celda = e.target.closest('td');
+      if (celda) celdaActiva = celda;
+      
+      // Debug key
+      // logDebug('Key: ' + e.key + ' Code: ' + e.code);
+
       if (!celdaActiva) return;
   
       const fila = celdaActiva.parentElement;
@@ -529,8 +2483,55 @@
           break;
         case 'Enter':
           e.preventDefault();
-          const siguienteFila = fila.nextElementSibling;
-          if (siguienteFila) nuevaCelda = siguienteFila.children[colIndex];
+
+          // Lógica para autocompletar con código de barras (Match Exacto)
+          if (colIndex === 1) {
+            const termino = celdaActiva.textContent.trim();
+            if (termino) {
+              const productos = await buscarProductos(termino);
+              
+              // Buscar coincidencia exacta
+              const encontrado = productos.find(p => 
+                String(p.id) === termino || 
+                String(p.codigo || '').toLowerCase() === termino.toLowerCase() ||
+                String(p.codigo_barras || '').toLowerCase() === termino.toLowerCase() ||
+                String(p.referencia || '').toLowerCase() === termino.toLowerCase() ||
+                p.nombre.toLowerCase() === termino.toLowerCase()
+              );
+
+              if (encontrado) {
+                seleccionarProducto(encontrado, celdaActiva);
+                return;
+              }
+            }
+          }
+
+          // Navegación inteligente
+          if (celdaActiva && celdaActiva.classList.contains('cant')) {
+              // Si estoy en CANTIDAD -> Ir a la siguiente fila, columna DESCRIPCIÓN
+              let sigFila = fila.nextElementSibling;
+              if (!sigFila) {
+                  agregarFila();
+                  sigFila = fila.nextElementSibling;
+              }
+              if (sigFila) {
+                  nuevaCelda = sigFila.children[1]; // Descripción es índice 1
+                  // Asegurar que sea editable
+                  if (nuevaCelda) {
+                      nuevaCelda.setAttribute('contenteditable', 'true');
+                      // Pequeño delay para asegurar que el DOM esté listo
+                      setTimeout(() => {
+                          nuevaCelda.focus();
+                          celdaActiva = nuevaCelda;
+                      }, 10);
+                      return; // Salir aquí para evitar conflictos con el foco
+                  }
+              }
+          } else {
+              // Comportamiento default: Bajar a la misma columna de la siguiente fila
+              const siguienteFila = fila.nextElementSibling;
+              if (siguienteFila) nuevaCelda = siguienteFila.children[colIndex];
+          }
           break;
       }
   
@@ -544,6 +2545,10 @@
     tabla.addEventListener('blur', (e) => {
       const celda = e.target.closest('td');
       if (celda && !celda.classList.contains('valor-t')) {
+        if (celda.classList.contains('valor-u')) {
+          const valor = parseInt((celda.textContent || '').replace(/[^\d]/g, ''), 10);
+          celda.textContent = formatearPesos(Number.isNaN(valor) ? 0 : valor);
+        }
         celda.removeAttribute('contenteditable');
       }
     }, true);
@@ -570,6 +2575,8 @@
         `;
       }
       document.querySelectorAll('.logo-grande').forEach(logo => logo.style.display = 'none');
+      const consecutivoDisplay = document.getElementById('consecutivo-display');
+      if (consecutivoDisplay) consecutivoDisplay.style.visibility = 'hidden';
     }
 
     function aplicarVentaUI() {
@@ -578,14 +2585,209 @@
         mensajeDiv.innerHTML = originalMensajeHTML;
       }
       document.querySelectorAll('.logo-grande').forEach(logo => logo.style.display = 'block');
+      const consecutivoDisplay = document.getElementById('consecutivo-display');
+      if (consecutivoDisplay) consecutivoDisplay.style.visibility = 'visible';
+    }
+
+    // --- NUEVA FUNCIONALIDAD: COTIZACIÓN CON CÓDIGO DE BARRAS ---
+    function generarIdCotizacion() {
+      // Simplificado: Hora Minuto Segundo Milisegundo (HHMMSSmmm)
+      // Suficientemente único para el día a día y muy corto (9 dígitos)
+      const hoy = new Date();
+      const hh = String(hoy.getHours()).padStart(2, '0');
+      const mm = String(hoy.getMinutes()).padStart(2, '0');
+      const ss = String(hoy.getSeconds()).padStart(2, '0');
+      const mmm = String(hoy.getMilliseconds()).padStart(3, '0');
+      return `${hh}${mm}${ss}${mmm}`;
+    }
+
+    function guardarDatosCotizacion(id) {
+      const items = obtenerItemsBD();
+      if (items.length === 0) return false;
+      const clienteNombre = document.getElementById('nombre-cliente')?.value || '';
+      const total = obtenerTotalNumerico();
+      const cotizacion = {
+        id: id,
+        timestamp: Date.now(),
+        fecha: new Date().toISOString(),
+        cliente: {
+          nombre: clienteNombre,
+          data: clienteSeleccionado
+        },
+        items: items,
+        total: total
+      };
+      // Guardar con prefijo 'C-' para evitar conflictos pero ID corto
+      localStorage.setItem(`COT_${id}`, JSON.stringify(cotizacion));
+      return true;
+    }
+
+    function recuperarCotizacion(codigo) {
+      // El escáner lee el ID directo (ej: 103045123)
+      // Buscamos la clave COT_103045123
+      const dataStr = localStorage.getItem(`COT_${codigo}`);
+      if (!dataStr) return null;
+      return JSON.parse(dataStr);
+    }
+
+    function cargarCotizacionEnTabla(cotizacion) {
+      if (!confirm(`¿Cargar cotización ${cotizacion.id} de ${cotizacion.cliente.nombre || 'Cliente General'}?`)) return;
+      limpiarTabla();
+      const inputCliente = document.getElementById('nombre-cliente');
+      if (inputCliente) inputCliente.value = cotizacion.cliente.nombre || '';
+      clienteSeleccionado = cotizacion.cliente.data;
+      if (clienteSeleccionado && clienteSeleccionado.id) {
+        localStorage.setItem('CLIENTE_ID', String(clienteSeleccionado.id));
+      }
+      const tbody = document.getElementById('tabla-productos');
+      tbody.innerHTML = '';
+      cotizacion.items.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="cant" contenteditable="true">${item.cantidad}</td>
+          <td contenteditable="true" data-id="${item.id_producto || ''}">${item.descripcion}</td>
+          <td class="valor-u" contenteditable="true">${formatearPesos(item.valor_unitario)}</td>
+          <td class="valor-t">${formatearPesos(item.valor_total)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+      while (tbody.children.length < 7) {
+        agregarFila();
+      }
+      actualizarTotales();
+      marcarTransporteNoProgramado();
+      // alert("Cotización cargada correctamente.");
+    }
+
+    function limpiarCotizacionesAntiguas() {
+      const now = Date.now();
+      const oneDay = 24 * 60 * 60 * 1000;
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('COT_') || key.startsWith('COT_DATA_'))) {
+          try {
+            const data = JSON.parse(localStorage.getItem(key));
+            if (now - data.timestamp > oneDay) {
+              localStorage.removeItem(key);
+            }
+          } catch (e) { localStorage.removeItem(key); }
+        }
+      }
     }
 
     function imprimirCotizacion() {
+      const items = obtenerItemsBD();
+      if (items.length === 0) {
+          alert("La tabla está vacía. Agregue productos para cotizar.");
+          return;
+      }
+      const idCotizacion = generarIdCotizacion();
+      
+      // Generar código de barras
+      if (window.JsBarcode) {
+          const barcodeContainer = document.getElementById('barcode-container');
+          const svgNode = document.getElementById('barcode');
+          if (barcodeContainer && svgNode) {
+              barcodeContainer.style.display = 'block';
+              JsBarcode(svgNode, idCotizacion, {
+                  format: "CODE128",
+                  displayValue: true,
+                  fontSize: 16,
+                  height: 30,
+                  width: 2,
+                  margin: 5
+              });
+          }
+      }
+      guardarDatosCotizacion(idCotizacion);
       aplicarCotizacionUI();
+      
+      // Añadir ID visible extra si se desea
+      const mensajeDiv = document.querySelector('.mensaje');
+      if (mensajeDiv) {
+           const pId = document.createElement('p');
+           pId.style.fontWeight = 'bold';
+           pId.innerText = `ID: ${idCotizacion}`;
+           pId.id = 'temp-cot-id';
+           mensajeDiv.prepend(pId);
+      }
+      
       window.print();
+      
+      // Limpieza post-impresión
+      setTimeout(() => {
+          const pId = document.getElementById('temp-cot-id');
+          if (pId) pId.remove();
+      }, 2000);
     }
 
+    // Inicialización del Scanner
+    document.addEventListener('DOMContentLoaded', () => {
+        const scannerInput = document.getElementById('scannerCotizacion');
+        if (scannerInput) {
+            scannerInput.setAttribute('autocomplete', 'off'); // Evitar autocompletado del navegador
+            
+            // Función procesar código
+            const procesarCodigo = (codigo) => {
+                if (!codigo) return;
+                codigo = codigo.trim(); // No uppercase para este formato numérico simple
+                
+                // Intentar recuperar directo (formato nuevo corto)
+                let cotizacion = recuperarCotizacion(codigo);
+                
+                // Si no, intentar formato antiguo
+                if (!cotizacion && codigo.toUpperCase().startsWith('COT-')) {
+                   const dataStr = localStorage.getItem(`COT_DATA_${codigo.toUpperCase()}`);
+                   if (dataStr) cotizacion = JSON.parse(dataStr);
+                }
+
+                if (cotizacion) {
+                    cargarCotizacionEnTabla(cotizacion);
+                    scannerInput.value = ''; 
+                    scannerInput.blur(); 
+                } else {
+                    alert("⚠️ Cotización NO encontrada.\n\nCódigo buscado: " + codigo);
+                    scannerInput.value = '';
+                    scannerInput.focus();
+                }
+            };
+
+            // Evento Enter (Principal para escáneres)
+            scannerInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    procesarCodigo(this.value);
+                }
+            });
+            
+            // Evento Change (Respaldo para pegar/mouse)
+            scannerInput.addEventListener('change', function(e) {
+                // Solo si el usuario hace click fuera o pega y sale
+                if (this.value) procesarCodigo(this.value);
+            });
+
+            // Nuevo botón de búsqueda manual
+            const btnBuscar = document.getElementById('btn-buscar-cot');
+            if (btnBuscar) {
+                btnBuscar.addEventListener('click', () => {
+                    const val = scannerInput.value.trim();
+                    if (!val) {
+                        alert("Por favor ingrese un código.");
+                        scannerInput.focus();
+                        return;
+                    }
+                    procesarCodigo(val);
+                });
+            }
+        }
+        limpiarCotizacionesAntiguas();
+    });
+
     async function imprimirVenta() {
+      const transporteProgramado = await validarProgramacionObligatoriaDeTransporte();
+      if (!transporteProgramado) {
+        return;
+      }
       const tipo = getTipoPago();
       const metodo = getSelectedMetodoPago();
       if (tipo !== 'CREDITO' && !metodo) {
@@ -604,6 +2806,15 @@
         alert('La venta no se pudo guardar. Intente de nuevo.');
         return;
       }
+      refrescarCajaAdminPronto()
+
+      // Guardar PDF automáticamente si es Bodega (ELIMINADO POR SOLICITUD DE MANUALIDAD)
+      /* 
+      if (getPuntoVenta() === 'bodega') {
+          ...
+      }
+      */
+
       const mensaje = lastConsecutivo
         ? 'La venta se guardó correctamente con consecutivo ' + lastConsecutivo + '. ¿Desea imprimir la remisión?'
         : 'La venta se guardó correctamente. ¿Desea imprimir la remisión?';
@@ -613,8 +2824,17 @@
         if (metodoReporte) agregarVentaReporte(metodoReporte);
         window.print();
       }
+      // Limpiar datos después de imprimir/guardar
+      setTimeout(limpiarTabla, 1000);
+
       window.location.reload();
     }
+
+    window.addEventListener('beforeprint', () => {
+      if (getPuntoVenta() === 'bodega') {
+        prepararDatosPDF();
+      }
+    });
 
     window.addEventListener('afterprint', () => {
       aplicarVentaUI();
@@ -625,6 +2845,13 @@
     });
 
     window.addEventListener('keydown', (e) => {
+      // Toggle debug con Ctrl+D
+      if (e.ctrlKey && e.key === 'd') {
+          e.preventDefault();
+          const d = document.getElementById('debug-log');
+          if (d) d.style.display = (d.style.display === 'none' ? 'block' : 'none');
+      }
+
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
         e.preventDefault();
         e.stopPropagation();
@@ -664,6 +2891,252 @@
         const hostTxt = dbHost ? ` ${dbHost}` : ''
         el.textContent = `Conexión a BD${hostTxt} ✖`
       }
+    }
+    let cajaAdminTimer = null
+    function getUsuarioIdActual() {
+      return parseInt(localStorage.getItem('USUARIO_ID') || '0') || 0
+    }
+    function esAdminActual() {
+      return (localStorage.getItem('USUARIO_ROL') || '').toLowerCase() === 'admin'
+    }
+    function formatearFechaCaja(valor) {
+      if (!valor) return ''
+      const fecha = new Date(valor)
+      if (isNaN(fecha.getTime())) return String(valor)
+      return fecha.toLocaleString('es-CO', {
+        day: '2-digit',
+        month: '2-digit',
+        year: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    }
+    function setCajaAdminResumen(resumen) {
+      const saldoEl = document.getElementById('caja-admin-saldo')
+      const metaEl = document.getElementById('caja-admin-meta')
+      if (saldoEl) saldoEl.textContent = formatearPesos(resumen?.saldo_actual || 0)
+      if (metaEl) {
+        metaEl.textContent = `Base: ${formatearPesos(resumen?.base_inicial || 0)} | Ferretería hoy: ${formatearPesos(resumen?.total_efectivo || 0)} | Egresos hoy: ${formatearPesos(resumen?.total_egresos || 0)}`
+      }
+      posicionarBotonReporte()
+    }
+    function renderCajaEgresos(egresos) {
+      const lista = document.getElementById('caja-egresos-lista')
+      if (!lista) return
+      lista.innerHTML = ''
+      if (!Array.isArray(egresos) || egresos.length === 0) {
+        lista.innerHTML = '<div class="caja-admin-vacio">No hay egresos registrados.</div>'
+        return
+      }
+      egresos.forEach(egreso => {
+        const item = document.createElement('div')
+        item.className = 'caja-admin-item'
+
+        const btn = document.createElement('button')
+        btn.type = 'button'
+        btn.className = 'caja-admin-delete'
+        btn.textContent = '-'
+        btn.title = 'Eliminar egreso'
+        btn.onclick = () => eliminarEgresoCaja(egreso.id)
+
+        const contenido = document.createElement('div')
+
+        const titulo = document.createElement('div')
+        titulo.className = 'caja-admin-item-titulo'
+        const valor = document.createElement('span')
+        valor.textContent = formatearPesos(egreso.valor || 0)
+        const usuario = document.createElement('span')
+        usuario.textContent = egreso.usuario_nombre || 'Admin'
+        titulo.appendChild(valor)
+        titulo.appendChild(usuario)
+
+        const motivo = document.createElement('div')
+        motivo.className = 'caja-admin-item-motivo'
+        motivo.textContent = egreso.justificacion || ''
+
+        const meta = document.createElement('div')
+        meta.className = 'caja-admin-item-meta'
+        meta.textContent = formatearFechaCaja(egreso.created_at)
+
+        contenido.appendChild(titulo)
+        contenido.appendChild(motivo)
+        contenido.appendChild(meta)
+        item.appendChild(btn)
+        item.appendChild(contenido)
+        lista.appendChild(item)
+      })
+    }
+    function detenerCajaAdmin() {
+      if (cajaAdminTimer) {
+        clearInterval(cajaAdminTimer)
+        cajaAdminTimer = null
+      }
+    }
+    function posicionarBotonReporte() {
+      const toggle = document.querySelector('.report-toggle')
+      if (!toggle) return
+      const widget = document.getElementById('caja-admin-widget')
+      const widgetVisible = widget && window.getComputedStyle(widget).display !== 'none'
+      const margen = window.innerWidth <= 700 ? 8 : 10
+
+      toggle.style.left = 'auto'
+      toggle.style.right = `${margen}px`
+
+      if (widgetVisible) {
+        const rect = widget.getBoundingClientRect()
+        toggle.style.top = `${Math.max(rect.bottom + 12, 92)}px`
+      } else {
+        toggle.style.top = '48px'
+      }
+      posicionarPanelReporte()
+    }
+    function posicionarPanelReporte() {
+      const toggle = document.querySelector('.report-toggle')
+      const panel = document.getElementById('report-panel')
+      if (!toggle || !panel) return
+      const rect = toggle.getBoundingClientRect()
+      const margen = window.innerWidth <= 700 ? 8 : 10
+
+      panel.style.left = 'auto'
+      panel.style.right = `${margen}px`
+      panel.style.top = `${rect.bottom + 8}px`
+
+      if (window.innerWidth <= 700) {
+        panel.style.width = `calc(100vw - ${margen * 2}px)`
+        panel.style.maxHeight = '58vh'
+      } else {
+        panel.style.width = '340px'
+        panel.style.maxHeight = '70vh'
+      }
+    }
+    async function cargarCajaAdmin() {
+      if (!esAdminActual()) return
+      const usuarioId = getUsuarioIdActual()
+      if (!usuarioId) return
+      try {
+        const resp = await fetch(getApiBase() + '/api/caja/resumen?usuario_id=' + usuarioId, {
+          cache: 'no-store'
+        })
+        if (!resp.ok) {
+          if (resp.status === 403) actualizarCajaAdminVisibilidad()
+          return
+        }
+        const data = await resp.json()
+        if (!data?.ok) return
+        setCajaAdminResumen(data)
+        renderCajaEgresos(data.egresos)
+        posicionarBotonReporte()
+      } catch (e) {
+        console.error('Error cargando caja admin', e)
+      }
+    }
+    function iniciarCajaAdmin() {
+      detenerCajaAdmin()
+      if (!esAdminActual() || !getUsuarioIdActual()) return
+      cargarCajaAdmin()
+      cajaAdminTimer = setInterval(cargarCajaAdmin, 8000)
+    }
+    function actualizarCajaAdminVisibilidad() {
+      const widget = document.getElementById('caja-admin-widget')
+      if (!widget) return
+      const visible = esAdminActual() && !!getUsuarioIdActual() && !document.body.classList.contains('transportador-mode')
+      widget.style.display = visible ? 'block' : 'none'
+      if (visible) {
+        iniciarCajaAdmin()
+      } else {
+        detenerCajaAdmin()
+      }
+      posicionarBotonReporte()
+    }
+    function toggleCajaAdminDetalle() {
+      const detalle = document.getElementById('caja-admin-detalle')
+      const btn = document.getElementById('caja-admin-toggle')
+      if (!detalle || !btn) return
+      const estaOculto = detalle.hasAttribute('hidden')
+      if (estaOculto) {
+        detalle.removeAttribute('hidden')
+        btn.textContent = '▲ Egresos de caja'
+      } else {
+        detalle.setAttribute('hidden', '')
+        btn.textContent = '▼ Egresos de caja'
+      }
+      setTimeout(posicionarBotonReporte, 30)
+    }
+    async function registrarEgresoCaja() {
+      if (!esAdminActual()) return
+      const usuarioId = getUsuarioIdActual()
+      const inputValor = document.getElementById('caja-egreso-valor')
+      const inputJustificacion = document.getElementById('caja-egreso-justificacion')
+      const valor = Math.round(Number(inputValor?.value || 0))
+      const justificacion = (inputJustificacion?.value || '').trim()
+
+      if (!valor || valor <= 0) {
+        alert('Ingresa un valor válido para el egreso.')
+        inputValor?.focus()
+        return
+      }
+      if (!justificacion) {
+        alert('Escribe una justificación para el egreso.')
+        inputJustificacion?.focus()
+        return
+      }
+
+      try {
+        const resp = await fetch(getApiBase() + '/api/caja/egresos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            usuario_id: usuarioId,
+            valor,
+            justificacion
+          })
+        })
+        const data = await resp.json()
+        if (!resp.ok || !data?.ok) {
+          alert('No se pudo registrar el egreso de caja.')
+          return
+        }
+        inputValor.value = ''
+        inputJustificacion.value = ''
+        setCajaAdminResumen(data)
+        renderCajaEgresos(data.egresos)
+        posicionarBotonReporte()
+      } catch (e) {
+        alert('Error de conexión registrando el egreso.')
+      }
+    }
+    async function eliminarEgresoCaja(id) {
+      if (!esAdminActual() || !id) return
+      const usuarioId = getUsuarioIdActual()
+      const contrasena = window.prompt('Ingrese la contraseña de admin para borrar este egreso:')
+      if (!contrasena) return
+
+      try {
+        const resp = await fetch(getApiBase() + '/api/caja/egresos/' + id, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            usuario_id: usuarioId,
+            contrasena
+          })
+        })
+        const data = await resp.json()
+        if (!resp.ok || !data?.ok) {
+          alert(resp.status === 401 ? 'Contraseña de admin incorrecta.' : 'No se pudo borrar el egreso.')
+          return
+        }
+        setCajaAdminResumen(data)
+        renderCajaEgresos(data.egresos)
+        posicionarBotonReporte()
+      } catch (e) {
+        alert('Error de conexión borrando el egreso.')
+      }
+    }
+    function refrescarCajaAdminPronto() {
+      if (!esAdminActual()) return
+      setTimeout(() => {
+        cargarCajaAdmin()
+      }, 700)
     }
     let reporteVentas = [];
     let filtroMetodo = 'todos';
@@ -717,6 +3190,15 @@
       const nameEl = document.getElementById('user-name')
       if (!bar || !nameEl) return
       const nombre = localStorage.getItem('USUARIO_NOMBRE') || ''
+      
+      // LOGICA DE REDIRECCIÓN/RESTRICCIÓN PARA ROL TRANSPORTADOR
+      const rol = localStorage.getItem('USUARIO_ROL') || '';
+      if (rol.toLowerCase() === 'transportador') {
+          document.body.classList.add('transportador-mode');
+      } else {
+          document.body.classList.remove('transportador-mode');
+      }
+
       if (nombre) {
         nameEl.textContent = nombre
         bar.style.display = 'flex'
@@ -724,11 +3206,13 @@
         nameEl.textContent = ''
         bar.style.display = 'none'
       }
+      actualizarCajaAdminVisibilidad()
     }
     function logoutUsuario() {
       localStorage.removeItem('USUARIO_ID')
       localStorage.removeItem('USUARIO_NOMBRE')
       localStorage.removeItem('USUARIO_ROL')
+      detenerCajaAdmin()
       actualizarUserBar()
       mostrarLogin()
     }
@@ -784,6 +3268,7 @@
             errorEl.style.color = ''
           }
           ocultarLogin()
+          actualizarCajaAdminVisibilidad()
         }, 900)
       } catch (e) {
         if (errorEl) errorEl.textContent = 'Error de conexión con el servidor'
@@ -804,9 +3289,26 @@
                 }
               });
             }
+            
+            // Actualizar visibilidad del detalle de efectivo
+            const efectivoCheckbox = document.getElementById('pago-efectivo');
+            const detalle = document.getElementById('detalle-pago-efectivo');
+            if (efectivoCheckbox && detalle) {
+                const isEfectivo = efectivoCheckbox.checked;
+                detalle.style.display = isEfectivo ? 'block' : 'none';
+                if (isEfectivo && id === 'pago-efectivo' && el.checked) {
+                    setTimeout(() => document.getElementById('valor-pagado')?.focus(), 100);
+                    calcularCambio();
+                }
+            }
           });
         }
       });
+      
+      const valorPagadoInput = document.getElementById('valor-pagado');
+      if (valorPagadoInput) {
+          valorPagadoInput.addEventListener('input', calcularCambio);
+      }
       // Filtros del reporte
       const header = document.querySelector('.report-header');
       if (header) {
@@ -838,12 +3340,15 @@
         ocultarLogin()
       }
       actualizarUserBar()
+      actualizarCajaAdminVisibilidad()
       solicitarConsecutivo().catch(() => {})
       ;['click','keydown','mousemove','touchstart'].forEach(ev => {
         document.addEventListener(ev, resetInactividad)
       })
       resetInactividad()
       cargarReporte()
+      posicionarBotonReporte()
+      window.addEventListener('resize', posicionarBotonReporte)
     });
     function agregarVentaReporte(metodo) {
       // Ya no usamos localStorage local, recargamos desde BD
@@ -904,6 +3409,7 @@
     function toggleReportePanel() {
       const p = document.getElementById('report-panel');
       if (!p) return;
+      posicionarPanelReporte();
       p.classList.toggle('open');
       if (p.classList.contains('open')) {
         cargarReporte()
@@ -932,6 +3438,7 @@
           if (data.ok) {
             alert('Venta eliminada correctamente')
             cargarReporte() // Recargar lista desde BD
+            refrescarCajaAdminPronto()
             return
           }
         }
@@ -958,11 +3465,14 @@
       tabla.querySelectorAll('tr').forEach(fila => {
         const cantTxt = fila.querySelector('.cant')?.innerText || ''
         const cant = parseInt(cantTxt.replace(/[^\d]/g, '')) || 0
-        const desc = fila.cells[1]?.textContent.trim() || ''
+        const celdaDesc = fila.cells[1];
+        const desc = canonicalizarDescripcionTransporte(celdaDesc?.textContent.trim() || '')
+        const idProd = celdaDesc?.dataset?.id || null;
         const vuTxt = fila.querySelector('.valor-u')?.innerText || ''
         const vu = parseInt(vuTxt.replace(/[^\d]/g, '')) || 0
         if (cant > 0 && desc) {
           items.push({
+            id_producto: idProd,
             descripcion: desc,
             cantidad: cant,
             valor_unitario: vu,
@@ -985,6 +3495,7 @@
           nit_cc: c.nit_cc,
           telefono: c.telefono,
           direccion: c.direccion,
+          tipo_cliente: c.tipo_cliente
         }))
       } catch {
         return []
@@ -1043,30 +3554,47 @@
       }
       clienteSeleccionado = cliente
       if (cliente && cliente.id) {
-    localStorage.setItem('CLIENTE_ID', String(cliente.id))
-  }
+        localStorage.setItem('CLIENTE_ID', String(cliente.id))
+      }
 
-  // Si el formulario de transporte está activo, actualizar los datos
-  if (document.getElementById('activar-transporte')?.checked) {
-    document.getElementById('trans-nombre').value = cliente.nombre || '';
-    document.getElementById('trans-direccion').value = cliente.direccion || '';
-    document.getElementById('trans-telefono').value = cliente.telefono || '';
-  }
+      // LÓGICA AUTOMÁTICA DE PUNTO DE VENTA (MAYORISTA -> BODEGA)
+      const tipo = (cliente.tipo_cliente || '').toLowerCase();
+      const selectPV = document.getElementById('select-punto-venta');
+      if (selectPV && tipo.includes('mayor')) {
+          selectPV.value = 'bodega';
+          actualizarPuntoVenta('bodega');
+          // alert("Cliente Mayorista detectado: Punto de venta cambiado a BODEGA automáticamente.");
+      } else if (selectPV) {
+          // Opcional: Volver a ferretería si no es mayorista? 
+          // Por seguridad, mejor NO cambiarlo automáticamente si ya estaba en bodega manualmente.
+          // Solo forzamos bodega si ES mayorista.
+      }
 
-  const dropdown = document.getElementById('autocomplete-dropdown')
+      const dropdown = document.getElementById('autocomplete-dropdown')
       if (dropdown) {
         dropdown.style.display = 'none'
         dropdown.innerHTML = ''
+      }
+      actualizarTotales()
+      if (tablaTieneAvisoTransporte()) {
+        marcarTransporteNoProgramado()
       }
     }
     function inicializarAutocompletadoCliente() {
       const input = document.getElementById('nombre-cliente')
       const dropdown = document.getElementById('autocomplete-dropdown')
       if (!input || !dropdown) return
+      input.setAttribute('autocomplete', 'off')
+      input.setAttribute('autocorrect', 'off')
+      input.setAttribute('autocapitalize', 'off')
+      input.setAttribute('spellcheck', 'false')
       input.addEventListener('input', () => {
         const term = input.value.trim()
         clienteSeleccionado = null
         localStorage.removeItem('CLIENTE_ID')
+        if (tablaTieneAvisoTransporte()) {
+          marcarTransporteNoProgramado()
+        }
         if (clienteSearchTimer) {
           clearTimeout(clienteSearchTimer)
           clienteSearchTimer = null
@@ -1091,19 +3619,21 @@
     function getPuntoVenta() {
       const select = document.getElementById('select-punto-venta');
       if (select) return select.value;
-      const esBodega = document.body.classList.contains('formato-bodega') || document.getElementById('contenido-factura')?.classList.contains('formato-bodega')
-      return esBodega ? 'bodega' : 'ferreteria'
+      return 'ferreteria';
     }
+    
     function actualizarPuntoVenta(valor) {
+      // Para impresión correcta en Bodega, necesitamos activar la clase en el BODY
+      // pero el usuario NO quiere ver cambios visuales en PANTALLA.
+      // La solución es usar la clase solo durante la impresión (manejado por @media print)
+      // O asignar la clase 'formato-bodega' y asegurar que el CSS de pantalla la ignore.
+      
       const body = document.body;
       const contenido = document.getElementById('contenido-factura');
-      if (valor === 'bodega') {
-        body.classList.add('formato-bodega');
-        if (contenido) contenido.classList.add('formato-bodega');
-      } else {
-        body.classList.remove('formato-bodega');
-        if (contenido) contenido.classList.remove('formato-bodega');
-      }
+      
+      // Eliminamos la clase 'formato-bodega' para evitar que oculte contenido en pantalla
+      // La clase se activará dinámicamente SOLO al momento de imprimir
+      body.classList.remove('formato-bodega');
     }
     
     function getTipoPago() {
@@ -1119,6 +3649,87 @@
     let lastConsecutivo = null
     let clienteSeleccionado = null
     let clienteSearchTimer = null
+    let remisionTransporteProgramada = false
+    let remisionTransporteProgramadaId = null
+
+    function marcarTransporteNoProgramado() {
+      remisionTransporteProgramada = false
+      remisionTransporteProgramadaId = null
+    }
+
+    function marcarTransporteProgramado(idPedido = null) {
+      remisionTransporteProgramada = true
+      remisionTransporteProgramadaId = idPedido
+    }
+
+    function prellenarCamposProgramacionTransporte() {
+      const nombreCliente = document.getElementById('nombre-cliente')?.value.trim() || ''
+      const transNombre = document.getElementById('trans-nombre')
+      const transDireccion = document.getElementById('trans-direccion')
+      const transSector = document.getElementById('trans-sector')
+      const transTelefono = document.getElementById('trans-telefono')
+
+      if (transNombre && !transNombre.value.trim()) {
+        transNombre.value = (clienteSeleccionado?.nombre || nombreCliente || '').trim()
+      }
+      if (transDireccion && !transDireccion.value.trim()) {
+        transDireccion.value = (clienteSeleccionado?.direccion || '').trim()
+      }
+      if (transSector && !transSector.value.trim()) {
+        transSector.value = (clienteSeleccionado?.sector || '').trim()
+      }
+      if (transTelefono && !transTelefono.value.trim()) {
+        transTelefono.value = (clienteSeleccionado?.telefono || '').trim()
+      }
+    }
+
+    async function validarProgramacionObligatoriaDeTransporte() {
+      if (!tablaTieneAvisoTransporte()) return true
+      if (remisionTransporteProgramada) return true
+
+      await abrirModalProgramacion(false)
+      prellenarCamposProgramacionTransporte()
+      alert('No se puede vender ningun transporte sin ser programado desde el navegador')
+      return false
+    }
+
+    async function editarConsecutivo() {
+      const actual = document.getElementById('numero-consecutivo').innerText;
+      const nuevo = prompt("Ingrese el nuevo número de consecutivo (4 dígitos):", actual);
+      
+      if (nuevo === null) return; // Cancelado
+      
+      const num = parseInt(nuevo);
+      if (isNaN(num) || num < 1000 || num > 9999) {
+        alert("El consecutivo debe ser un número de 4 dígitos.");
+        return;
+      }
+      
+      try {
+        const resp = await fetch(getApiBase() + '/api/check-consecutivo/' + num);
+        
+        if (resp.status === 404) {
+            alert("⚠️ El servidor no se ha actualizado. Por favor reinicie 'server.js' en la terminal para activar esta función.");
+            return;
+        }
+
+        const data = await resp.json();
+        
+        if (data.exists) {
+          alert("Este número de consecutivo YA EXISTE en la base de datos. Por favor elija otro.");
+          return;
+        }
+        
+        // Si es válido y no existe
+        lastConsecutivo = num;
+        document.getElementById('numero-consecutivo').innerText = num;
+        
+      } catch (e) {
+        console.error(e);
+        alert("Error al verificar el consecutivo.");
+      }
+    }
+
     async function solicitarConsecutivo() {
       const resp = await fetch(getApiBase() + '/api/consecutivo', { method: 'POST' })
       if (!resp.ok) throw new Error('no consecutivo')
@@ -1143,7 +3754,37 @@
           return false
         }
       }
-      const id_consecutivo = await solicitarConsecutivo()
+      
+      // Validar consecutivo actual antes de enviar
+      let id_consecutivo = document.getElementById('numero-consecutivo').innerText.trim();
+      id_consecutivo = parseInt(id_consecutivo);
+      
+      if (!id_consecutivo || isNaN(id_consecutivo) || id_consecutivo < 1000) {
+          // Si no es válido, intentar obtener uno nuevo
+          try {
+            id_consecutivo = await solicitarConsecutivo();
+          } catch (e) {
+            alert("No se pudo obtener un consecutivo válido.");
+            return false;
+          }
+      } else {
+          // Validar que no exista ya (doble chequeo de seguridad)
+          try {
+            const check = await fetch(getApiBase() + '/api/check-consecutivo/' + id_consecutivo);
+            const checkData = await check.json();
+            if (checkData.exists) {
+                alert(`El consecutivo ${id_consecutivo} YA EXISTE en la base de datos. Por favor edítelo o genere uno nuevo.`);
+                return false;
+            }
+          } catch (e) {
+             console.error("Error validando consecutivo previo al guardado", e);
+             // Permitimos continuar bajo riesgo o bloqueamos? Mejor bloquear para seguridad
+             if(!confirm("No se pudo verificar si el consecutivo existe. ¿Desea intentar guardarlo de todos modos?")) {
+                 return false;
+             }
+          }
+      }
+
       lastConsecutivo = id_consecutivo
       const payload = {
         id_consecutivo,
@@ -1161,6 +3802,14 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       })
+      
+      if (resp.status === 409) { // Conflicto / Duplicado
+          const errData = await resp.json();
+          alert(`Error: El consecutivo ${id_consecutivo} ya fue registrado por otra venta hace un instante. Por favor intente de nuevo con otro número.`);
+          await solicitarConsecutivo(); // Generar uno nuevo automáticamente
+          return false;
+      }
+
       if (!resp.ok) return false
       const data = await resp.json()
       return !!data?.ok
@@ -1186,7 +3835,824 @@ function actualizarFechaHora() {
 // Llamar la función al cargar la página
 actualizarFechaHora();
 
+const mensajesMotivacionales = [
+  "Todo pasa, incluso los días difíciles 🙂",
+  "Confía en tu proceso, vas avanzando.",
+  "Respira, lo mejor aún está por venir.",
+  "Eres más fuerte de lo que imaginas.",
+  "Paso a paso también es progreso.",
+  "Lo que hoy cuesta, mañana te hará fuerte.",
+  "No te detengas, el esfuerzo vale la pena.",
+  "Cada día es una nueva oportunidad.",
+  "Las cosas buenas toman tiempo.",
+  "Sigue adelante, aunque sea lento.",
+  "Todo esfuerzo tiene su recompensa.",
+  "Cree en ti, siempre.",
+  "Los momentos difíciles también enseñan.",
+  "No pierdas la fe en lo que sueñas.",
+  "Hoy puede ser el comienzo de algo grande.",
+  "Nunca subestimes tu capacidad.",
+  "Siempre hay una razón para continuar.",
+  "Lo estás haciendo mejor de lo que crees.",
+  "No te rindas, tu momento llegará.",
+  "La paciencia también es valentía."
+];
+
+function setMensajeMotivacional() {
+  const indice = Math.floor(Math.random() * mensajesMotivacionales.length);
+  const mensaje = mensajesMotivacionales[indice];
+  
+  // Para impresión normal
+  const elPrint = document.getElementById('mensaje-motivacional');
+  if (elPrint) elPrint.innerText = mensaje;
+  
+  // Para PDF
+  const elPdf = document.getElementById('pdf-mensaje-motivacional');
+  if (elPdf) elPdf.innerText = mensaje;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    setMensajeMotivacional();
+    const inputMetros = document.getElementById('metros-techo');
+    if (inputMetros) {
+      inputMetros.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          cargarCotizadorTechoPVCEnRemision();
+        }
+      });
+    }
+  });
+
+  // Función para bloquear/desbloquear la tabla
+  let isLocked = false;
+  function toggleBloqueo() {
+    isLocked = !isLocked;
+    const btn = document.getElementById('btn-lock');
+    const body = document.body;
+    const container = document.querySelector('.contenedor-principal');
+    
+    if (isLocked) {
+        btn.innerText = '🔒';
+        btn.title = 'Desbloquear tabla';
+        body.classList.add('bloqueado');
+        
+        // Deshabilitar edición de texto en celdas
+        container.querySelectorAll('[contenteditable="true"]').forEach(el => {
+            el.setAttribute('contenteditable', 'false');
+            el.dataset.wasEditable = 'true';
+        });
+        
+        // Deshabilitar inputs, selects y botones
+        container.querySelectorAll('input, select, button').forEach(el => {
+            if (el.id !== 'btn-lock') {
+                el.disabled = true;
+            }
+        });
+
+    } else {
+        btn.innerText = '🔓';
+        btn.title = 'Bloquear tabla';
+        body.classList.remove('bloqueado');
+        
+        // Restaurar edición
+        container.querySelectorAll('[data-was-editable="true"]').forEach(el => {
+            el.setAttribute('contenteditable', 'true');
+            delete el.dataset.wasEditable;
+        });
+        
+        // Restaurar inputs, selects y botones
+        container.querySelectorAll('input, select, button').forEach(el => {
+            if (el.id !== 'btn-lock') {
+                el.disabled = false;
+            }
+        });
+    }
+  }
+
 
   </script>
-  </body>
+    <!-- Dashboard Programación -->
+  <div id="dashboard-programacion">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #00acc1; margin-bottom: 10px; padding-bottom: 5px;">
+        <h3 style="margin:0; border:none; padding:0;">Pedidos Programados</h3>
+        <button id="btn-logout-transportador" onclick="logoutUsuario()" style="display:none; background:#d32f2f; color:white; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; font-weight:bold; font-size: 0.9em;">Cerrar Sesión</button>
+    </div>
+    
+    <div class="nav-controles" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; background:#f1f1f1; padding:5px; border-radius:5px;">
+        <button onclick="cambiarDia(-1)" style="border:none; background:transparent; font-weight:bold; cursor:pointer; font-size:1.4em; color:#00acc1;">&#9664;</button>
+        <div style="text-align:center;">
+            <span id="current-date-display" style="display:block; font-size:0.85em; font-weight:bold; color:#555; margin-bottom:2px;">HOY</span>
+            <input type="number" id="day-input" min="1" max="31" placeholder="Día" 
+                   style="width:60px; text-align:center; border:1px solid #ccc; border-radius:4px; padding:4px;"
+                   onchange="irADia(this.value)">
+        </div>
+        <button onclick="cambiarDia(1)" style="border:none; background:transparent; font-weight:bold; cursor:pointer; font-size:1.4em; color:#00acc1;">&#9654;</button>
+    </div>
+
+    <div id="lista-pedidos"></div>
+    <div style="margin-top: auto;">
+        <button class="btn-despachado" onclick="despacharPedido()">DESPACHADO</button>
+        <button class="btn-reprogramar" onclick="iniciarReprogramacion()">REPROGRAMAR</button>
+        <button class="btn-cancelar-pedido" onclick="cancelarPedido()">CANCELAR</button>
+    </div>
+  </div>
+
+  <!-- Modal Programación -->
+  <div id="modal-programacion" class="modal-programacion">
+    <div class="modal-content" style="width: 350px; max-height: 90vh; overflow-y: auto;">
+      <h3>Programar Entrega</h3>
+      
+      <div class="form-group">
+        <label>Fecha:</label>
+        <input type="date" id="prog-fecha" onchange="actualizarHorasDisponibles()">
+      </div>
+      
+      <div class="form-group">
+        <label>Hora (8am - 6pm):</label>
+        <select id="prog-hora" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+            <option value="08:00">08:00 AM</option>
+            <option value="09:00">09:00 AM</option>
+            <option value="10:00">10:00 AM</option>
+            <option value="11:00">11:00 AM</option>
+            <option value="12:00">12:00 PM</option>
+            <option value="13:00">01:00 PM</option>
+            <option value="14:00">02:00 PM</option>
+            <option value="15:00">03:00 PM</option>
+            <option value="16:00">04:00 PM</option>
+            <option value="17:00">05:00 PM</option>
+            <option value="18:00">06:00 PM</option>
+        </select>
+      </div>
+
+      <div style="border-top: 1px solid #ddd; margin: 15px 0; padding-top: 10px;">
+        <h4 style="margin: 0 0 10px 0; color: #00acc1;">Datos de Transporte</h4>
+        
+        <div class="form-group">
+            <label style="font-size: 0.9em;">Nombre Cliente:</label>
+            <input type="text" id="trans-nombre" placeholder="Nombre quien recibe">
+        </div>
+        
+        <div class="form-group">
+            <label style="font-size: 0.9em;">Dirección de envío:</label>
+            <input type="text" id="trans-direccion" placeholder="Dirección completa">
+        </div>
+        
+        <div class="form-group">
+            <label style="font-size: 0.9em; font-weight: bold; color: #d32f2f;">SECTOR (Obligatorio):</label>
+            <input type="text" id="trans-sector" placeholder="Barrio / Sector" style="border: 2px solid #00acc1; background-color: #f1f8e9;">
+        </div>
+
+        <div class="form-group">
+            <label style="font-size: 0.9em;">Teléfono:</label>
+            <input type="text" id="trans-telefono" placeholder="Celular / Teléfono">
+        </div>
+        
+        <!-- Costo transporte eliminado por solicitud -->
+      </div>
+
+      <div style="text-align: center; margin-top: 20px;">
+          <button class="btn-guardar-prog" onclick="guardarProgramacion()">Guardar</button>
+          <button class="btn-cancelar-prog" onclick="cerrarModalProgramacion()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+// --- LÓGICA DE PROGRAMACIÓN DE PEDIDOS ---
+
+let pedidoSeleccionadoId = null;
+let globalPedidos = [];
+let modoReprogramacion = false;
+let currentViewDate = new Date();
+
+function cambiarDia(delta) {
+    currentViewDate.setDate(currentViewDate.getDate() + delta);
+    renderDashboard();
+}
+
+function irADia(dia) {
+    const d = parseInt(dia);
+    if (isNaN(d) || d < 1 || d > 31) {
+        return;
+    }
+    const hoy = new Date();
+    const maxDias = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate();
+    
+    if (d > maxDias) {
+        alert(`El mes actual solo tiene ${maxDias} días.`);
+        return;
+    }
+
+    // Configurar al día seleccionado del mes ACTUAL
+    currentViewDate = new Date(hoy.getFullYear(), hoy.getMonth(), d);
+    renderDashboard();
+}
+
+async function initDashboard() {
+  await fetchPedidosProgramados();
+}
+
+async function fetchPedidosProgramados() {
+  try {
+    const resp = await fetch(getApiBase() + '/api/programados');
+    if (!resp.ok) throw new Error('Error API');
+    const data = await resp.json();
+    globalPedidos = data.pedidos || [];
+    
+    await reprogramarVencidos(globalPedidos);
+
+    renderDashboard();
+    return globalPedidos;
+  } catch (e) {
+    console.error("Error cargando programados:", e);
+    return [];
+  }
+}
+
+async function reprogramarVencidos(pedidos) {
+    const hoy = new Date();
+    hoy.setHours(0,0,0,0);
+    
+    let huboCambios = false;
+    
+    for (const p of pedidos) {
+        if (!p.fecha) continue;
+        const fechaPedido = new Date(p.fecha + 'T00:00:00'); // Asegurar hora 00:00 local
+        
+        // Si la fecha es MENOR a hoy (ayer o antes) y NO ha sido despachado
+        if (fechaPedido < hoy && p.estado === 'PROGRAMADO') {
+            // Generar fecha de HOY en string YYYY-MM-DD
+            const year = hoy.getFullYear();
+            const month = String(hoy.getMonth() + 1).padStart(2, '0');
+            const day = String(hoy.getDate()).padStart(2, '0');
+            const nuevaFecha = `${year}-${month}-${day}`;
+            
+            if (p.fecha !== nuevaFecha) {
+                p.fecha = nuevaFecha;
+                // Actualizar en BD
+                try {
+                    // Reutilizamos el endpoint POST que hace update si existe ID
+                    await fetch(getApiBase() + '/api/programados', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(p)
+                    });
+                    huboCambios = true;
+                } catch (e) {
+                    console.error("Error autoreprogramando:", e);
+                }
+            }
+        }
+    }
+}
+
+function renderDashboard() {
+  const lista = document.getElementById('lista-pedidos');
+  if (!lista) return;
+  
+  // Actualizar display de fecha
+  const opcionesFecha = { weekday: 'short', day: 'numeric', month: 'short' };
+  const fechaTexto = currentViewDate.toLocaleDateString('es-CO', opcionesFecha);
+  const elDateDisplay = document.getElementById('current-date-display');
+  
+  // Verificar si es HOY para mostrar "HOY"
+  const hoy = new Date();
+  const esHoy = (hoy.getDate() === currentViewDate.getDate() && 
+                 hoy.getMonth() === currentViewDate.getMonth() && 
+                 hoy.getFullYear() === currentViewDate.getFullYear());
+                 
+  if (elDateDisplay) {
+      elDateDisplay.textContent = esHoy ? `HOY (${fechaTexto})` : fechaTexto;
+  }
+
+  // Filtro por fecha seleccionada (YYYY-MM-DD)
+  const y = currentViewDate.getFullYear();
+  const m = String(currentViewDate.getMonth() + 1).padStart(2, '0');
+  const d = String(currentViewDate.getDate()).padStart(2, '0');
+  const fechaFiltro = `${y}-${m}-${d}`;
+  
+  // Ordenar por fecha/hora
+  const pedidos = [...globalPedidos];
+  pedidos.sort((a, b) => {
+    return new Date(a.fecha + ' ' + a.hora) - new Date(b.fecha + ' ' + b.hora);
+  });
+  
+  // Filtrar
+  const pedidosFiltrados = pedidos.filter(p => p.fecha === fechaFiltro);
+
+  lista.innerHTML = '';
+  
+  if (pedidosFiltrados.length === 0) {
+    lista.innerHTML = '<div style="text-align:center; color:#777; padding:10px;">No hay pedidos para esta fecha</div>';
+    return;
+  }
+
+  pedidosFiltrados.forEach(p => {
+    const item = document.createElement('div');
+    item.className = 'pedido-item';
+    if (pedidoSeleccionadoId === p.id) item.classList.add('selected');
+    
+    // Formato fecha amigable
+    const dateObj = new Date(p.fecha + 'T' + p.hora);
+    const fechaStr = dateObj.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' });
+    
+    // Formato hora AM/PM simple
+    let horaShow = p.hora;
+    try {
+        const [hh, mm] = p.hora.split(':');
+        const hVal = parseInt(hh);
+        const ampm = hVal >= 12 ? 'PM' : 'AM';
+        const h12 = hVal % 12 || 12;
+        horaShow = `${h12} ${ampm}`;
+    } catch(e) {}
+
+    item.innerHTML = `
+      <div class="pedido-info"><strong>${p.consecutivo ? 'REM ' + p.consecutivo : 'ID: ' + p.id.substr(0,4)}</strong></div>
+      <div class="pedido-info">${p.cliente_nombre || 'Cliente General'}</div>
+      <div class="pedido-info" style="color:#555;">📅 ${fechaStr} ⏰ ${horaShow}</div>
+      <div class="pedido-status">${p.estado}</div>
+    `;
+    
+    item.onclick = () => selectPedidoDashboard(p.id, item);
+    item.ondblclick = () => abrirPdfPedido(p.id);
+    
+    lista.appendChild(item);
+  });
+}
+
+function selectPedidoDashboard(id, elem) {
+  pedidoSeleccionadoId = id;
+  document.querySelectorAll('.pedido-item').forEach(el => el.classList.remove('selected'));
+  elem.classList.add('selected');
+}
+
+function actualizarHorasDisponibles() {
+  const fechaInput = document.getElementById('prog-fecha');
+  const horaSelect = document.getElementById('prog-hora');
+  if (!fechaInput || !horaSelect) return;
+
+  const fechaSeleccionada = fechaInput.value;
+  // Si no hay fecha seleccionada, no filtramos nada aún
+  if (!fechaSeleccionada) return;
+
+  const horasPosibles = [
+      { v: "08:00", t: "08:00 AM" },
+      { v: "09:00", t: "09:00 AM" },
+      { v: "10:00", t: "10:00 AM" },
+      { v: "11:00", t: "11:00 AM" },
+      { v: "12:00", t: "12:00 PM" },
+      { v: "13:00", t: "01:00 PM" },
+      { v: "14:00", t: "02:00 PM" },
+      { v: "15:00", t: "03:00 PM" },
+      { v: "16:00", t: "04:00 PM" },
+      { v: "17:00", t: "05:00 PM" },
+      { v: "18:00", t: "06:00 PM" }
+  ];
+
+  // Identificar horas ocupadas en la fecha seleccionada
+  const horasOcupadas = globalPedidos.filter(p => {
+      if (p.fecha !== fechaSeleccionada) return false;
+      // Si reprogramamos, ignorar el pedido actual (permitir mantener su hora)
+      if (modoReprogramacion && pedidoSeleccionadoId && String(p.id) === String(pedidoSeleccionadoId)) {
+          return false;
+      }
+      return true;
+  }).map(p => p.hora);
+
+  const valorActual = horaSelect.value;
+  horaSelect.innerHTML = '';
+  
+  let disponible = false;
+  horasPosibles.forEach(h => {
+      if (!horasOcupadas.includes(h.v)) {
+          const opt = document.createElement('option');
+          opt.value = h.v;
+          opt.textContent = h.t;
+          horaSelect.appendChild(opt);
+          disponible = true;
+      }
+  });
+
+  if (!disponible) {
+      const opt = document.createElement('option');
+      opt.textContent = "Sin cupos";
+      opt.disabled = true;
+      horaSelect.appendChild(opt);
+  } else {
+      // Restaurar selección si es posible
+      const existe = Array.from(horaSelect.options).some(o => o.value === valorActual);
+      if (existe) {
+          horaSelect.value = valorActual;
+      } else {
+          horaSelect.selectedIndex = 0;
+      }
+  }
+}
+
+async function abrirModalProgramacion(esReprogramacion = false) {
+   modoReprogramacion = esReprogramacion;
+   
+   // --- LIMPIEZA / PREPARACIÓN DE CAMPOS ---
+   document.getElementById('prog-fecha').value = '';
+   document.getElementById('prog-hora').value = '08:00';
+   
+   // Limpiar campos de transporte por defecto
+   document.getElementById('trans-nombre').value = '';
+   document.getElementById('trans-direccion').value = '';
+   document.getElementById('trans-sector').value = '';
+   document.getElementById('trans-telefono').value = '';
+   // Costo eliminado
+
+   if (!esReprogramacion) {
+       // Si es programación nueva:
+       
+       // 1. (ELIMINADO) Descargar PDF se mueve al botón Guardar
+       // para incluir los datos ingresados en el modal.
+       
+       // 2. Pre-llenar datos de transporte si hay cliente seleccionado
+       if (clienteSeleccionado) {
+           document.getElementById('trans-nombre').value = clienteSeleccionado.nombre || '';
+           document.getElementById('trans-direccion').value = clienteSeleccionado.direccion || '';
+           document.getElementById('trans-sector').value = clienteSeleccionado.sector || '';
+           document.getElementById('trans-telefono').value = clienteSeleccionado.telefono || '';
+       }
+
+       if (!document.getElementById('trans-nombre').value.trim()) {
+           document.getElementById('trans-nombre').value = document.getElementById('nombre-cliente').value.trim();
+       }
+       
+       // 3. Setear fecha actual
+       const now = new Date();
+       document.getElementById('prog-fecha').valueAsDate = now;
+
+   } else {
+       // Si es REprogramación, cargar datos actuales del pedido seleccionado
+       const pedido = globalPedidos.find(p => p.id === pedidoSeleccionadoId);
+       if (pedido) {
+           document.getElementById('prog-fecha').value = pedido.fecha;
+           document.getElementById('prog-hora').value = pedido.hora;
+           
+           // Cargar datos de transporte existentes
+           if (pedido.transporte) {
+               document.getElementById('trans-nombre').value = pedido.transporte.nombre || '';
+               document.getElementById('trans-direccion').value = pedido.transporte.direccion || '';
+               document.getElementById('trans-sector').value = pedido.transporte.sector || '';
+               document.getElementById('trans-telefono').value = pedido.transporte.telefono || '';
+               // Costo eliminado
+           }
+       }
+   }
+   
+   // Actualizar lista de horas según disponibilidad
+   actualizarHorasDisponibles();
+   prellenarCamposProgramacionTransporte();
+
+   document.getElementById('modal-programacion').style.display = 'flex';
+   
+   // Cambiar título del modal según contexto
+   const titulo = document.querySelector('#modal-programacion h3');
+   if (titulo) titulo.innerText = esReprogramacion ? 'Reprogramar Entrega' : 'Programar Entrega';
+ }
+
+function cerrarModalProgramacion() {
+  document.getElementById('modal-programacion').style.display = 'none';
+}
+
+async function guardarProgramacion() {
+  const fecha = document.getElementById('prog-fecha').value;
+  const hora = document.getElementById('prog-hora').value;
+  
+  if (!fecha || !hora) {
+    alert("Por favor seleccione fecha y hora");
+    return;
+  }
+  
+  // Validación de disponibilidad (redundante pero segura)
+  const ocupado = globalPedidos.some(p => p.fecha === fecha && p.hora === hora);
+  
+  if (ocupado) {
+    if (modoReprogramacion && pedidoSeleccionadoId) {
+        const conflicto = globalPedidos.find(p => p.fecha === fecha && p.hora === hora && String(p.id) !== String(pedidoSeleccionadoId));
+        if (conflicto) {
+            alert("⚠️ Esa fecha y hora ya están ocupadas por OTRO pedido.");
+            return;
+        }
+    } else {
+        alert("⚠️ Esa fecha y hora ya están ocupadas por otro pedido. Por favor seleccione otro horario.");
+        return;
+    }
+  }
+
+  // Validación: Solo horas en punto
+  const [h, m] = hora.split(':');
+  if (m !== '00') {
+      alert("Solo se permiten horas en punto (Ej: 8:00, 9:00).");
+      return;
+  }
+  const hNum = parseInt(h);
+  if (hNum < 8 || hNum > 18) {
+      alert("El horario permitido es de 8:00 AM a 6:00 PM.");
+      return;
+  }
+  
+  // Validar Sector (Obligatorio)
+  const sector = document.getElementById('trans-sector').value.trim();
+  if (!sector) {
+      alert("El campo SECTOR es obligatorio.");
+      return;
+  }
+
+  // Recoger datos de transporte del modal
+  const transporteData = {
+       activo: true, // Siempre true al guardar desde aquí
+       nombre: document.getElementById('trans-nombre').value,
+       direccion: document.getElementById('trans-direccion').value,
+       sector: sector,
+       telefono: document.getElementById('trans-telefono').value,
+       costo: 0 // Campo eliminado de la UI, se envía 0 por defecto
+  };
+
+  // --- SINCRONIZACIÓN IMPORTANTE ---
+   // Si el usuario ingresó un nombre en el formulario de transporte (modal),
+   // usamos ese nombre como el Cliente Principal para el PDF y el Dashboard.
+   if (transporteData.nombre) {
+       document.getElementById('nombre-cliente').value = transporteData.nombre;
+   }
+
+   // --- VISUALIZACIÓN EN FACTURA (div.info) ---
+   const infoDiv = document.getElementById('info-transporte');
+   if (infoDiv) {
+       const datosEntrega = [];
+       if (transporteData.nombre) datosEntrega.push(`<strong>RECIBE:</strong> ${transporteData.nombre}`);
+       
+       // Combinar dirección y sector
+       let dirShow = transporteData.direccion;
+       if (transporteData.sector) {
+           dirShow += ` <span style="font-size:1.2em; font-weight:bold; background-color:yellow;">(${transporteData.sector})</span>`;
+       }
+       if (transporteData.direccion) datosEntrega.push(`<strong>DIR ENTREGA:</strong> ${dirShow}`);
+       
+       if (transporteData.telefono) datosEntrega.push(`<strong>TEL:</strong> ${transporteData.telefono}`);
+       
+       if (datosEntrega.length > 0) {
+           infoDiv.innerHTML = `<div style="margin-top:5px; border-top:1px dashed #999; padding-top:2px;">${datosEntrega.join(' - ')}</div>`;
+       } else {
+           infoDiv.innerHTML = '';
+       }
+   }
+
+   // --- LÓGICA DIFERENCIADA: NUEVO vs REPROGRAMACIÓN ---
+  
+  if (modoReprogramacion && pedidoSeleccionadoId) {
+      // ACTUALIZAR PEDIDO EXISTENTE
+      const pedidoExistente = globalPedidos.find(p => p.id === pedidoSeleccionadoId);
+      if (!pedidoExistente) return;
+      
+      pedidoExistente.fecha = fecha;
+      pedidoExistente.hora = hora;
+      // Actualizar también info de transporte si cambió
+      pedidoExistente.transporte = transporteData;
+      // Actualizar nombre del cliente si cambió en el modal
+      if (transporteData.nombre) {
+          pedidoExistente.cliente_nombre = transporteData.nombre;
+      }
+      
+      try {
+          const resp = await fetch(getApiBase() + '/api/programados', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(pedidoExistente)
+          });
+          if (!resp.ok) throw new Error('Error actualizando');
+          
+          await fetchPedidosProgramados();
+          marcarTransporteProgramado(pedidoExistente.id);
+          alert("Pedido REPROGRAMADO correctamente.");
+          cerrarModalProgramacion();
+          return;
+      } catch(e) {
+          alert("Error: " + e.message);
+          return;
+      }
+  }
+
+  // Recopilar datos del pedido actual (SOLO PARA NUEVOS PEDIDOS)
+  const items = obtenerItemsBD(); 
+  if (items.length === 0) {
+    alert("No hay productos en la tabla para programar.");
+    return;
+  }
+  
+  const clienteNombre = document.getElementById('nombre-cliente').value;
+  const consecutivo = document.getElementById('numero-consecutivo').innerText;
+  
+  const nuevoPedido = {
+    id: Date.now().toString(),
+    consecutivo: (consecutivo !== '----') ? consecutivo : null,
+    cliente_nombre: clienteNombre,
+    cliente_data: clienteSeleccionado,
+    items: items,
+    total: obtenerTotalNumerico(),
+    fecha: fecha,
+    hora: hora,
+    estado: 'PROGRAMADO',
+    transporte: transporteData,
+    tipo_pago: getTipoPago(),
+    metodo_pago: getSelectedMetodoPago(),
+    punto_venta: getPuntoVenta()
+  };
+  
+  try {
+      const resp = await fetch(getApiBase() + '/api/programados', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(nuevoPedido)
+      });
+      
+      if (!resp.ok) throw new Error('Error guardando');
+      
+      // Descargar PDF con los datos actualizados (transporte, etc.)
+      try {
+        await descargarPDF(true); 
+      } catch (error) {
+        console.error("Error generando PDF automático:", error);
+      }
+
+      await fetchPedidosProgramados(); // Recargar lista
+      marcarTransporteProgramado(nuevoPedido.id);
+      alert("Pedido programado correctamente.");
+      cerrarModalProgramacion();
+  } catch (e) {
+      alert("Error al guardar en el servidor: " + e.message);
+  }
+}
+
+function abrirPdfPedido(id) {
+  const pedido = globalPedidos.find(p => p.id === id);
+  if (!pedido) return;
+
+  const pv = pedido.punto_venta || 'ferreteria'; 
+  const filename = (pedido.consecutivo) ? `${pedido.consecutivo}_${pv}.pdf` : `remision_${pv}.pdf`;
+  const rutaWindows = `G:\\Mi unidad\\FERREDISTRIBUCIONES ALUMAS SAS\\bodega\\${filename}`;
+
+  // Mensaje directo: Ruta y opción de copiar
+  if (confirm(`Ubicación del archivo:\n${rutaWindows}\n\n¿Desea copiar la ruta al portapapeles?`)) {
+      navigator.clipboard.writeText(rutaWindows).then(() => {
+          // Opcional: Feedback breve o silencioso
+      }).catch(err => {
+          prompt("Copie la ruta manualmente:", rutaWindows);
+      });
+  }
+}
+
+function cargarPedidoProgramado(id) {
+  const pedido = globalPedidos.find(p => p.id === id);
+  
+  if (!pedido) return;
+  
+  if (!confirm("⚠️ Cargar este pedido reemplazará lo que tenga en pantalla. ¿Desea continuar?")) {
+    return;
+  }
+  
+  limpiarTabla();
+  
+  // Restaurar Cliente
+  const inputCliente = document.getElementById('nombre-cliente');
+  inputCliente.value = pedido.cliente_nombre || '';
+  clienteSeleccionado = pedido.cliente_data;
+  if (clienteSeleccionado && clienteSeleccionado.id) {
+     localStorage.setItem('CLIENTE_ID', String(clienteSeleccionado.id));
+  }
+  
+  // Restaurar Consecutivo
+  if (pedido.consecutivo) {
+      document.getElementById('numero-consecutivo').innerText = pedido.consecutivo;
+      lastConsecutivo = pedido.consecutivo;
+  }
+  
+  // Restaurar Items
+  const tbody = document.getElementById('tabla-productos');
+  tbody.innerHTML = ''; 
+  
+  pedido.items.forEach(item => {
+     const tr = document.createElement('tr');
+     tr.innerHTML = `
+        <td class="cant" contenteditable="true">${item.cantidad}</td>
+        <td contenteditable="true" data-id="${item.id_producto || ''}">${item.descripcion}</td>
+        <td class="valor-u" contenteditable="true">${formatearPesos(item.valor_unitario)}</td>
+        <td class="valor-t">${formatearPesos(item.valor_total)}</td>
+     `;
+     tbody.appendChild(tr);
+  });
+  
+  while (tbody.children.length < 7) {
+     agregarFila();
+  }
+  
+  // Restaurar Transporte
+  if (pedido.transporte) {
+      document.getElementById('trans-nombre').value = pedido.transporte.nombre || '';
+      document.getElementById('trans-direccion').value = pedido.transporte.direccion || '';
+      document.getElementById('trans-sector').value = pedido.transporte.sector || '';
+      document.getElementById('trans-telefono').value = pedido.transporte.telefono || '';
+      // Costo eliminado
+  } else {
+      document.getElementById('trans-nombre').value = '';
+      document.getElementById('trans-direccion').value = '';
+      document.getElementById('trans-sector').value = '';
+      document.getElementById('trans-telefono').value = '';
+      // Costo eliminado
+  }
+  
+  actualizarTotales();
+  if (pedido.transporte || pedido.items.some(item => descripcionActivaAvisoTransporte(item.descripcion))) {
+      marcarTransporteProgramado(pedido.id);
+  } else {
+      marcarTransporteNoProgramado();
+  }
+  // alert("Pedido cargado: " + (pedido.cliente_nombre || 'Sin nombre'));
+}
+
+function iniciarReprogramacion() {
+  if (!pedidoSeleccionadoId) {
+      alert("Seleccione un pedido para reprogramar.");
+      return;
+  }
+  abrirModalProgramacion(true); // true = modo reprogramación
+}
+
+async function cancelarPedido() {
+  if (!pedidoSeleccionadoId) {
+    alert("Seleccione un pedido para CANCELAR.");
+    return;
+  }
+  
+  if (!confirm("⚠️ ¿Está seguro de CANCELAR este pedido definitivamente?\n\nEsta acción:\n1. Eliminará el pedido del tablero de programación.\n2. ELIMINARÁ la venta correspondiente de la Base de Datos.\n\nEsta acción NO se puede deshacer.")) {
+      return;
+  }
+  
+  const pedido = globalPedidos.find(p => p.id === pedidoSeleccionadoId);
+  if (!pedido) return;
+  
+  try {
+      // 1. Eliminar de Programados
+      const resp1 = await fetch(getApiBase() + '/api/programados/' + pedidoSeleccionadoId, { method: 'DELETE' });
+      if (!resp1.ok) throw new Error("Error eliminando programación");
+      
+      // 2. Eliminar Venta de BD (si tiene consecutivo asociado)
+      if (pedido.consecutivo) {
+         const resp2 = await fetch(getApiBase() + '/api/venta/' + pedido.consecutivo, { method: 'DELETE' });
+         // Nota: Podría dar 404 si la venta ya no existe, lo cual no es crítico aquí, pero lo intentamos borrar.
+      }
+      
+      alert("Pedido CANCELADO y venta eliminada correctamente.");
+      pedidoSeleccionadoId = null;
+      await fetchPedidosProgramados();
+      
+  } catch(e) {
+      alert("Error al cancelar: " + e.message);
+  }
+}
+
+async function despacharPedido() {
+  if (!pedidoSeleccionadoId) {
+    alert("Seleccione un pedido del tablero para despachar.");
+    return;
+  }
+  
+  if (!confirm("¿Marcar pedido como DESPACHADO? Se eliminará del tablero.")) return;
+  
+  try {
+      const resp = await fetch(getApiBase() + '/api/programados/' + pedidoSeleccionadoId, {
+          method: 'DELETE'
+      });
+      if (!resp.ok) throw new Error('Error al eliminar');
+      
+      pedidoSeleccionadoId = null;
+      await fetchPedidosProgramados(); // Recargar
+  } catch (e) {
+      alert("Error despachando pedido: " + e.message);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    initDashboard();
+    // Auto-recargar cada 30 segundos para ver cambios de otros PCs
+    setInterval(fetchPedidosProgramados, 30000);
+});
+</script>
+  <script>
+      window.addEventListener('beforeprint', () => {
+        if (getPuntoVenta() === 'bodega') {
+           document.body.classList.add('formato-bodega');
+           prepararDatosPDF(); // Asegurar datos actualizados
+        }
+      });
+
+      window.addEventListener('afterprint', () => {
+         document.body.classList.remove('formato-bodega');
+      });
+  </script>
+</body>
 </html>
