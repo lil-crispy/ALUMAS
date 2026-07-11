@@ -481,9 +481,36 @@ window.addEventListener('resize', updateNavButtonsVisibility);
     solicitarClaveYRedirigir('remision.html');
   });
 
+  async function copiarLinkTicketsAlPortapapeles() {
+    const linkTickets = 'https://incap.onrender.com/';
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(linkTickets);
+        return true;
+      }
+    } catch {}
+
+    try {
+      const tempInput = document.createElement('input');
+      tempInput.value = linkTickets;
+      tempInput.setAttribute('readonly', '');
+      tempInput.style.position = 'absolute';
+      tempInput.style.left = '-9999px';
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      tempInput.setSelectionRange(0, tempInput.value.length);
+      const copied = document.execCommand('copy');
+      document.body.removeChild(tempInput);
+      return copied;
+    } catch {
+      return false;
+    }
+  }
+
   // Validación de contraseña para acceso al editor de tickets
-  document.getElementById('ticketEditorAccess').addEventListener('click', function (event) {
+  document.getElementById('ticketEditorAccess').addEventListener('click', async function (event) {
     event.preventDefault();
+    await copiarLinkTicketsAlPortapapeles();
     solicitarClaveYRedirigir('ticket-editor.html');
   });
 
