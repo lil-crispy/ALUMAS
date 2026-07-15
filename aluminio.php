@@ -74,180 +74,9 @@
       return './' . implode('/', $segmentos);
   }
 
-  function normalizarTextoImagen($texto) {
-      $texto = trim((string) $texto);
-      if ($texto === '') {
-          return '';
-      }
-
-      $texto = str_replace('\\', '/', $texto);
-      $texto = basename($texto);
-      $texto = preg_replace('/\.[a-z0-9]+$/i', '', $texto);
-      $texto = preg_replace('/^\d+[\s_-]*/u', '', $texto);
-      $texto = str_replace(['"', "'"], '', $texto);
-      $texto = str_replace(['_', '-', '/', '\\', '(', ')', '[', ']', '{', '}', ',', '.'], ' ', $texto);
-
-      if (function_exists('iconv')) {
-          $convertido = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $texto);
-          if ($convertido !== false && $convertido !== '') {
-              $texto = $convertido;
-          }
-      }
-
-      $texto = strtolower($texto);
-      $texto = preg_replace('/[^a-z0-9]+/', ' ', $texto);
-      $texto = trim(preg_replace('/\s+/', ' ', $texto));
-
-      return $texto;
-  }
-
-  function compactarTextoImagen($texto) {
-      return str_replace(' ', '', normalizarTextoImagen($texto));
-  }
-
-  function construirIndiceImagenesLocales() {
-      static $indice = null;
-
-      if ($indice !== null) {
-          return $indice;
-      }
-
-      $indice = [
-          'archivos' => [],
-          'por_compacto' => [],
-          'por_normalizado' => []
-      ];
-
-      $baseDir = __DIR__ . DIRECTORY_SEPARATOR . 'img';
-      if (!is_dir($baseDir)) {
-          return $indice;
-      }
-
-      $extensionesPermitidas = ['webp', 'png', 'jpg', 'jpeg', 'jfif', 'gif'];
-      $iterador = new RecursiveIteratorIterator(
-          new RecursiveDirectoryIterator($baseDir, FilesystemIterator::SKIP_DOTS)
-      );
-
-      foreach ($iterador as $archivo) {
-          if (!$archivo->isFile()) {
-              continue;
-          }
-
-          $extension = strtolower($archivo->getExtension());
-          if (!in_array($extension, $extensionesPermitidas, true)) {
-              continue;
-          }
-
-          $rutaAbsoluta = $archivo->getPathname();
-          $rutaRelativa = 'img/' . str_replace('\\', '/', substr($rutaAbsoluta, strlen($baseDir) + 1));
-          $normalizado = normalizarTextoImagen($archivo->getBasename());
-          $compacto = compactarTextoImagen($archivo->getBasename());
-
-          $registro = [
-              'ruta' => codificarRutaWeb($rutaRelativa),
-              'normalizado' => $normalizado,
-              'compacto' => $compacto,
-              'extension' => $extension
-          ];
-
-          $indice['archivos'][] = $registro;
-
-          if ($compacto !== '' && !isset($indice['por_compacto'][$compacto])) {
-              $indice['por_compacto'][$compacto] = $registro['ruta'];
-          }
-
-          if ($normalizado !== '' && !isset($indice['por_normalizado'][$normalizado])) {
-              $indice['por_normalizado'][$normalizado] = $registro['ruta'];
-          }
-      }
-
-      return $indice;
-  }
-
-  function buscarRutaLocalImagenProducto($imagen, $nombre = '') {
-      $imagen = trim((string) $imagen);
-      $nombre = trim((string) $nombre);
-
-      $rutaNormalizada = str_replace('\\', '/', $imagen);
-      $rutaNormalizada = preg_replace('#^\./#', '', $rutaNormalizada);
-      $rutaNormalizada = ltrim($rutaNormalizada, '/');
-      $nombreArchivo = basename($rutaNormalizada);
-
-      $candidatasRelativas = [];
-      foreach ([$rutaNormalizada, $nombreArchivo] as $base) {
-          if ($base === '') {
-              continue;
-          }
-          $candidatasRelativas[] = $base;
-          $candidatasRelativas[] = 'img/productos/' . $base;
-          $candidatasRelativas[] = 'img/distribucion/' . $base;
-          $candidatasRelativas[] = 'img/' . $base;
-      }
-
-      foreach (array_unique($candidatasRelativas) as $rutaRelativa) {
-          $rutaFisica = __DIR__ . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $rutaRelativa);
-          if (is_file($rutaFisica)) {
-              return codificarRutaWeb($rutaRelativa);
-          }
-      }
-
-      $indice = construirIndiceImagenesLocales();
-      $claves = array_unique(array_filter([
-          compactarTextoImagen($imagen),
-          compactarTextoImagen($nombre),
-          normalizarTextoImagen($imagen),
-          normalizarTextoImagen($nombre)
-      ]));
-
-      foreach ($claves as $clave) {
-          if (isset($indice['por_compacto'][$clave])) {
-              return $indice['por_compacto'][$clave];
-          }
-          if (isset($indice['por_normalizado'][$clave])) {
-              return $indice['por_normalizado'][$clave];
-          }
-      }
-
-      $mejorRuta = '';
-      $mejorPuntaje = 0;
-      $tokensReferencia = array_filter(array_unique(explode(' ', normalizarTextoImagen($imagen . ' ' . $nombre))));
-
-      foreach ($indice['archivos'] as $archivo) {
-          $puntaje = $archivo['extension'] === 'webp' ? 3 : 0;
-
-          foreach ($claves as $clave) {
-              if ($clave === '') {
-                  continue;
-              }
-
-              if ($archivo['compacto'] === $clave || $archivo['normalizado'] === $clave) {
-                  return $archivo['ruta'];
-              }
-
-              if (strlen($clave) >= 5 && (str_contains($archivo['compacto'], $clave) || str_contains($clave, $archivo['compacto']))) {
-                  $puntaje += 40;
-              }
-          }
-
-          if ($tokensReferencia) {
-              $tokensArchivo = array_filter(explode(' ', $archivo['normalizado']));
-              $coincidencias = count(array_intersect($tokensReferencia, $tokensArchivo));
-              $puntaje += $coincidencias * 15;
-          }
-
-          if ($puntaje > $mejorPuntaje) {
-              $mejorPuntaje = $puntaje;
-              $mejorRuta = $archivo['ruta'];
-          }
-      }
-
-      return $mejorPuntaje >= 30 ? $mejorRuta : '';
-  }
-
-  function construirCandidatasImagenProducto($imagen, $nombre = '') {
+  function construirCandidatasImagenProducto($imagen) {
       $logoRespaldo = './img/LOGO3.webp';
       $imagen = trim((string) $imagen);
-      $nombre = trim((string) $nombre);
 
       if ($imagen === '') {
           return [$logoRespaldo];
@@ -261,9 +90,24 @@
       $rutaNormalizada = preg_replace('#^\./#', '', $rutaNormalizada);
       $rutaNormalizada = ltrim($rutaNormalizada, '/');
       $nombreArchivo = basename($rutaNormalizada);
-      $nombreArchivoCodificado = rawurlencode($nombreArchivo);
-
       $candidatas = [];
+
+      $rutasRelativasLocales = array_filter(array_unique([
+          $rutaNormalizada,
+          $nombreArchivo ? 'public/img/productos/' . $nombreArchivo : '',
+          $nombreArchivo ? 'img/productos/' . $nombreArchivo : '',
+          $nombreArchivo ? 'uploads/productos/' . $nombreArchivo : '',
+          $nombreArchivo ? 'uploads/' . $nombreArchivo : '',
+          $nombreArchivo ? 'img/distribucion/' . $nombreArchivo : '',
+          $nombreArchivo ? 'img/' . $nombreArchivo : ''
+      ]));
+
+      foreach ($rutasRelativasLocales as $rutaRelativa) {
+          $rutaFisica = __DIR__ . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $rutaRelativa);
+          if (is_file($rutaFisica)) {
+              $candidatas[] = codificarRutaWeb($rutaRelativa);
+          }
+      }
 
       if ($rutaNormalizada !== '') {
           $rutaCodificada = implode('/', array_map('rawurlencode', explode('/', $rutaNormalizada)));
@@ -272,12 +116,13 @@
       }
 
       if ($nombreArchivo !== '') {
+          $nombreArchivoCodificado = rawurlencode($nombreArchivo);
           $directoriosPosibles = [
               'public/img/productos',
               'img/productos',
               'uploads/productos',
+              'uploads',
               'img/distribucion',
-              'img/ferreteria',
               'img'
           ];
 
@@ -285,11 +130,6 @@
               $candidatas[] = './' . $directorio . '/' . $nombreArchivoCodificado;
               $candidatas[] = '/' . $directorio . '/' . $nombreArchivoCodificado;
           }
-      }
-
-      $rutaLocal = buscarRutaLocalImagenProducto($imagen, $nombre);
-      if ($rutaLocal !== '') {
-          array_unshift($candidatas, $rutaLocal);
       }
 
       $candidatas[] = $logoRespaldo;
@@ -314,7 +154,7 @@
           $precio_formateado = "$" . number_format($precio, 0, ',', '.');
 
           // Intentar varias rutas candidatas, porque la BD y las carpetas actuales no usan siempre el mismo nombre.
-          $candidatas_imagen = construirCandidatasImagenProducto($imagen, $nombre);
+          $candidatas_imagen = construirCandidatasImagenProducto($imagen);
           $ruta_web_imagen = $candidatas_imagen[0];
           $candidatas_imagen_json = htmlspecialchars(json_encode($candidatas_imagen, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES);
 
