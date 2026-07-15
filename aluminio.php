@@ -74,41 +74,227 @@
       return './' . implode('/', $segmentos);
   }
 
-  function resolverRutaImagenProducto($imagen) {
+  function normalizarTextoImagen($texto) {
+      $texto = trim((string) $texto);
+      if ($texto === '') {
+          return '';
+      }
+
+      $texto = str_replace('\\', '/', $texto);
+      $texto = basename($texto);
+      $texto = preg_replace('/\.[a-z0-9]+$/i', '', $texto);
+      $texto = preg_replace('/^\d+[\s_-]*/u', '', $texto);
+      $texto = str_replace(['"', "'"], '', $texto);
+      $texto = str_replace(['_', '-', '/', '\\', '(', ')', '[', ']', '{', '}', ',', '.'], ' ', $texto);
+
+      if (function_exists('iconv')) {
+          $convertido = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $texto);
+          if ($convertido !== false && $convertido !== '') {
+              $texto = $convertido;
+          }
+      }
+
+      $texto = strtolower($texto);
+      $texto = preg_replace('/[^a-z0-9]+/', ' ', $texto);
+      $texto = trim(preg_replace('/\s+/', ' ', $texto));
+
+      return $texto;
+  }
+
+  function compactarTextoImagen($texto) {
+      return str_replace(' ', '', normalizarTextoImagen($texto));
+  }
+
+  function construirIndiceImagenesLocales() {
+      static $indice = null;
+
+      if ($indice !== null) {
+          return $indice;
+      }
+
+      $indice = [
+          'archivos' => [],
+          'por_compacto' => [],
+          'por_normalizado' => []
+      ];
+
+      $baseDir = __DIR__ . DIRECTORY_SEPARATOR . 'img';
+      if (!is_dir($baseDir)) {
+          return $indice;
+      }
+
+      $extensionesPermitidas = ['webp', 'png', 'jpg', 'jpeg', 'jfif', 'gif'];
+      $iterador = new RecursiveIteratorIterator(
+          new RecursiveDirectoryIterator($baseDir, FilesystemIterator::SKIP_DOTS)
+      );
+
+      foreach ($iterador as $archivo) {
+          if (!$archivo->isFile()) {
+              continue;
+          }
+
+          $extension = strtolower($archivo->getExtension());
+          if (!in_array($extension, $extensionesPermitidas, true)) {
+              continue;
+          }
+
+          $rutaAbsoluta = $archivo->getPathname();
+          $rutaRelativa = 'img/' . str_replace('\\', '/', substr($rutaAbsoluta, strlen($baseDir) + 1));
+          $normalizado = normalizarTextoImagen($archivo->getBasename());
+          $compacto = compactarTextoImagen($archivo->getBasename());
+
+          $registro = [
+              'ruta' => codificarRutaWeb($rutaRelativa),
+              'normalizado' => $normalizado,
+              'compacto' => $compacto,
+              'extension' => $extension
+          ];
+
+          $indice['archivos'][] = $registro;
+
+          if ($compacto !== '' && !isset($indice['por_compacto'][$compacto])) {
+              $indice['por_compacto'][$compacto] = $registro['ruta'];
+          }
+
+          if ($normalizado !== '' && !isset($indice['por_normalizado'][$normalizado])) {
+              $indice['por_normalizado'][$normalizado] = $registro['ruta'];
+          }
+      }
+
+      return $indice;
+  }
+
+  function buscarRutaLocalImagenProducto($imagen, $nombre = '') {
       $imagen = trim((string) $imagen);
-
-      if ($imagen === '') {
-          return './img/LOGO3.webp';
-      }
-
-      if (preg_match('#^https?://#i', $imagen)) {
-          return $imagen;
-      }
+      $nombre = trim((string) $nombre);
 
       $rutaNormalizada = str_replace('\\', '/', $imagen);
       $rutaNormalizada = preg_replace('#^\./#', '', $rutaNormalizada);
       $rutaNormalizada = ltrim($rutaNormalizada, '/');
+      $nombreArchivo = basename($rutaNormalizada);
 
-      $candidatas = [];
-
-      if ($rutaNormalizada !== '') {
-          $candidatas[] = $rutaNormalizada;
+      $candidatasRelativas = [];
+      foreach ([$rutaNormalizada, $nombreArchivo] as $base) {
+          if ($base === '') {
+              continue;
+          }
+          $candidatasRelativas[] = $base;
+          $candidatasRelativas[] = 'img/productos/' . $base;
+          $candidatasRelativas[] = 'img/distribucion/' . $base;
+          $candidatasRelativas[] = 'img/' . $base;
       }
 
-      if ($rutaNormalizada !== '' && !preg_match('#^(img|images)/#i', $rutaNormalizada)) {
-          $candidatas[] = 'img/productos/' . $rutaNormalizada;
-          $candidatas[] = 'img/distribucion/' . $rutaNormalizada;
-          $candidatas[] = 'img/' . $rutaNormalizada;
-      }
-
-      foreach (array_unique($candidatas) as $rutaRelativa) {
+      foreach (array_unique($candidatasRelativas) as $rutaRelativa) {
           $rutaFisica = __DIR__ . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $rutaRelativa);
           if (is_file($rutaFisica)) {
               return codificarRutaWeb($rutaRelativa);
           }
       }
 
-      return './img/LOGO3.webp';
+      $indice = construirIndiceImagenesLocales();
+      $claves = array_unique(array_filter([
+          compactarTextoImagen($imagen),
+          compactarTextoImagen($nombre),
+          normalizarTextoImagen($imagen),
+          normalizarTextoImagen($nombre)
+      ]));
+
+      foreach ($claves as $clave) {
+          if (isset($indice['por_compacto'][$clave])) {
+              return $indice['por_compacto'][$clave];
+          }
+          if (isset($indice['por_normalizado'][$clave])) {
+              return $indice['por_normalizado'][$clave];
+          }
+      }
+
+      $mejorRuta = '';
+      $mejorPuntaje = 0;
+      $tokensReferencia = array_filter(array_unique(explode(' ', normalizarTextoImagen($imagen . ' ' . $nombre))));
+
+      foreach ($indice['archivos'] as $archivo) {
+          $puntaje = $archivo['extension'] === 'webp' ? 3 : 0;
+
+          foreach ($claves as $clave) {
+              if ($clave === '') {
+                  continue;
+              }
+
+              if ($archivo['compacto'] === $clave || $archivo['normalizado'] === $clave) {
+                  return $archivo['ruta'];
+              }
+
+              if (strlen($clave) >= 5 && (str_contains($archivo['compacto'], $clave) || str_contains($clave, $archivo['compacto']))) {
+                  $puntaje += 40;
+              }
+          }
+
+          if ($tokensReferencia) {
+              $tokensArchivo = array_filter(explode(' ', $archivo['normalizado']));
+              $coincidencias = count(array_intersect($tokensReferencia, $tokensArchivo));
+              $puntaje += $coincidencias * 15;
+          }
+
+          if ($puntaje > $mejorPuntaje) {
+              $mejorPuntaje = $puntaje;
+              $mejorRuta = $archivo['ruta'];
+          }
+      }
+
+      return $mejorPuntaje >= 30 ? $mejorRuta : '';
+  }
+
+  function construirCandidatasImagenProducto($imagen, $nombre = '') {
+      $logoRespaldo = './img/LOGO3.webp';
+      $imagen = trim((string) $imagen);
+      $nombre = trim((string) $nombre);
+
+      if ($imagen === '') {
+          return [$logoRespaldo];
+      }
+
+      if (preg_match('#^https?://#i', $imagen)) {
+          return [$imagen, $logoRespaldo];
+      }
+
+      $rutaNormalizada = str_replace('\\', '/', $imagen);
+      $rutaNormalizada = preg_replace('#^\./#', '', $rutaNormalizada);
+      $rutaNormalizada = ltrim($rutaNormalizada, '/');
+      $nombreArchivo = basename($rutaNormalizada);
+      $nombreArchivoCodificado = rawurlencode($nombreArchivo);
+
+      $candidatas = [];
+
+      if ($rutaNormalizada !== '') {
+          $rutaCodificada = implode('/', array_map('rawurlencode', explode('/', $rutaNormalizada)));
+          $candidatas[] = './' . $rutaCodificada;
+          $candidatas[] = '/' . $rutaCodificada;
+      }
+
+      if ($nombreArchivo !== '') {
+          $directoriosPosibles = [
+              'public/img/productos',
+              'img/productos',
+              'uploads/productos',
+              'img/distribucion',
+              'img/ferreteria',
+              'img'
+          ];
+
+          foreach ($directoriosPosibles as $directorio) {
+              $candidatas[] = './' . $directorio . '/' . $nombreArchivoCodificado;
+              $candidatas[] = '/' . $directorio . '/' . $nombreArchivoCodificado;
+          }
+      }
+
+      $rutaLocal = buscarRutaLocalImagenProducto($imagen, $nombre);
+      if ($rutaLocal !== '') {
+          array_unshift($candidatas, $rutaLocal);
+      }
+
+      $candidatas[] = $logoRespaldo;
+
+      return array_values(array_unique($candidatas));
   }
 
   try {
@@ -127,8 +313,10 @@
           // Formatear precio
           $precio_formateado = "$" . number_format($precio, 0, ',', '.');
 
-          // Resolver la imagen real desde la ruta guardada en BD o desde carpetas comunes del proyecto.
-          $ruta_web_imagen = resolverRutaImagenProducto($imagen);
+          // Intentar varias rutas candidatas, porque la BD y las carpetas actuales no usan siempre el mismo nombre.
+          $candidatas_imagen = construirCandidatasImagenProducto($imagen, $nombre);
+          $ruta_web_imagen = $candidatas_imagen[0];
+          $candidatas_imagen_json = htmlspecialchars(json_encode($candidatas_imagen, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES);
 
           // Generar atributo data-ue si existe
           $data_ue_attr = $ue ? 'data-ue="' . htmlspecialchars($ue) . '"' : '';
@@ -141,7 +329,7 @@
 
           echo '
           <div class="producto" data-nombre="' . htmlspecialchars($nombre) . '" ' . $data_ue_attr . '>
-            <img src="' . htmlspecialchars($ruta_web_imagen) . '" alt="' . htmlspecialchars($nombre) . '" loading="lazy" decoding="async" onerror="this.onerror=null;this.src=\'./img/LOGO3.webp\';">
+            <img src="' . htmlspecialchars($ruta_web_imagen) . '" alt="' . htmlspecialchars($nombre) . '" loading="lazy" decoding="async" data-img-candidates="' . $candidatas_imagen_json . '" data-img-index="0" onerror="manejarErrorImagenProducto(this)">
             <div class="descripcion">' . htmlspecialchars($nombre) . '</div>
             <div class="precio">' . $precio_formateado . '</div>
             <div class="acciones">
@@ -180,6 +368,31 @@
 <script>
   
   let carrito = [];
+
+  function manejarErrorImagenProducto(img) {
+    let candidatas = [];
+
+    try {
+      candidatas = JSON.parse(img.dataset.imgCandidates || '[]');
+    } catch (error) {
+      candidatas = [];
+    }
+
+    let indiceActual = parseInt(img.dataset.imgIndex || '0', 10);
+    if (Number.isNaN(indiceActual)) {
+      indiceActual = 0;
+    }
+
+    const siguienteIndice = indiceActual + 1;
+    if (siguienteIndice < candidatas.length) {
+      img.dataset.imgIndex = String(siguienteIndice);
+      img.src = candidatas[siguienteIndice];
+      return;
+    }
+
+    img.onerror = null;
+    img.src = './img/LOGO3.webp';
+  }
 
   function mostrarNotificacion(mensaje) {
     const notificacion = document.getElementById("notificacion");
