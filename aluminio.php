@@ -69,72 +69,24 @@
   <?php
   require_once 'db.php';
 
-  function codificarRutaWeb($ruta) {
-      $segmentos = array_map('rawurlencode', explode('/', $ruta));
-      return './' . implode('/', $segmentos);
-  }
-
-  function construirCandidatasImagenProducto($imagen) {
+  function construirUrlImagenProducto($imagen) {
       $logoRespaldo = './img/LOGO3.webp';
       $imagen = trim((string) $imagen);
 
       if ($imagen === '') {
-          return [$logoRespaldo];
+          return $logoRespaldo;
       }
 
       if (preg_match('#^https?://#i', $imagen)) {
-          return [$imagen, $logoRespaldo];
+          return $imagen;
       }
 
-      $rutaNormalizada = str_replace('\\', '/', $imagen);
-      $rutaNormalizada = preg_replace('#^\./#', '', $rutaNormalizada);
-      $rutaNormalizada = ltrim($rutaNormalizada, '/');
-      $nombreArchivo = basename($rutaNormalizada);
-      $candidatas = [];
-
-      $rutasRelativasLocales = array_filter(array_unique([
-          $rutaNormalizada,
-          $nombreArchivo ? 'public/img/productos/' . $nombreArchivo : '',
-          $nombreArchivo ? 'img/productos/' . $nombreArchivo : '',
-          $nombreArchivo ? 'uploads/productos/' . $nombreArchivo : '',
-          $nombreArchivo ? 'uploads/' . $nombreArchivo : '',
-          $nombreArchivo ? 'img/distribucion/' . $nombreArchivo : '',
-          $nombreArchivo ? 'img/' . $nombreArchivo : ''
-      ]));
-
-      foreach ($rutasRelativasLocales as $rutaRelativa) {
-          $rutaFisica = __DIR__ . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $rutaRelativa);
-          if (is_file($rutaFisica)) {
-              $candidatas[] = codificarRutaWeb($rutaRelativa);
-          }
+      $nombreArchivo = basename(str_replace('\\', '/', $imagen));
+      if ($nombreArchivo === '') {
+          return $logoRespaldo;
       }
 
-      if ($rutaNormalizada !== '') {
-          $rutaCodificada = implode('/', array_map('rawurlencode', explode('/', $rutaNormalizada)));
-          $candidatas[] = './' . $rutaCodificada;
-          $candidatas[] = '/' . $rutaCodificada;
-      }
-
-      if ($nombreArchivo !== '') {
-          $nombreArchivoCodificado = rawurlencode($nombreArchivo);
-          $directoriosPosibles = [
-              'public/img/productos',
-              'img/productos',
-              'uploads/productos',
-              'uploads',
-              'img/distribucion',
-              'img'
-          ];
-
-          foreach ($directoriosPosibles as $directorio) {
-              $candidatas[] = './' . $directorio . '/' . $nombreArchivoCodificado;
-              $candidatas[] = '/' . $directorio . '/' . $nombreArchivoCodificado;
-          }
-      }
-
-      $candidatas[] = $logoRespaldo;
-
-      return array_values(array_unique($candidatas));
+      return '/img/productos/' . rawurlencode($nombreArchivo);
   }
 
   try {
@@ -153,10 +105,8 @@
           // Formatear precio
           $precio_formateado = "$" . number_format($precio, 0, ',', '.');
 
-          // Intentar varias rutas candidatas, porque la BD y las carpetas actuales no usan siempre el mismo nombre.
-          $candidatas_imagen = construirCandidatasImagenProducto($imagen);
-          $ruta_web_imagen = $candidatas_imagen[0];
-          $candidatas_imagen_json = htmlspecialchars(json_encode($candidatas_imagen, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES);
+          // Construir una URL publica directa al servidor de imagenes.
+          $ruta_web_imagen = construirUrlImagenProducto($imagen);
 
           // Generar atributo data-ue si existe
           $data_ue_attr = $ue ? 'data-ue="' . htmlspecialchars($ue) . '"' : '';
@@ -169,7 +119,7 @@
 
           echo '
           <div class="producto" data-nombre="' . htmlspecialchars($nombre) . '" ' . $data_ue_attr . '>
-            <img src="' . htmlspecialchars($ruta_web_imagen) . '" alt="' . htmlspecialchars($nombre) . '" loading="lazy" decoding="async" data-img-candidates="' . $candidatas_imagen_json . '" data-img-index="0" onerror="manejarErrorImagenProducto(this)">
+            <img src="' . htmlspecialchars($ruta_web_imagen) . '" alt="' . htmlspecialchars($nombre) . '" loading="lazy" decoding="async" onerror="this.onerror=null;this.src=\'./img/LOGO3.webp\';">
             <div class="descripcion">' . htmlspecialchars($nombre) . '</div>
             <div class="precio">' . $precio_formateado . '</div>
             <div class="acciones">
@@ -208,31 +158,6 @@
 <script>
   
   let carrito = [];
-
-  function manejarErrorImagenProducto(img) {
-    let candidatas = [];
-
-    try {
-      candidatas = JSON.parse(img.dataset.imgCandidates || '[]');
-    } catch (error) {
-      candidatas = [];
-    }
-
-    let indiceActual = parseInt(img.dataset.imgIndex || '0', 10);
-    if (Number.isNaN(indiceActual)) {
-      indiceActual = 0;
-    }
-
-    const siguienteIndice = indiceActual + 1;
-    if (siguienteIndice < candidatas.length) {
-      img.dataset.imgIndex = String(siguienteIndice);
-      img.src = candidatas[siguienteIndice];
-      return;
-    }
-
-    img.onerror = null;
-    img.src = './img/LOGO3.webp';
-  }
 
   function mostrarNotificacion(mensaje) {
     const notificacion = document.getElementById("notificacion");
