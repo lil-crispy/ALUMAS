@@ -11,7 +11,7 @@
 </head>
 <body>
 
-<header>DISTRIBUCION PARA FERRETERIA</header>
+<header>PRECIOS EXCLUSIVOS PARA ALMACENES</header>
 <div id="ticket" style="display: none; font-family: monospace; padding: 10px;">
   <!-- Logo y número de celular -->
   <h1 style="text-align: center; font-family: 'Arial', sans-serif;">ALUMAS</h1>
@@ -69,6 +69,48 @@
   <?php
   require_once 'db.php';
 
+  function codificarRutaWeb($ruta) {
+      $segmentos = array_map('rawurlencode', explode('/', $ruta));
+      return './' . implode('/', $segmentos);
+  }
+
+  function resolverRutaImagenProducto($imagen) {
+      $imagen = trim((string) $imagen);
+
+      if ($imagen === '') {
+          return './img/LOGO3.webp';
+      }
+
+      if (preg_match('#^https?://#i', $imagen)) {
+          return $imagen;
+      }
+
+      $rutaNormalizada = str_replace('\\', '/', $imagen);
+      $rutaNormalizada = preg_replace('#^\./#', '', $rutaNormalizada);
+      $rutaNormalizada = ltrim($rutaNormalizada, '/');
+
+      $candidatas = [];
+
+      if ($rutaNormalizada !== '') {
+          $candidatas[] = $rutaNormalizada;
+      }
+
+      if ($rutaNormalizada !== '' && !preg_match('#^(img|images)/#i', $rutaNormalizada)) {
+          $candidatas[] = 'img/productos/' . $rutaNormalizada;
+          $candidatas[] = 'img/distribucion/' . $rutaNormalizada;
+          $candidatas[] = 'img/' . $rutaNormalizada;
+      }
+
+      foreach (array_unique($candidatas) as $rutaRelativa) {
+          $rutaFisica = __DIR__ . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $rutaRelativa);
+          if (is_file($rutaFisica)) {
+              return codificarRutaWeb($rutaRelativa);
+          }
+      }
+
+      return './img/LOGO3.webp';
+  }
+
   try {
       // Consulta para obtener los productos del inventario
       // Se asume que la tabla 'inventario' tiene las columnas: nombre, precio_mayor, imagen, unidad_empaque
@@ -85,15 +127,8 @@
           // Formatear precio
           $precio_formateado = "$" . number_format($precio, 0, ',', '.');
 
-          // Configurar ruta de imagen
-          // Ruta absoluta en el servidor (como referencia o validación)
-          // /var/www/html/public/img/productos
-          
-          // Ruta web relativa para el navegador
-          // Las imágenes están en /var/www/html/public/img/productos
-          // La base de datos contiene solo el nombre del archivo (ej: "foto.jpg")
-          // Usamos rawurlencode para manejar espacios y caracteres especiales
-          $ruta_web_imagen = "/public/img/productos/" . rawurlencode($imagen);
+          // Resolver la imagen real desde la ruta guardada en BD o desde carpetas comunes del proyecto.
+          $ruta_web_imagen = resolverRutaImagenProducto($imagen);
 
           // Generar atributo data-ue si existe
           $data_ue_attr = $ue ? 'data-ue="' . htmlspecialchars($ue) . '"' : '';
@@ -106,7 +141,7 @@
 
           echo '
           <div class="producto" data-nombre="' . htmlspecialchars($nombre) . '" ' . $data_ue_attr . '>
-            <img src="' . htmlspecialchars($ruta_web_imagen) . '" alt="' . htmlspecialchars($nombre) . '">
+            <img src="' . htmlspecialchars($ruta_web_imagen) . '" alt="' . htmlspecialchars($nombre) . '" loading="lazy" decoding="async" onerror="this.onerror=null;this.src=\'./img/LOGO3.webp\';">
             <div class="descripcion">' . htmlspecialchars($nombre) . '</div>
             <div class="precio">' . $precio_formateado . '</div>
             <div class="acciones">
