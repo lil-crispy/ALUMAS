@@ -1055,6 +1055,7 @@
           <strong>CLIENTE:</strong>
           <span class="cliente-container">
             <input type="text" id="nombre-cliente" class="cliente-input" placeholder="Buscar cliente por nombre o NIT..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="cliente_busqueda_remision">
+            <input type="hidden" id="selected-client-id" value="">
             <div id="autocomplete-dropdown" class="autocomplete-dropdown"></div>
           </span>
         </p>
@@ -1923,7 +1924,7 @@
       
       // Limpiar variable global de cliente
       clienteSeleccionado = null; 
-      localStorage.removeItem('CLIENTE_ID'); 
+      setSelectedClientId(null)
       const facturaElectronicaCheckbox = document.getElementById('factura-electronica-checkbox');
       if (facturaElectronicaCheckbox) facturaElectronicaCheckbox.checked = false;
       resetEstadoFacturacionElectronica();
@@ -2749,9 +2750,7 @@ try {
       const inputCliente = document.getElementById('nombre-cliente');
       if (inputCliente) inputCliente.value = cotizacion.cliente.nombre || '';
       clienteSeleccionado = cotizacion.cliente.data;
-      if (clienteSeleccionado && clienteSeleccionado.id) {
-        localStorage.setItem('CLIENTE_ID', String(clienteSeleccionado.id));
-      }
+      setSelectedClientId(clienteSeleccionado?.id || null)
       sincronizarFacturacionElectronicaUI({ forzar: true });
       const tbody = document.getElementById('tabla-productos');
       tbody.innerHTML = '';
@@ -3625,11 +3624,45 @@ try {
     }
     const MENSAJE_FACTURA_ELECTRONICA_SIN_CLIENTE = 'No se puede generar factura electrónica sin un cliente registrado y válido.'
     let facturacionElectronicaRequestId = 0
+    let selectedClientId = null
     let facturacionElectronicaEstadoActual = {
       clienteId: null,
       ready: null,
       message: '',
       checked: false
+    }
+    function setSelectedClientId(clienteId) {
+      const normalizado = Number.isFinite(Number(clienteId)) && Number(clienteId) > 0 ? Number(clienteId) : null
+      selectedClientId = normalizado
+      const hiddenInput = document.getElementById('selected-client-id')
+      if (hiddenInput) {
+        hiddenInput.value = normalizado ? String(normalizado) : ''
+      }
+      if (normalizado) {
+        localStorage.setItem('CLIENTE_ID', String(normalizado))
+      } else {
+        localStorage.removeItem('CLIENTE_ID')
+      }
+      facturacionElectronicaRequestId += 1
+      facturacionElectronicaEstadoActual = {
+        clienteId: normalizado,
+        ready: null,
+        message: '',
+        checked: false
+      }
+      return normalizado
+    }
+    function getSelectedClientId() {
+      if (Number.isFinite(Number(selectedClientId)) && Number(selectedClientId) > 0) {
+        return Number(selectedClientId)
+      }
+      const hiddenInput = document.getElementById('selected-client-id')
+      const hiddenValue = hiddenInput ? Number(hiddenInput.value) : NaN
+      if (Number.isFinite(hiddenValue) && hiddenValue > 0) {
+        selectedClientId = hiddenValue
+        return hiddenValue
+      }
+      return null
     }
     function obtenerElementosFacturacionElectronica() {
       return {
@@ -3676,7 +3709,7 @@ try {
     }
     function resetEstadoFacturacionElectronica() {
       facturacionElectronicaEstadoActual = {
-        clienteId: null,
+        clienteId: getSelectedClientId(),
         ready: null,
         message: '',
         checked: false
@@ -3705,13 +3738,15 @@ try {
         actualizarPanelFacturacionElectronica('', '', '', false)
         return { checked: false, ready: true, message: '' }
       }
-      if (!clienteId) {
+      const clienteIdNormalizado = Number.isFinite(Number(clienteId)) && Number(clienteId) > 0 ? Number(clienteId) : getSelectedClientId()
+      if (!clienteIdNormalizado) {
         return manejarFacturacionElectronicaSinCliente()
       }
-      if (!forzar && facturacionElectronicaEstadoActual.checked && facturacionElectronicaEstadoActual.clienteId === clienteId && facturacionElectronicaEstadoActual.ready !== null) {
+      if (!forzar && facturacionElectronicaEstadoActual.checked && facturacionElectronicaEstadoActual.clienteId === clienteIdNormalizado && facturacionElectronicaEstadoActual.ready !== null) {
         return facturacionElectronicaEstadoActual
       }
       const requestId = ++facturacionElectronicaRequestId
+      const url = getApiBase() + '/api/clientes/' + encodeURIComponent(clienteIdNormalizado) + '/facturacion-status'
       actualizarPanelFacturacionElectronica(
         'loading',
         'Validando cliente para factura electronica',
@@ -3719,12 +3754,15 @@ try {
         true
       )
       try {
-        const resp = await fetch(getApiBase() + '/api/clientes/' + encodeURIComponent(clienteId) + '/facturacion-status')
+        const resp = await fetch(url)
         const data = await resp.json().catch(() => ({}))
         if (requestId !== facturacionElectronicaRequestId) {
           return facturacionElectronicaEstadoActual
         }
         if (!resp.ok) {
+          console.log('selectedClientId:', clienteIdNormalizado)
+          console.log('URL consultada:', url)
+          console.log('respuesta JSON completa del endpoint:', data)
           throw new Error(data?.message || 'No se pudo validar la facturacion electronica del cliente.')
         }
         const ready = !!(data?.facturacion?.ready ?? data?.ready)
@@ -3736,10 +3774,15 @@ try {
             : 'Cliente no apto para facturacion electronica')
         )
         facturacionElectronicaEstadoActual = {
-          clienteId,
+          clienteId: clienteIdNormalizado,
           ready,
           message,
           checked: true
+        }
+        if (!ready) {
+          console.log('selectedClientId:', clienteIdNormalizado)
+          console.log('URL consultada:', url)
+          console.log('respuesta JSON completa del endpoint:', data)
         }
         actualizarPanelFacturacionElectronica(
           ready ? 'ready' : 'error',
@@ -3751,7 +3794,7 @@ try {
       } catch (error) {
         const message = error?.message || 'No se pudo validar la facturacion electronica del cliente.'
         facturacionElectronicaEstadoActual = {
-          clienteId,
+          clienteId: clienteIdNormalizado,
           ready: false,
           message,
           checked: true
@@ -3772,23 +3815,25 @@ try {
         actualizarPanelFacturacionElectronica('', '', '', false)
         return
       }
-      if (!clienteSeleccionado || !clienteSeleccionado.id) {
+      const clienteId = getSelectedClientId()
+      if (!clienteId) {
         manejarFacturacionElectronicaSinCliente()
         return
       }
-      await consultarEstadoFacturacionElectronica(clienteSeleccionado.id, opciones)
+      await consultarEstadoFacturacionElectronica(clienteId, opciones)
     }
     async function validarFacturacionElectronicaAntesDeGuardar() {
       const { checkbox } = obtenerElementosFacturacionElectronica()
       if (!checkbox || !checkbox.checked) {
         return true
       }
-      if (!clienteSeleccionado || !clienteSeleccionado.id) {
+      const clienteId = getSelectedClientId()
+      if (!clienteId) {
         manejarFacturacionElectronicaSinCliente()
         alert(MENSAJE_FACTURA_ELECTRONICA_SIN_CLIENTE)
         return false
       }
-      const estado = await consultarEstadoFacturacionElectronica(clienteSeleccionado.id, { forzar: true })
+      const estado = await consultarEstadoFacturacionElectronica(clienteId, { forzar: true })
       if (!estado.ready) {
         alert(estado.message || 'Cliente no apto para facturacion electronica')
         return false
@@ -3866,9 +3911,7 @@ try {
         input.value = `${cliente.id} - ${cliente.nit_cc || 'Sin NIT'} - ${cliente.nombre}`
       }
       clienteSeleccionado = cliente
-      if (cliente && cliente.id) {
-        localStorage.setItem('CLIENTE_ID', String(cliente.id))
-      }
+      setSelectedClientId(cliente?.id || null)
 
       // LÓGICA AUTOMÁTICA DE PUNTO DE VENTA (MAYORISTA -> BODEGA)
       const tipo = (cliente.tipo_cliente || '').toLowerCase();
@@ -3905,7 +3948,7 @@ try {
       input.addEventListener('input', () => {
         const term = input.value.trim()
         clienteSeleccionado = null
-        localStorage.removeItem('CLIENTE_ID')
+        setSelectedClientId(null)
         resetEstadoFacturacionElectronica()
         sincronizarFacturacionElectronicaUI()
         if (tablaTieneAvisoTransporte()) {
@@ -3959,7 +4002,7 @@ try {
     }
     function getIds() {
       const u = parseInt(localStorage.getItem('USUARIO_ID') || '1') || 1
-      const c = parseInt(localStorage.getItem('CLIENTE_ID') || '1') || 1
+      const c = getSelectedClientId() || parseInt(localStorage.getItem('CLIENTE_ID') || '1') || 1
       return { usuario_id: u, cliente_id: c }
     }
     let lastConsecutivo = null
@@ -4837,9 +4880,7 @@ function cargarPedidoProgramado(id) {
   const inputCliente = document.getElementById('nombre-cliente');
   inputCliente.value = pedido.cliente_nombre || '';
   clienteSeleccionado = pedido.cliente_data;
-  if (clienteSeleccionado && clienteSeleccionado.id) {
-     localStorage.setItem('CLIENTE_ID', String(clienteSeleccionado.id));
-  }
+  setSelectedClientId(clienteSeleccionado?.id || null)
   sincronizarFacturacionElectronicaUI({ forzar: true });
   
   // Restaurar Consecutivo
