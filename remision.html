@@ -3715,6 +3715,25 @@ try {
         checked: false
       }
     }
+    function obtenerEstadoFacturacionDesdeClienteSeleccionado(clienteId) {
+      if (!clienteSeleccionado) return null
+      const clienteActualId = Number(clienteSeleccionado.id)
+      if (!Number.isFinite(clienteActualId) || clienteActualId <= 0 || clienteActualId !== Number(clienteId)) {
+        return null
+      }
+      if (typeof clienteSeleccionado.facturacion_electronica_completa !== 'boolean') {
+        return null
+      }
+      return {
+        ready: clienteSeleccionado.facturacion_electronica_completa === true,
+        message: String(
+          clienteSeleccionado.facturacion_mensaje
+          || (clienteSeleccionado.facturacion_electronica_completa
+            ? 'Cliente apto para facturacion electronica'
+            : 'Cliente no apto para facturacion electronica')
+        )
+      }
+    }
     function manejarFacturacionElectronicaSinCliente() {
       facturacionElectronicaEstadoActual = {
         clienteId: null,
@@ -3763,6 +3782,24 @@ try {
           console.log('selectedClientId:', clienteIdNormalizado)
           console.log('URL consultada:', url)
           console.log('respuesta JSON completa del endpoint:', data)
+          if (resp.status === 404) {
+            const estadoDesdeCliente = obtenerEstadoFacturacionDesdeClienteSeleccionado(clienteIdNormalizado)
+            if (estadoDesdeCliente) {
+              facturacionElectronicaEstadoActual = {
+                clienteId: clienteIdNormalizado,
+                ready: estadoDesdeCliente.ready,
+                message: estadoDesdeCliente.message,
+                checked: true
+              }
+              actualizarPanelFacturacionElectronica(
+                estadoDesdeCliente.ready ? 'ready' : 'error',
+                estadoDesdeCliente.ready ? 'Cliente apto para facturacion electronica' : 'Cliente no apto para facturacion electronica',
+                estadoDesdeCliente.message,
+                true
+              )
+              return facturacionElectronicaEstadoActual
+            }
+          }
           throw new Error(data?.message || 'No se pudo validar la facturacion electronica del cliente.')
         }
         const ready = !!(data?.facturacion?.ready ?? data?.ready)
