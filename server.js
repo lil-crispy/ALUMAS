@@ -181,6 +181,85 @@ function pickFirstExistingColumn(columns, candidates) {
   return null
 }
 
+function buildClienteFacturacionStatus(cliente) {
+  const displayName = String(
+    cliente?.company ||
+    cliente?.trade_name ||
+    cliente?.names ||
+    cliente?.nombre ||
+    ''
+  ).trim()
+
+  const identification = String(
+    cliente?.identification ||
+    cliente?.nit_cc ||
+    ''
+  ).trim()
+
+  const requiredFields = [
+    { key: 'identification', label: 'Identificacion', value: identification },
+    {
+      key: 'identification_document_code',
+      label: 'Tipo de documento',
+      value: String(cliente?.identification_document_code || '').trim()
+    },
+    {
+      key: 'legal_organization_code',
+      label: 'Organizacion legal',
+      value: String(cliente?.legal_organization_code || '').trim()
+    },
+    {
+      key: 'tribute_code',
+      label: 'Tributo',
+      value: String(cliente?.tribute_code || '').trim()
+    },
+    {
+      key: 'direccion',
+      label: 'Direccion',
+      value: String(cliente?.direccion || '').trim()
+    },
+    {
+      key: 'email',
+      label: 'Correo electronico',
+      value: String(cliente?.email || '').trim()
+    },
+    {
+      key: 'display_name',
+      label: 'Nombre para facturacion',
+      value: displayName
+    }
+  ]
+
+  const missing_fields = requiredFields.filter((field) => !field.value).map((field) => field.key)
+  const missing_labels = requiredFields.filter((field) => !field.value).map((field) => field.label)
+
+  if (missing_fields.length === 0) {
+    return {
+      ready: true,
+      missing_fields: [],
+      missing_labels: [],
+      message: 'Cliente apto para facturacion electronica.'
+    }
+  }
+
+  return {
+    ready: false,
+    missing_fields,
+    missing_labels,
+    message: `Esta factura electronica no se puede realizar porque al cliente le faltan estos datos: ${missing_labels.join(', ')}`
+  }
+}
+
+function enrichClienteWithFacturacion(cliente) {
+  const facturacion = buildClienteFacturacionStatus(cliente)
+  return {
+    ...cliente,
+    facturacion_electronica_completa: facturacion.ready,
+    facturacion_campos_faltantes: facturacion.missing_fields,
+    facturacion_mensaje: facturacion.message
+  }
+}
+
 async function appendUserAccessLog(entry) {
   let currentEntries = []
 
@@ -404,12 +483,87 @@ app.get('/api/clientes', async (req, res) => {
     if (!q) return res.json({ ok: true, clientes: [] })
     const like = `%${q}%`
     const [rows] = await pool.query(
-      'SELECT id_cliente AS id, nombre, nit_cc, telefono, direccion, tipo_cliente FROM clientes WHERE nombre LIKE ? OR nit_cc LIKE ? ORDER BY nombre LIMIT 20',
-      [like, like]
+      `SELECT
+         id_cliente AS id,
+         nombre,
+         nit_cc,
+         telefono,
+         direccion,
+         tipo_cliente,
+         identification,
+         identification_document_code,
+         legal_organization_code,
+         tribute_code,
+         email,
+         company,
+         trade_name,
+         names
+       FROM clientes
+       WHERE nombre LIKE ?
+          OR nit_cc LIKE ?
+          OR identification LIKE ?
+       ORDER BY nombre
+       LIMIT 20`,
+      [like, like, like]
     )
-    res.json({ ok: true, clientes: rows || [] })
+    res.json({ ok: true, clientes: (rows || []).map(enrichClienteWithFacturacion) })
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message })
+  }
+})
+
+app.get('/api/clientes/:id/facturacion-status', async (req, res) => {
+  try {
+    const id = Number(req.params.id)
+    if (!Number.isFinite(id) || id <= 0) {
+      return res.status(400).json({
+        ready: false,
+        missing_fields: ['cliente'],
+        missing_labels: ['Cliente'],
+        message: 'Cliente invalido.'
+      })
+    }
+
+    const [rows] = await pool.query(
+      `SELECT
+         id_cliente AS id,
+         nombre,
+         nit_cc,
+         telefono,
+         direccion,
+         tipo_cliente,
+         identification,
+         identification_document_code,
+         legal_organization_code,
+         tribute_code,
+         email,
+         company,
+         trade_name,
+         names
+       FROM clientes
+       WHERE id_cliente = ?
+       LIMIT 1`,
+      [id]
+    )
+
+    const cliente = rows && rows.length ? rows[0] : null
+    if (!cliente) {
+      return res.status(404).json({
+        ready: false,
+        missing_fields: ['cliente'],
+        missing_labels: ['Cliente'],
+        message: 'Cliente no encontrado.'
+      })
+    }
+
+    return res.json(buildClienteFacturacionStatus(cliente))
+  } catch (err) {
+    res.status(500).json({
+      ready: false,
+      missing_fields: [],
+      missing_labels: [],
+      message: err.message
+    })
   }
 })
 
