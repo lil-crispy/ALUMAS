@@ -260,6 +260,137 @@ function enrichClienteWithFacturacion(cliente) {
   }
 }
 
+function hasProductoFacturacionValue(value) {
+  if (value === null || value === undefined) return false
+  if (typeof value === 'number') return Number.isFinite(value)
+  if (typeof value === 'boolean') return true
+  return String(value).trim() !== ''
+}
+
+function normalizeProductoFactusExcluded(value) {
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'number') return value === 1
+  const normalized = String(value || '').trim().toLowerCase()
+  return normalized === 'true' || normalized === '1' || normalized === 'si' || normalized === 'sí'
+}
+
+function buildProductoFacturacionStatus(producto) {
+  const factusIsExcluded = normalizeProductoFactusExcluded(producto?.factus_is_excluded)
+  const requiredFields = [
+    {
+      key: 'factus_code_reference',
+      label: 'Codigo de referencia del producto',
+      value: producto?.factus_code_reference
+    },
+    {
+      key: 'nombre',
+      label: 'Nombre del producto',
+      value: producto?.nombre
+    },
+    {
+      key: 'precio_final',
+      label: 'Precio del producto',
+      value: producto?.precio_final
+    },
+    {
+      key: 'factus_unit_measure_code',
+      label: 'Unidad de medida Factus',
+      value: producto?.factus_unit_measure_code
+    },
+    {
+      key: 'factus_standard_code',
+      label: 'Codigo estandar del producto',
+      value: producto?.factus_standard_code
+    },
+    {
+      key: 'factus_is_excluded',
+      label: 'Configuracion fiscal del producto',
+      value: producto?.factus_is_excluded
+    }
+  ]
+
+  if (!factusIsExcluded) {
+    requiredFields.push(
+      {
+        key: 'factus_tax_code',
+        label: 'Impuesto del producto',
+        value: producto?.factus_tax_code
+      },
+      {
+        key: 'factus_tax_rate',
+        label: 'Tarifa de impuesto del producto',
+        value: producto?.factus_tax_rate
+      }
+    )
+  }
+
+  const missing_fields = requiredFields
+    .filter((field) => !hasProductoFacturacionValue(field.value))
+    .map((field) => field.key)
+  const missing_labels = requiredFields
+    .filter((field) => !hasProductoFacturacionValue(field.value))
+    .map((field) => field.label)
+
+  if (missing_fields.length === 0) {
+    return {
+      ready: true,
+      missing_fields: [],
+      missing_labels: [],
+      message: 'Producto apto para facturacion electronica.'
+    }
+  }
+
+  return {
+    ready: false,
+    missing_fields,
+    missing_labels,
+    message: `Esta factura electronica no se puede realizar porque al producto le faltan estos datos: ${missing_labels.join(', ')}`
+  }
+}
+
+function enrichProductoWithFacturacion(producto) {
+  const facturacion = buildProductoFacturacionStatus(producto)
+  return {
+    ...producto,
+    facturacion_electronica_completa: facturacion.ready,
+    facturacion_campos_faltantes: facturacion.missing_fields,
+    facturacion_etiquetas_faltantes: facturacion.missing_labels,
+    facturacion_mensaje: facturacion.message
+  }
+}
+
+function buildProductoSelectFields(columns) {
+  const columnSet = new Set((columns || []).map((column) => String(column || '').toLowerCase()))
+  const baseFields = [
+    '`id_producto` AS id',
+    '`codigo_barras`',
+    '`nombre`',
+    '`stock`',
+    '`precio_final`',
+    '`precio_mayorista`',
+    '`precio_3`',
+    '`cantidad_precio_3`'
+  ]
+  const facturacionFields = [
+    'factus_code_reference',
+    'factus_unit_measure_code',
+    'factus_standard_code',
+    'factus_tax_code',
+    'factus_tax_rate',
+    'factus_is_excluded'
+  ]
+
+  for (const field of facturacionFields) {
+    if (columnSet.has(field.toLowerCase())) {
+      baseFields.push(`\`${field}\``)
+    } else {
+      baseFields.push(`NULL AS \`${field}\``)
+    }
+  }
+
+  return baseFields.join(',\n         ')
+}
+
 async function appendUserAccessLog(entry) {
   let currentEntries = []
 
@@ -587,6 +718,9 @@ app.get('/api/productos', async (req, res) => {
     const q = String(req.query.q || '').trim()
     if (!q) return res.json({ ok: true, productos: [] })
 
+    const productColumns = await getTableColumns('productos')
+    const productoSelectFields = buildProductoSelectFields(productColumns)
+
     // Mejora: Búsqueda por palabras múltiples
     const words = q.split(/\s+/).filter(w => w.length > 0)
     
@@ -604,15 +738,58 @@ app.get('/api/productos', async (req, res) => {
     }
 
     const whereClause = whereParts.join(' AND ')
-    const sql = `SELECT id_producto AS id, codigo_barras, nombre, stock, precio_final, precio_mayorista, precio_3, cantidad_precio_3
+    const sql = `SELECT ${productoSelectFields}
                  FROM productos 
                  WHERE ${whereClause} 
                  ORDER BY nombre LIMIT 50`
 
     const [rows] = await pool.query(sql, params)
-    res.json({ ok: true, productos: rows || [] })
+    res.json({ ok: true, productos: (rows || []).map(enrichProductoWithFacturacion) })
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message })
+  }
+})
+
+app.get('/api/productos/:id/facturacion-status', async (req, res) => {
+  try {
+    const id = Number(req.params.id)
+    if (!Number.isFinite(id) || id <= 0) {
+      return res.status(400).json({
+        ready: false,
+        missing_fields: ['producto'],
+        missing_labels: ['Producto'],
+        message: 'Producto invalido.'
+      })
+    }
+
+    const productColumns = await getTableColumns('productos')
+    const productoSelectFields = buildProductoSelectFields(productColumns)
+    const [rows] = await pool.query(
+      `SELECT ${productoSelectFields}
+       FROM productos
+       WHERE id_producto = ?
+       LIMIT 1`,
+      [id]
+    )
+
+    const producto = rows && rows.length ? rows[0] : null
+    if (!producto) {
+      return res.status(404).json({
+        ready: false,
+        missing_fields: ['producto'],
+        missing_labels: ['Producto'],
+        message: 'Producto no encontrado.'
+      })
+    }
+
+    return res.json(buildProductoFacturacionStatus(producto))
+  } catch (err) {
+    res.status(500).json({
+      ready: false,
+      missing_fields: [],
+      missing_labels: [],
+      message: err.message
+    })
   }
 })
 

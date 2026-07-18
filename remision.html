@@ -294,6 +294,10 @@
         display: none !important;
       }
 
+      .facturacion-producto-error-row {
+        background: transparent !important;
+      }
+
       .contenedor-principal {
         width: 100%;
         max-width: 100%;
@@ -1067,6 +1071,14 @@
             </label>
             <button type="button" id="facturacion-electronica-indicador" class="facturacion-electronica-indicador" style="display: none;" aria-label="Estado de facturacion electronica"></button>
           </div>
+          <div id="facturacion-productos-box" class="facturacion-productos-box" style="display: none;">
+            <div class="facturacion-productos-header">
+              <span class="facturacion-productos-label">Productos FE</span>
+              <button type="button" id="facturacion-productos-indicador" class="facturacion-electronica-indicador facturacion-productos-indicador" style="display: none;" aria-label="Estado de productos para facturacion electronica"></button>
+            </div>
+            <div id="facturacion-productos-resumen" class="facturacion-productos-resumen" style="display: none;"></div>
+            <ul id="facturacion-productos-errores" class="facturacion-productos-errores" style="display: none;"></ul>
+          </div>
           <div id="facturacion-electronica-panel" class="facturacion-electronica-panel" style="display: none;">
             <div id="facturacion-electronica-estado" class="facturacion-electronica-estado">Validacion pendiente</div>
             <div id="facturacion-electronica-mensaje" class="facturacion-electronica-mensaje"></div>
@@ -1172,6 +1184,62 @@
       }
       .facturacion-electronica-panel {
         display: none !important;
+      }
+      .facturacion-productos-box {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 10px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 10px;
+        background: #ffffff;
+      }
+      .facturacion-productos-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .facturacion-productos-label {
+        font-size: 12px;
+        font-weight: 700;
+        color: #374151;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .facturacion-productos-resumen {
+        font-size: 12px;
+        line-height: 1.4;
+        text-align: left;
+        color: #374151;
+      }
+      .facturacion-productos-resumen[data-state="ready"] {
+        color: #15803d;
+        font-weight: 600;
+      }
+      .facturacion-productos-resumen[data-state="error"] {
+        color: #b91c1c;
+        font-weight: 600;
+      }
+      .facturacion-productos-resumen[data-state="loading"] {
+        color: #4b5563;
+      }
+      .facturacion-productos-errores {
+        margin: 0;
+        padding-left: 18px;
+        text-align: left;
+        color: #991b1b;
+        font-size: 12px;
+        line-height: 1.35;
+      }
+      .facturacion-productos-errores li + li {
+        margin-top: 4px;
+      }
+      .facturacion-producto-error-row td {
+        background: #fef2f2;
+      }
+      .facturacion-producto-error-row td:nth-child(2) {
+        box-shadow: inset 0 0 0 2px #dc2626;
       }
       @media (max-width: 900px) {
         .cliente-facturacion-row {
@@ -1425,7 +1493,9 @@
       const celdas = fila.querySelectorAll('td');
       celdas.forEach((celda, indice) => {
         celda.textContent = '';
-        if (indice !== 3) {
+        if (indice === 1) {
+          limpiarMetadatosProductoEnCelda(celda);
+        } else if (indice !== 3 && celda.dataset) {
           delete celda.dataset.id;
         }
         if (indice === 2) {
@@ -1677,6 +1747,16 @@
       delete celda.dataset.precioMayorista;
       delete celda.dataset.precio3;
       delete celda.dataset.cantidadPrecio3;
+      delete celda.dataset.facturacionCompleta;
+      delete celda.dataset.facturacionMensaje;
+      delete celda.dataset.facturacionCamposFaltantes;
+      delete celda.dataset.facturacionEtiquetasFaltantes;
+      delete celda.dataset.factusCodeReference;
+      delete celda.dataset.factusUnitMeasureCode;
+      delete celda.dataset.factusStandardCode;
+      delete celda.dataset.factusTaxCode;
+      delete celda.dataset.factusTaxRate;
+      delete celda.dataset.factusIsExcluded;
     }
 
     function guardarMetadatosProductoEnCelda(celda, producto) {
@@ -1694,6 +1774,43 @@
       } else {
         delete celda.dataset.cantidadPrecio3;
       }
+      if (typeof producto.facturacion_electronica_completa === 'boolean') {
+        celda.dataset.facturacionCompleta = String(producto.facturacion_electronica_completa);
+      } else {
+        delete celda.dataset.facturacionCompleta;
+      }
+      if (producto.facturacion_mensaje !== null && producto.facturacion_mensaje !== undefined && String(producto.facturacion_mensaje).trim() !== '') {
+        celda.dataset.facturacionMensaje = String(producto.facturacion_mensaje);
+      } else {
+        delete celda.dataset.facturacionMensaje;
+      }
+      if (Array.isArray(producto.facturacion_campos_faltantes)) {
+        celda.dataset.facturacionCamposFaltantes = JSON.stringify(producto.facturacion_campos_faltantes);
+      } else {
+        delete celda.dataset.facturacionCamposFaltantes;
+      }
+      if (Array.isArray(producto.facturacion_etiquetas_faltantes)) {
+        celda.dataset.facturacionEtiquetasFaltantes = JSON.stringify(producto.facturacion_etiquetas_faltantes);
+      } else if (Array.isArray(producto.facturacion_missing_labels)) {
+        celda.dataset.facturacionEtiquetasFaltantes = JSON.stringify(producto.facturacion_missing_labels);
+      } else {
+        delete celda.dataset.facturacionEtiquetasFaltantes;
+      }
+      const factusDatasetMap = {
+        factusCodeReference: producto.factus_code_reference,
+        factusUnitMeasureCode: producto.factus_unit_measure_code,
+        factusStandardCode: producto.factus_standard_code,
+        factusTaxCode: producto.factus_tax_code,
+        factusTaxRate: producto.factus_tax_rate,
+        factusIsExcluded: producto.factus_is_excluded
+      };
+      Object.entries(factusDatasetMap).forEach(([key, value]) => {
+        if (value !== null && value !== undefined && String(value).trim() !== '') {
+          celda.dataset[key] = String(value);
+        } else {
+          delete celda.dataset[key];
+        }
+      });
     }
 
     function obtenerProductoDesdeCelda(celda) {
@@ -1727,12 +1844,14 @@
       const indiceCelda = celdas.indexOf(celda);
       if (indiceCelda === 1) {
         limpiarMetadatosProductoEnCelda(celda);
+        fila.classList.remove('facturacion-producto-error-row');
         autocorregirCeldaTransporte(celda);
         const texto = celda.textContent.trim();
         actualizarAvisoTransporte();
         if (!tablaTieneAvisoTransporte()) {
           marcarTransporteNoProgramado();
         }
+        marcarProductosFacturacionPendiente();
         celdaProductoActiva = celda;
         if (texto.length < 2) {
           ocultarDropdownProductos();
@@ -1783,8 +1902,10 @@
                    
                    // Limpiar la celda actual y mantener el foco para siguiente lectura
                    celda.textContent = '';
-                   delete celda.dataset.id;
+                   limpiarMetadatosProductoEnCelda(celda);
                    actualizarTotales();
+                   marcarProductosFacturacionPendiente();
+                   programarSincronizacionFacturacionProductos({ forzar: true });
                    return;
                 }
 
@@ -1901,7 +2022,11 @@
         fila.querySelectorAll('td').forEach(celda => {
           if (!celda.classList.contains('valor-t')) {
             celda.textContent = '';
-            delete celda.dataset.id;
+            if (celda.cellIndex === 1) {
+              limpiarMetadatosProductoEnCelda(celda);
+            } else if (celda.dataset) {
+              delete celda.dataset.id;
+            }
           } else {
             celda.innerText = '';
           }
@@ -1929,6 +2054,8 @@
       if (facturaElectronicaCheckbox) facturaElectronicaCheckbox.checked = false;
       resetEstadoFacturacionElectronica();
       actualizarPanelFacturacionElectronica('', '', '', false);
+      resetEstadoFacturacionProductos();
+      renderIndicadorProductosFactus({ checked: false, ready: null, message: '', errors: [] });
 
       // Limpiar transporte (Inputs del Modal)
       // trans-costo eliminado del DOM pero lo dejamos en la lista para evitar errores si reaparece
@@ -2378,6 +2505,8 @@ try {
          
          cerrarPanelSugerencias();
          actualizarTotales();
+         marcarProductosFacturacionPendiente();
+         programarSincronizacionFacturacionProductos({ forzar: true });
          celda.focus(); // Mantener foco para seguir escaneando/buscando
          return;
       }
@@ -2407,6 +2536,8 @@ try {
       }
       cerrarPanelSugerencias();
       actualizarTotales();
+      marcarProductosFacturacionPendiente();
+      programarSincronizacionFacturacionProductos({ forzar: true });
 
       // --- PREPARAR SIGUIENTE FILA (pero quedarse en CANTIDAD) ---
       if (!fila.nextElementSibling) {
@@ -3623,13 +3754,33 @@ try {
       }
     }
     const MENSAJE_FACTURA_ELECTRONICA_SIN_CLIENTE = 'No se puede generar factura electrónica sin un cliente registrado y válido.'
+    const MENSAJE_FACTURACION_PRODUCTOS_BACKEND = 'No fue posible validar los productos para factura electrónica porque el backend público no envía el estado fiscal de productos.'
+    const MENSAJES_FACTURACION_PRODUCTO = {
+      factus_code_reference: 'falta código de referencia del producto.',
+      nombre: 'falta nombre del producto.',
+      precio_final: 'falta precio del producto.',
+      factus_unit_measure_code: 'falta unidad de medida Factus.',
+      factus_standard_code: 'falta código estándar del producto.',
+      factus_tax_code: 'falta impuesto del producto.',
+      factus_tax_rate: 'falta tarifa de impuesto del producto.',
+      factus_is_excluded: 'falta la configuración fiscal del producto.'
+    }
     let facturacionElectronicaRequestId = 0
+    let facturacionProductosRequestId = 0
+    let facturacionProductosSyncTimer = null
     let selectedClientId = null
     let facturacionElectronicaEstadoActual = {
       clienteId: null,
       ready: null,
       message: '',
       checked: false
+    }
+    let facturacionProductosEstadoActual = {
+      ready: null,
+      message: '',
+      errors: [],
+      checked: false,
+      backendUnavailable: false
     }
     function setSelectedClientId(clienteId) {
       const normalizado = Number.isFinite(Number(clienteId)) && Number(clienteId) > 0 ? Number(clienteId) : null
@@ -3673,6 +3824,14 @@ try {
         mensaje: document.getElementById('facturacion-electronica-mensaje')
       }
     }
+    function obtenerElementosFacturacionProductos() {
+      return {
+        box: document.getElementById('facturacion-productos-box'),
+        indicador: document.getElementById('facturacion-productos-indicador'),
+        resumen: document.getElementById('facturacion-productos-resumen'),
+        errores: document.getElementById('facturacion-productos-errores')
+      }
+    }
     function actualizarIndicadorFacturacionElectronica(tipo, mensaje, visible = true) {
       const { indicador } = obtenerElementosFacturacionElectronica()
       if (!indicador) return
@@ -3714,6 +3873,355 @@ try {
         message: '',
         checked: false
       }
+    }
+    function limpiarErroresVisualesFacturacionProductos() {
+      tabla.querySelectorAll('tr').forEach(fila => {
+        fila.classList.remove('facturacion-producto-error-row')
+        const celdaDesc = fila.querySelector('td:nth-child(2)')
+        if (celdaDesc) {
+          celdaDesc.removeAttribute('title')
+        }
+      })
+    }
+    function marcarFilaConErrorFacturacionProducto(fila, mensaje) {
+      if (!fila) return
+      fila.classList.add('facturacion-producto-error-row')
+      const celdaDesc = fila.querySelector('td:nth-child(2)')
+      if (celdaDesc && mensaje) {
+        celdaDesc.title = mensaje
+      }
+    }
+    function resetEstadoFacturacionProductos() {
+      if (facturacionProductosSyncTimer) {
+        clearTimeout(facturacionProductosSyncTimer)
+        facturacionProductosSyncTimer = null
+      }
+      facturacionProductosRequestId += 1
+      facturacionProductosEstadoActual = {
+        ready: null,
+        message: '',
+        errors: [],
+        checked: false,
+        backendUnavailable: false
+      }
+      limpiarErroresVisualesFacturacionProductos()
+    }
+    function parsearBooleanoFacturacion(valor) {
+      if (typeof valor === 'boolean') return valor
+      if (typeof valor === 'string') {
+        const normalizado = valor.trim().toLowerCase()
+        if (normalizado === 'true' || normalizado === '1') return true
+        if (normalizado === 'false' || normalizado === '0') return false
+      }
+      return null
+    }
+    function parsearJsonFacturacion(valor) {
+      if (typeof valor !== 'string' || !valor.trim()) return []
+      try {
+        const parsed = JSON.parse(valor)
+        return Array.isArray(parsed) ? parsed : []
+      } catch {
+        return []
+      }
+    }
+    function obtenerEstadoFacturacionDesdeMetadatosProducto(celda) {
+      if (!celda || !celda.dataset) return null
+      if (!Object.prototype.hasOwnProperty.call(celda.dataset, 'facturacionCompleta')) {
+        return null
+      }
+      const ready = parsearBooleanoFacturacion(celda.dataset.facturacionCompleta)
+      if (ready === null) {
+        return null
+      }
+      return {
+        ready,
+        message: String(
+          celda.dataset.facturacionMensaje
+          || (ready
+            ? 'Producto apto para factura electrónica.'
+            : 'Producto no apto para factura electrónica.')
+        ),
+        missing_fields: parsearJsonFacturacion(celda.dataset.facturacionCamposFaltantes),
+        missing_labels: parsearJsonFacturacion(celda.dataset.facturacionEtiquetasFaltantes)
+      }
+    }
+    function normalizarEstadoFacturacionProducto(data) {
+      const payload = (data && typeof data.facturacion === 'object' && data.facturacion !== null) ? data.facturacion : (data || {})
+      const readyRaw = payload.ready ?? payload.facturacion_electronica_completa
+      const ready = typeof readyRaw === 'boolean' ? readyRaw : !!readyRaw
+      return {
+        ready,
+        message: String(
+          payload.message
+          ?? payload.facturacion_mensaje
+          ?? (ready ? 'Producto apto para factura electrónica.' : 'Producto no apto para factura electrónica.')
+        ),
+        missing_fields: Array.isArray(payload.missing_fields)
+          ? payload.missing_fields
+          : (Array.isArray(payload.facturacion_campos_faltantes) ? payload.facturacion_campos_faltantes : []),
+        missing_labels: Array.isArray(payload.missing_labels)
+          ? payload.missing_labels
+          : (Array.isArray(payload.facturacion_missing_labels)
+            ? payload.facturacion_missing_labels
+            : (Array.isArray(payload.facturacion_etiquetas_faltantes) ? payload.facturacion_etiquetas_faltantes : []))
+      }
+    }
+    function construirMensajesErrorProducto(filaNumero, estado) {
+      const mensajes = []
+      const missingFields = Array.isArray(estado?.missing_fields) ? estado.missing_fields : []
+      const missingLabels = Array.isArray(estado?.missing_labels) ? estado.missing_labels : []
+      missingFields.forEach((field) => {
+        mensajes.push(`Fila ${filaNumero}: ${MENSAJES_FACTURACION_PRODUCTO[field] || `falta ${String(field).replace(/_/g, ' ')}.`}`)
+      })
+      if (mensajes.length === 0 && missingLabels.length > 0) {
+        missingLabels.forEach((label) => {
+          const etiqueta = String(label || '').trim()
+          if (etiqueta) {
+            mensajes.push(`Fila ${filaNumero}: falta ${etiqueta.toLowerCase()}.`)
+          }
+        })
+      }
+      if (mensajes.length === 0) {
+        const mensaje = String(estado?.message || '').trim()
+        if (mensaje) {
+          mensajes.push(`Fila ${filaNumero}: ${mensaje}`)
+        } else {
+          mensajes.push(`El producto de la fila ${filaNumero} no cumple con los registros completos para facturarlo electrónicamente.`)
+        }
+      }
+      return mensajes
+    }
+    function obtenerFilasProductosFacturacion() {
+      return Array.from(tabla.querySelectorAll('tr')).map((fila, index) => {
+        const celdaDesc = fila.querySelector('td:nth-child(2)')
+        const descripcion = canonicalizarDescripcionTransporte(celdaDesc?.textContent.trim() || '')
+        const cantidadTxt = fila.querySelector('.cant')?.innerText || ''
+        const cantidad = parseInt(String(cantidadTxt).replace(/[^\d]/g, '')) || 0
+        const id = celdaDesc?.dataset?.id || ''
+        const tieneContenido = Boolean(descripcion || id || cantidad > 0)
+        return {
+          fila,
+          filaNumero: index + 1,
+          celdaDesc,
+          descripcion,
+          cantidad,
+          id,
+          tieneContenido
+        }
+      }).filter(item => item.tieneContenido)
+    }
+    function renderIndicadorProductosFactus(resultado) {
+      const { box, indicador, resumen, errores } = obtenerElementosFacturacionProductos()
+      if (!box || !indicador || !resumen || !errores) return
+      if (!resultado?.checked) {
+        box.style.display = 'none'
+        indicador.style.display = 'none'
+        indicador.dataset.state = ''
+        indicador.textContent = ''
+        indicador.title = ''
+        resumen.style.display = 'none'
+        resumen.dataset.state = ''
+        resumen.textContent = ''
+        errores.style.display = 'none'
+        errores.innerHTML = ''
+        return
+      }
+      box.style.display = 'flex'
+      indicador.style.display = 'inline-flex'
+      const listaErrores = Array.isArray(resultado.errors) ? resultado.errors : []
+      if (resultado.ready === true) {
+        indicador.dataset.state = 'ready'
+        indicador.textContent = '✓'
+        indicador.title = 'Todos los productos están aptos para factura electrónica'
+        resumen.style.display = 'block'
+        resumen.dataset.state = 'ready'
+        resumen.textContent = resultado.message || 'Todos los productos están aptos para factura electrónica'
+        errores.style.display = 'none'
+        errores.innerHTML = ''
+        return
+      }
+      if (resultado.ready === false) {
+        indicador.dataset.state = 'error'
+        indicador.textContent = '✕'
+        indicador.title = resultado.message || 'Hay productos con errores para factura electrónica'
+        resumen.style.display = 'block'
+        resumen.dataset.state = 'error'
+        resumen.textContent = resultado.message || 'Hay productos con errores para factura electrónica'
+        errores.innerHTML = listaErrores.map(error => `<li>${error}</li>`).join('')
+        errores.style.display = listaErrores.length ? 'block' : 'none'
+        return
+      }
+      indicador.dataset.state = 'loading'
+      indicador.textContent = '...'
+      indicador.title = 'Validando productos para factura electrónica'
+      resumen.style.display = 'block'
+      resumen.dataset.state = 'loading'
+      resumen.textContent = resultado.message || 'Validando productos para factura electrónica...'
+      errores.style.display = 'none'
+      errores.innerHTML = ''
+    }
+    function marcarProductosFacturacionPendiente() {
+      const { checkbox } = obtenerElementosFacturacionElectronica()
+      limpiarErroresVisualesFacturacionProductos()
+      if (!checkbox || !checkbox.checked) {
+        renderIndicadorProductosFactus({ checked: false, ready: null, message: '', errors: [] })
+        return
+      }
+      facturacionProductosEstadoActual = {
+        ready: null,
+        message: 'Validando productos para factura electrónica...',
+        errors: [],
+        checked: true,
+        backendUnavailable: false
+      }
+      renderIndicadorProductosFactus(facturacionProductosEstadoActual)
+    }
+    function programarSincronizacionFacturacionProductos(opciones = {}) {
+      const { checkbox } = obtenerElementosFacturacionElectronica()
+      if (!checkbox || !checkbox.checked) return
+      if (facturacionProductosSyncTimer) {
+        clearTimeout(facturacionProductosSyncTimer)
+      }
+      facturacionProductosSyncTimer = setTimeout(() => {
+        facturacionProductosSyncTimer = null
+        sincronizarFacturacionProductosUI(opciones)
+      }, 120)
+    }
+    async function consultarEstadoFacturacionProductoFila(item, cachePorProducto) {
+      const productoId = Number(item.id)
+      if (!Number.isFinite(productoId) || productoId <= 0) {
+        return {
+          ready: false,
+          message: `La fila ${item.filaNumero} no corresponde a un producto registrado en base de datos.`,
+          missing_fields: [],
+          missing_labels: []
+        }
+      }
+      if (cachePorProducto.has(productoId)) {
+        return cachePorProducto.get(productoId)
+      }
+      const fallback = obtenerEstadoFacturacionDesdeMetadatosProducto(item.celdaDesc)
+      const url = getApiBase() + '/api/productos/' + encodeURIComponent(productoId) + '/facturacion-status'
+      try {
+        const resp = await fetch(url)
+        const data = await resp.json().catch(() => ({}))
+        if (!resp.ok) {
+          if (resp.status === 404 && fallback) {
+            cachePorProducto.set(productoId, fallback)
+            return fallback
+          }
+          if (resp.status === 404) {
+            return {
+              ready: false,
+              message: MENSAJE_FACTURACION_PRODUCTOS_BACKEND,
+              missing_fields: [],
+              missing_labels: [],
+              backendUnavailable: true
+            }
+          }
+          return normalizarEstadoFacturacionProducto(data)
+        }
+        const estado = normalizarEstadoFacturacionProducto(data)
+        cachePorProducto.set(productoId, estado)
+        return estado
+      } catch (error) {
+        if (fallback) {
+          cachePorProducto.set(productoId, fallback)
+          return fallback
+        }
+        return {
+          ready: false,
+          message: error?.message || 'No se pudo validar este producto para factura electrónica.',
+          missing_fields: [],
+          missing_labels: []
+        }
+      }
+    }
+    async function validarProductosFacturacionElectronica(opciones = {}) {
+      const { forzar = false } = opciones
+      const { checkbox } = obtenerElementosFacturacionElectronica()
+      if (!checkbox || !checkbox.checked) {
+        resetEstadoFacturacionProductos()
+        renderIndicadorProductosFactus({ checked: false, ready: null, message: '', errors: [] })
+        return { checked: false, ready: true, message: '', errors: [] }
+      }
+      if (!forzar && facturacionProductosEstadoActual.checked && facturacionProductosEstadoActual.ready !== null) {
+        return facturacionProductosEstadoActual
+      }
+      const requestId = ++facturacionProductosRequestId
+      const items = obtenerFilasProductosFacturacion()
+      limpiarErroresVisualesFacturacionProductos()
+      renderIndicadorProductosFactus({
+        checked: true,
+        ready: null,
+        message: 'Validando productos para factura electrónica...',
+        errors: []
+      })
+      if (items.length === 0) {
+        facturacionProductosEstadoActual = {
+          ready: true,
+          message: 'No hay productos para validar en factura electrónica.',
+          errors: [],
+          checked: true,
+          backendUnavailable: false
+        }
+        renderIndicadorProductosFactus(facturacionProductosEstadoActual)
+        return facturacionProductosEstadoActual
+      }
+      const cachePorProducto = new Map()
+      const errores = []
+      let backendUnavailable = false
+      for (const item of items) {
+        if (requestId !== facturacionProductosRequestId) {
+          return facturacionProductosEstadoActual
+        }
+        if (!item.descripcion && !item.id) {
+          const mensaje = `La fila ${item.filaNumero} no corresponde a un producto registrado en base de datos.`
+          marcarFilaConErrorFacturacionProducto(item.fila, mensaje)
+          errores.push(mensaje)
+          continue
+        }
+        if (!item.id && item.descripcion) {
+          const mensaje = `La fila ${item.filaNumero} no corresponde a un producto registrado en base de datos.`
+          marcarFilaConErrorFacturacionProducto(item.fila, mensaje)
+          errores.push(mensaje)
+          continue
+        }
+        const estado = await consultarEstadoFacturacionProductoFila(item, cachePorProducto)
+        if (requestId !== facturacionProductosRequestId) {
+          return facturacionProductosEstadoActual
+        }
+        if (!estado.ready) {
+          const mensajesFila = estado.backendUnavailable
+            ? [`Fila ${item.filaNumero}: no fue posible validar este producto porque el backend público no envía el estado fiscal de productos.`]
+            : construirMensajesErrorProducto(item.filaNumero, estado)
+          backendUnavailable = backendUnavailable || !!estado.backendUnavailable
+          marcarFilaConErrorFacturacionProducto(item.fila, mensajesFila[0] || estado.message)
+          errores.push(...mensajesFila)
+        }
+      }
+      facturacionProductosEstadoActual = {
+        ready: errores.length === 0,
+        message: errores.length === 0
+          ? 'Todos los productos están aptos para factura electrónica'
+          : (backendUnavailable
+            ? MENSAJE_FACTURACION_PRODUCTOS_BACKEND
+            : 'Hay productos con errores para factura electrónica'),
+        errors: errores,
+        checked: true,
+        backendUnavailable
+      }
+      renderIndicadorProductosFactus(facturacionProductosEstadoActual)
+      return facturacionProductosEstadoActual
+    }
+    async function sincronizarFacturacionProductosUI(opciones = {}) {
+      const { checkbox } = obtenerElementosFacturacionElectronica()
+      if (!checkbox || !checkbox.checked) {
+        resetEstadoFacturacionProductos()
+        renderIndicadorProductosFactus({ checked: false, ready: null, message: '', errors: [] })
+        return
+      }
+      await validarProductosFacturacionElectronica(opciones)
     }
     function obtenerEstadoFacturacionDesdeClienteSeleccionado(clienteId) {
       if (!clienteSeleccionado) return null
@@ -3884,23 +4392,45 @@ try {
         alert(estado.message || 'Cliente no apto para facturacion electronica')
         return false
       }
+      const estadoProductos = await validarProductosFacturacionElectronica({ forzar: true })
+      if (!estadoProductos.ready) {
+        const detalleErrores = Array.isArray(estadoProductos.errors) && estadoProductos.errors.length
+          ? '\n\n' + estadoProductos.errors.join('\n')
+          : ''
+        alert((estadoProductos.message || 'Hay productos con errores para factura electronica') + detalleErrores)
+        return false
+      }
       return true
     }
     function inicializarFacturacionElectronica() {
       const { checkbox, indicador } = obtenerElementosFacturacionElectronica()
+      const { indicador: indicadorProductos } = obtenerElementosFacturacionProductos()
       if (!checkbox) return
       checkbox.addEventListener('change', () => {
         if (checkbox.checked) {
           sincronizarFacturacionElectronicaUI({ forzar: true })
+          sincronizarFacturacionProductosUI({ forzar: true })
           return
         }
         resetEstadoFacturacionElectronica()
         actualizarPanelFacturacionElectronica('', '', '', false)
+        resetEstadoFacturacionProductos()
+        renderIndicadorProductosFactus({ checked: false, ready: null, message: '', errors: [] })
       })
       if (indicador) {
         indicador.addEventListener('click', () => {
           if (indicador.dataset.state === 'error') {
             alert(facturacionElectronicaEstadoActual.message || 'Cliente no apto para facturacion electronica')
+          }
+        })
+      }
+      if (indicadorProductos) {
+        indicadorProductos.addEventListener('click', () => {
+          if (indicadorProductos.dataset.state === 'error') {
+            const detalleErrores = Array.isArray(facturacionProductosEstadoActual.errors) && facturacionProductosEstadoActual.errors.length
+              ? '\n\n' + facturacionProductosEstadoActual.errors.join('\n')
+              : ''
+            alert((facturacionProductosEstadoActual.message || 'Hay productos con errores para factura electronica') + detalleErrores)
           }
         })
       }
