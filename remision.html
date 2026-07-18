@@ -1059,10 +1059,13 @@
           </span>
         </p>
         <div class="facturacion-electronica-box">
-          <label class="facturacion-electronica-toggle" for="factura-electronica-checkbox">
-            <input type="checkbox" id="factura-electronica-checkbox">
-            <span>Factura electronica</span>
-          </label>
+          <div class="facturacion-electronica-toggle-row">
+            <label class="facturacion-electronica-toggle" for="factura-electronica-checkbox">
+              <input type="checkbox" id="factura-electronica-checkbox">
+              <span>Factura electronica</span>
+            </label>
+            <button type="button" id="facturacion-electronica-indicador" class="facturacion-electronica-indicador" style="display: none;" aria-label="Estado de facturacion electronica"></button>
+          </div>
           <div id="facturacion-electronica-panel" class="facturacion-electronica-panel" style="display: none;">
             <div id="facturacion-electronica-estado" class="facturacion-electronica-estado">Validacion pendiente</div>
             <div id="facturacion-electronica-mensaje" class="facturacion-electronica-mensaje"></div>
@@ -1114,6 +1117,12 @@
         flex: 0 0 300px;
         max-width: 300px;
       }
+      .facturacion-electronica-toggle-row {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+      }
       .facturacion-electronica-toggle {
         display: inline-flex;
         align-items: center;
@@ -1130,31 +1139,38 @@
       .facturacion-electronica-toggle input {
         margin: 0;
       }
-      .facturacion-electronica-panel {
-        padding: 10px 12px;
-        border-radius: 10px;
-        border: 1px solid #cbd5e1;
-        background: #f8fafc;
-      }
-      .facturacion-electronica-panel[data-state="loading"] {
-        background: #eff6ff;
-        border-color: #93c5fd;
-      }
-      .facturacion-electronica-panel[data-state="ready"] {
-        background: #ecfdf5;
-        border-color: #86efac;
-      }
-      .facturacion-electronica-panel[data-state="error"] {
-        background: #fef2f2;
-        border-color: #fca5a5;
-      }
-      .facturacion-electronica-estado {
+      .facturacion-electronica-indicador {
+        width: 30px;
+        height: 30px;
+        border: none;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
         font-weight: 700;
-        margin-bottom: 4px;
+        cursor: pointer;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+        transition: transform 0.15s ease, opacity 0.15s ease;
       }
-      .facturacion-electronica-mensaje {
-        font-size: 0.94em;
-        line-height: 1.35;
+      .facturacion-electronica-indicador:hover {
+        transform: scale(1.06);
+      }
+      .facturacion-electronica-indicador[data-state="loading"] {
+        background: #e5e7eb;
+        color: #4b5563;
+        cursor: default;
+      }
+      .facturacion-electronica-indicador[data-state="ready"] {
+        background: #dcfce7;
+        color: #15803d;
+      }
+      .facturacion-electronica-indicador[data-state="error"] {
+        background: #fee2e2;
+        color: #dc2626;
+      }
+      .facturacion-electronica-panel {
+        display: none !important;
       }
       @media (max-width: 900px) {
         .cliente-facturacion-row {
@@ -1164,6 +1180,9 @@
           flex-basis: auto;
           max-width: 100%;
           width: 100%;
+        }
+        .facturacion-electronica-toggle-row {
+          justify-content: flex-start;
         }
       }
       .scanner-cotizacion-container {
@@ -3615,18 +3634,45 @@ try {
     function obtenerElementosFacturacionElectronica() {
       return {
         checkbox: document.getElementById('factura-electronica-checkbox'),
+        indicador: document.getElementById('facturacion-electronica-indicador'),
         panel: document.getElementById('facturacion-electronica-panel'),
         estado: document.getElementById('facturacion-electronica-estado'),
         mensaje: document.getElementById('facturacion-electronica-mensaje')
       }
     }
+    function actualizarIndicadorFacturacionElectronica(tipo, mensaje, visible = true) {
+      const { indicador } = obtenerElementosFacturacionElectronica()
+      if (!indicador) return
+      if (!visible) {
+        indicador.style.display = 'none'
+        indicador.dataset.state = ''
+        indicador.textContent = ''
+        indicador.title = ''
+        return
+      }
+      indicador.style.display = 'inline-flex'
+      indicador.dataset.state = tipo || 'loading'
+      if (tipo === 'ready') {
+        indicador.textContent = '✓'
+        indicador.title = 'Cliente apto para facturacion electronica'
+        return
+      }
+      if (tipo === 'error') {
+        indicador.textContent = '✕'
+        indicador.title = mensaje || 'Cliente no apto para facturacion electronica'
+        return
+      }
+      indicador.textContent = '...'
+      indicador.title = 'Validando cliente...'
+    }
     function actualizarPanelFacturacionElectronica(tipo, titulo, mensaje, visible = true) {
       const { panel, estado, mensaje: mensajeEl } = obtenerElementosFacturacionElectronica()
       if (!panel || !estado || !mensajeEl) return
-      panel.style.display = visible ? 'block' : 'none'
+      panel.style.display = 'none'
       panel.dataset.state = tipo || ''
       estado.textContent = titulo || ''
       mensajeEl.textContent = mensaje || ''
+      actualizarIndicadorFacturacionElectronica(tipo, mensaje, visible)
     }
     function resetEstadoFacturacionElectronica() {
       facturacionElectronicaEstadoActual = {
@@ -3750,7 +3796,7 @@ try {
       return true
     }
     function inicializarFacturacionElectronica() {
-      const { checkbox } = obtenerElementosFacturacionElectronica()
+      const { checkbox, indicador } = obtenerElementosFacturacionElectronica()
       if (!checkbox) return
       checkbox.addEventListener('change', () => {
         if (checkbox.checked) {
@@ -3760,6 +3806,13 @@ try {
         resetEstadoFacturacionElectronica()
         actualizarPanelFacturacionElectronica('', '', '', false)
       })
+      if (indicador) {
+        indicador.addEventListener('click', () => {
+          if (indicador.dataset.state === 'error') {
+            alert(facturacionElectronicaEstadoActual.message || 'Cliente no apto para facturacion electronica')
+          }
+        })
+      }
     }
     function renderDropdownClientes(clientes) {
       const dropdown = document.getElementById('autocomplete-dropdown')
