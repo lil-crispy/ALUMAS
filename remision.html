@@ -1039,6 +1039,16 @@
           <div id="autocomplete-dropdown" class="autocomplete-dropdown"></div>
         </span>
       </p>
+      <div class="facturacion-electronica-box">
+        <label class="facturacion-electronica-toggle" for="factura-electronica-checkbox">
+          <input type="checkbox" id="factura-electronica-checkbox">
+          <span>Factura electronica</span>
+        </label>
+        <div id="facturacion-electronica-panel" class="facturacion-electronica-panel" style="display: none;">
+          <div id="facturacion-electronica-estado" class="facturacion-electronica-estado">Validacion pendiente</div>
+          <div id="facturacion-electronica-mensaje" class="facturacion-electronica-mensaje"></div>
+        </div>
+      </div>
       <p><strong>NIT:</strong> 901797743-2</p>
       <p><strong>ATENCIÓN AL CLIENTE:</strong> 3015827791</p>
       <p><strong>CONSULTAR ENVÍOS:</strong> 3197245235</p>
@@ -1076,6 +1086,54 @@
     </div>
 
     <style>
+      .facturacion-electronica-box {
+        margin: 10px 0 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .facturacion-electronica-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        width: fit-content;
+        padding: 8px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 10px;
+        background: #f9fafb;
+        cursor: pointer;
+        font-weight: 600;
+        color: #1f2937;
+      }
+      .facturacion-electronica-toggle input {
+        margin: 0;
+      }
+      .facturacion-electronica-panel {
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid #cbd5e1;
+        background: #f8fafc;
+      }
+      .facturacion-electronica-panel[data-state="loading"] {
+        background: #eff6ff;
+        border-color: #93c5fd;
+      }
+      .facturacion-electronica-panel[data-state="ready"] {
+        background: #ecfdf5;
+        border-color: #86efac;
+      }
+      .facturacion-electronica-panel[data-state="error"] {
+        background: #fef2f2;
+        border-color: #fca5a5;
+      }
+      .facturacion-electronica-estado {
+        font-weight: 700;
+        margin-bottom: 4px;
+      }
+      .facturacion-electronica-mensaje {
+        font-size: 0.94em;
+        line-height: 1.35;
+      }
       .scanner-cotizacion-container {
         display: flex;
         align-items: center;
@@ -1815,6 +1873,10 @@
       // Limpiar variable global de cliente
       clienteSeleccionado = null; 
       localStorage.removeItem('CLIENTE_ID'); 
+      const facturaElectronicaCheckbox = document.getElementById('factura-electronica-checkbox');
+      if (facturaElectronicaCheckbox) facturaElectronicaCheckbox.checked = false;
+      resetEstadoFacturacionElectronica();
+      actualizarPanelFacturacionElectronica('', '', '', false);
 
       // Limpiar transporte (Inputs del Modal)
       // trans-costo eliminado del DOM pero lo dejamos en la lista para evitar errores si reaparece
@@ -2639,6 +2701,7 @@ try {
       if (clienteSeleccionado && clienteSeleccionado.id) {
         localStorage.setItem('CLIENTE_ID', String(clienteSeleccionado.id));
       }
+      sincronizarFacturacionElectronicaUI({ forzar: true });
       const tbody = document.getElementById('tabla-productos');
       tbody.innerHTML = '';
       cotizacion.items.forEach(item => {
@@ -2786,6 +2849,10 @@ try {
     async function imprimirVenta() {
       const transporteProgramado = await validarProgramacionObligatoriaDeTransporte();
       if (!transporteProgramado) {
+        return;
+      }
+      const facturacionOk = await validarFacturacionElectronicaAntesDeGuardar();
+      if (!facturacionOk) {
         return;
       }
       const tipo = getTipoPago();
@@ -3277,6 +3344,7 @@ try {
     document.addEventListener('DOMContentLoaded', () => {
       try { cargarReporte(); } catch (e) {}
       inicializarAutocompletadoCliente();
+      inicializarFacturacionElectronica();
       ['pago-efectivo','pago-tarjeta','pago-qr'].forEach(id => {
         const el = document.getElementById(id);
         if (el) {
@@ -3495,11 +3563,171 @@ try {
           nit_cc: c.nit_cc,
           telefono: c.telefono,
           direccion: c.direccion,
-          tipo_cliente: c.tipo_cliente
+          tipo_cliente: c.tipo_cliente,
+          facturacion_electronica_completa: c.facturacion_electronica_completa,
+          facturacion_campos_faltantes: c.facturacion_campos_faltantes,
+          facturacion_mensaje: c.facturacion_mensaje
         }))
       } catch {
         return []
       }
+    }
+    const MENSAJE_FACTURA_ELECTRONICA_SIN_CLIENTE = 'No se puede generar factura electrónica sin un cliente registrado y válido.'
+    let facturacionElectronicaRequestId = 0
+    let facturacionElectronicaEstadoActual = {
+      clienteId: null,
+      ready: null,
+      message: '',
+      checked: false
+    }
+    function obtenerElementosFacturacionElectronica() {
+      return {
+        checkbox: document.getElementById('factura-electronica-checkbox'),
+        panel: document.getElementById('facturacion-electronica-panel'),
+        estado: document.getElementById('facturacion-electronica-estado'),
+        mensaje: document.getElementById('facturacion-electronica-mensaje')
+      }
+    }
+    function actualizarPanelFacturacionElectronica(tipo, titulo, mensaje, visible = true) {
+      const { panel, estado, mensaje: mensajeEl } = obtenerElementosFacturacionElectronica()
+      if (!panel || !estado || !mensajeEl) return
+      panel.style.display = visible ? 'block' : 'none'
+      panel.dataset.state = tipo || ''
+      estado.textContent = titulo || ''
+      mensajeEl.textContent = mensaje || ''
+    }
+    function resetEstadoFacturacionElectronica() {
+      facturacionElectronicaEstadoActual = {
+        clienteId: null,
+        ready: null,
+        message: '',
+        checked: false
+      }
+    }
+    function manejarFacturacionElectronicaSinCliente() {
+      facturacionElectronicaEstadoActual = {
+        clienteId: null,
+        ready: false,
+        message: MENSAJE_FACTURA_ELECTRONICA_SIN_CLIENTE,
+        checked: true
+      }
+      actualizarPanelFacturacionElectronica(
+        'error',
+        'Cliente no apto para facturacion electronica',
+        MENSAJE_FACTURA_ELECTRONICA_SIN_CLIENTE,
+        true
+      )
+      return facturacionElectronicaEstadoActual
+    }
+    async function consultarEstadoFacturacionElectronica(clienteId, opciones = {}) {
+      const { forzar = false } = opciones
+      const { checkbox } = obtenerElementosFacturacionElectronica()
+      if (!checkbox || !checkbox.checked) {
+        resetEstadoFacturacionElectronica()
+        actualizarPanelFacturacionElectronica('', '', '', false)
+        return { checked: false, ready: true, message: '' }
+      }
+      if (!clienteId) {
+        return manejarFacturacionElectronicaSinCliente()
+      }
+      if (!forzar && facturacionElectronicaEstadoActual.checked && facturacionElectronicaEstadoActual.clienteId === clienteId && facturacionElectronicaEstadoActual.ready !== null) {
+        return facturacionElectronicaEstadoActual
+      }
+      const requestId = ++facturacionElectronicaRequestId
+      actualizarPanelFacturacionElectronica(
+        'loading',
+        'Validando cliente para factura electronica',
+        'Consultando requisitos fiscales del cliente...',
+        true
+      )
+      try {
+        const resp = await fetch(getApiBase() + '/api/clientes/' + encodeURIComponent(clienteId) + '/facturacion-status')
+        const data = await resp.json().catch(() => ({}))
+        if (requestId !== facturacionElectronicaRequestId) {
+          return facturacionElectronicaEstadoActual
+        }
+        if (!resp.ok) {
+          throw new Error(data?.message || 'No se pudo validar la facturacion electronica del cliente.')
+        }
+        const ready = !!(data?.facturacion?.ready ?? data?.ready)
+        const message = String(
+          data?.facturacion?.message
+          ?? data?.message
+          ?? (ready
+            ? 'Cliente apto para facturacion electronica'
+            : 'Cliente no apto para facturacion electronica')
+        )
+        facturacionElectronicaEstadoActual = {
+          clienteId,
+          ready,
+          message,
+          checked: true
+        }
+        actualizarPanelFacturacionElectronica(
+          ready ? 'ready' : 'error',
+          ready ? 'Cliente apto para facturacion electronica' : 'Cliente no apto para facturacion electronica',
+          message,
+          true
+        )
+        return facturacionElectronicaEstadoActual
+      } catch (error) {
+        const message = error?.message || 'No se pudo validar la facturacion electronica del cliente.'
+        facturacionElectronicaEstadoActual = {
+          clienteId,
+          ready: false,
+          message,
+          checked: true
+        }
+        actualizarPanelFacturacionElectronica(
+          'error',
+          'Cliente no apto para facturacion electronica',
+          message,
+          true
+        )
+        return facturacionElectronicaEstadoActual
+      }
+    }
+    async function sincronizarFacturacionElectronicaUI(opciones = {}) {
+      const { checkbox } = obtenerElementosFacturacionElectronica()
+      if (!checkbox || !checkbox.checked) {
+        resetEstadoFacturacionElectronica()
+        actualizarPanelFacturacionElectronica('', '', '', false)
+        return
+      }
+      if (!clienteSeleccionado || !clienteSeleccionado.id) {
+        manejarFacturacionElectronicaSinCliente()
+        return
+      }
+      await consultarEstadoFacturacionElectronica(clienteSeleccionado.id, opciones)
+    }
+    async function validarFacturacionElectronicaAntesDeGuardar() {
+      const { checkbox } = obtenerElementosFacturacionElectronica()
+      if (!checkbox || !checkbox.checked) {
+        return true
+      }
+      if (!clienteSeleccionado || !clienteSeleccionado.id) {
+        manejarFacturacionElectronicaSinCliente()
+        alert(MENSAJE_FACTURA_ELECTRONICA_SIN_CLIENTE)
+        return false
+      }
+      const estado = await consultarEstadoFacturacionElectronica(clienteSeleccionado.id, { forzar: true })
+      if (!estado.ready) {
+        alert(estado.message || 'Cliente no apto para facturacion electronica')
+        return false
+      }
+      return true
+    }
+    function inicializarFacturacionElectronica() {
+      const { checkbox } = obtenerElementosFacturacionElectronica()
+      if (!checkbox) return
+      checkbox.addEventListener('change', () => {
+        if (checkbox.checked) {
+          sincronizarFacturacionElectronicaUI({ forzar: true })
+          return
+        }
+        resetEstadoFacturacionElectronica()
+        actualizarPanelFacturacionElectronica('', '', '', false)
+      })
     }
     function renderDropdownClientes(clientes) {
       const dropdown = document.getElementById('autocomplete-dropdown')
@@ -3576,6 +3804,7 @@ try {
         dropdown.innerHTML = ''
       }
       actualizarTotales()
+      sincronizarFacturacionElectronicaUI({ forzar: true })
       if (tablaTieneAvisoTransporte()) {
         marcarTransporteNoProgramado()
       }
@@ -3592,6 +3821,8 @@ try {
         const term = input.value.trim()
         clienteSeleccionado = null
         localStorage.removeItem('CLIENTE_ID')
+        resetEstadoFacturacionElectronica()
+        sincronizarFacturacionElectronicaUI()
         if (tablaTieneAvisoTransporte()) {
           marcarTransporteNoProgramado()
         }
@@ -4524,6 +4755,7 @@ function cargarPedidoProgramado(id) {
   if (clienteSeleccionado && clienteSeleccionado.id) {
      localStorage.setItem('CLIENTE_ID', String(clienteSeleccionado.id));
   }
+  sincronizarFacturacionElectronicaUI({ forzar: true });
   
   // Restaurar Consecutivo
   if (pedido.consecutivo) {
