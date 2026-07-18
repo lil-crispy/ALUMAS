@@ -3721,6 +3721,13 @@ try {
       if (!Number.isFinite(clienteActualId) || clienteActualId <= 0 || clienteActualId !== Number(clienteId)) {
         return null
       }
+      const tieneEstadoEnriquecido =
+        Object.prototype.hasOwnProperty.call(clienteSeleccionado, 'facturacion_electronica_completa') &&
+        Object.prototype.hasOwnProperty.call(clienteSeleccionado, 'facturacion_mensaje') &&
+        Object.prototype.hasOwnProperty.call(clienteSeleccionado, 'facturacion_campos_faltantes')
+      if (!tieneEstadoEnriquecido) {
+        return null
+      }
       if (typeof clienteSeleccionado.facturacion_electronica_completa !== 'boolean') {
         return null
       }
@@ -3799,6 +3806,8 @@ try {
               )
               return facturacionElectronicaEstadoActual
             }
+            console.warn('El backend publico no esta enviando el estado fiscal enriquecido en /api/clientes?q=... y /api/clientes/{id}/facturacion-status responde 404.')
+            throw new Error('No fue posible validar la facturacion electronica porque el backend publico no envia el estado fiscal enriquecido en el autocomplete y la ruta /facturacion-status responde 404.')
           }
           throw new Error(data?.message || 'No se pudo validar la facturacion electronica del cliente.')
         }
@@ -3948,6 +3957,7 @@ try {
         input.value = `${cliente.id} - ${cliente.nit_cc || 'Sin NIT'} - ${cliente.nombre}`
       }
       clienteSeleccionado = cliente
+      console.log('clienteSeleccionado completo:', clienteSeleccionado)
       setSelectedClientId(cliente?.id || null)
 
       // LÓGICA AUTOMÁTICA DE PUNTO DE VENTA (MAYORISTA -> BODEGA)
