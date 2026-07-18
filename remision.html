@@ -1071,14 +1071,6 @@
             </label>
             <button type="button" id="facturacion-electronica-indicador" class="facturacion-electronica-indicador" style="display: none;" aria-label="Estado de facturacion electronica"></button>
           </div>
-          <div id="facturacion-productos-box" class="facturacion-productos-box" style="display: none;">
-            <div class="facturacion-productos-header">
-              <span class="facturacion-productos-label">Productos FE</span>
-              <button type="button" id="facturacion-productos-indicador" class="facturacion-electronica-indicador facturacion-productos-indicador" style="display: none;" aria-label="Estado de productos para facturacion electronica"></button>
-            </div>
-            <div id="facturacion-productos-resumen" class="facturacion-productos-resumen" style="display: none;"></div>
-            <ul id="facturacion-productos-errores" class="facturacion-productos-errores" style="display: none;"></ul>
-          </div>
           <div id="facturacion-electronica-panel" class="facturacion-electronica-panel" style="display: none;">
             <div id="facturacion-electronica-estado" class="facturacion-electronica-estado">Validacion pendiente</div>
             <div id="facturacion-electronica-mensaje" class="facturacion-electronica-mensaje"></div>
@@ -3832,30 +3824,66 @@ try {
         errores: document.getElementById('facturacion-productos-errores')
       }
     }
-    function actualizarIndicadorFacturacionElectronica(tipo, mensaje, visible = true) {
+    function construirMensajeIndicadorFacturacionElectronica() {
+      const bloques = []
+      if (facturacionElectronicaEstadoActual.checked && facturacionElectronicaEstadoActual.ready === false) {
+        bloques.push(facturacionElectronicaEstadoActual.message || 'Cliente no apto para facturacion electronica')
+      }
+      if (facturacionProductosEstadoActual.checked && facturacionProductosEstadoActual.ready === false) {
+        const encabezado = facturacionProductosEstadoActual.message || 'Hay productos con errores para factura electronica'
+        const errores = Array.isArray(facturacionProductosEstadoActual.errors)
+          ? facturacionProductosEstadoActual.errors.filter(error => String(error || '').trim() !== '')
+          : []
+        bloques.push(errores.length ? `${encabezado}\n\n${errores.join('\n')}` : encabezado)
+      }
+      return bloques.join('\n\n').trim()
+    }
+    function sincronizarIndicadorFacturacionElectronicaUnificado() {
       const { indicador } = obtenerElementosFacturacionElectronica()
       if (!indicador) return
-      if (!visible) {
+      const { checkbox } = obtenerElementosFacturacionElectronica()
+      if (!checkbox || !checkbox.checked) {
         indicador.style.display = 'none'
         indicador.dataset.state = ''
         indicador.textContent = ''
         indicador.title = ''
+        indicador.setAttribute('aria-label', 'Estado de facturacion electronica')
         return
       }
+      const clientePendiente = !facturacionElectronicaEstadoActual.checked || facturacionElectronicaEstadoActual.ready === null
+      const productosPendiente = !facturacionProductosEstadoActual.checked || facturacionProductosEstadoActual.ready === null
+      const clienteConError = facturacionElectronicaEstadoActual.checked && facturacionElectronicaEstadoActual.ready === false
+      const productosConError = facturacionProductosEstadoActual.checked && facturacionProductosEstadoActual.ready === false
+      const mensajeErrores = construirMensajeIndicadorFacturacionElectronica()
       indicador.style.display = 'inline-flex'
-      indicador.dataset.state = tipo || 'loading'
-      if (tipo === 'ready') {
-        indicador.textContent = '✓'
-        indicador.title = 'Cliente apto para facturacion electronica'
-        return
-      }
-      if (tipo === 'error') {
+      if (clienteConError || productosConError) {
+        indicador.dataset.state = 'error'
         indicador.textContent = '✕'
-        indicador.title = mensaje || 'Cliente no apto para facturacion electronica'
+        indicador.title = mensajeErrores || 'Hay errores de facturacion electronica. Haz clic para ver el detalle.'
+        indicador.setAttribute('aria-label', 'Errores de facturacion electronica')
         return
       }
+      if (clientePendiente || productosPendiente) {
+        indicador.dataset.state = 'loading'
+        indicador.textContent = '...'
+        indicador.title = 'Validando cliente y productos para factura electronica...'
+        indicador.setAttribute('aria-label', 'Validando facturacion electronica')
+        return
+      }
+      if (facturacionElectronicaEstadoActual.ready === true && facturacionProductosEstadoActual.ready === true) {
+        indicador.dataset.state = 'ready'
+        indicador.textContent = '✓'
+        indicador.title = 'Cliente y productos aptos para facturacion electronica'
+        indicador.setAttribute('aria-label', 'Facturacion electronica lista')
+        return
+      }
+      indicador.dataset.state = 'loading'
       indicador.textContent = '...'
-      indicador.title = 'Validando cliente...'
+      indicador.title = 'Validando facturacion electronica...'
+      indicador.setAttribute('aria-label', 'Validando facturacion electronica')
+    }
+    function actualizarIndicadorFacturacionElectronica(tipo, mensaje, visible = true) {
+      sincronizarIndicadorFacturacionElectronicaUnificado()
     }
     function actualizarPanelFacturacionElectronica(tipo, titulo, mensaje, visible = true) {
       const { panel, estado, mensaje: mensajeEl } = obtenerElementosFacturacionElectronica()
@@ -4011,54 +4039,33 @@ try {
       }).filter(item => item.tieneContenido)
     }
     function renderIndicadorProductosFactus(resultado) {
+      facturacionProductosEstadoActual = {
+        ready: Object.prototype.hasOwnProperty.call(resultado || {}, 'ready') ? resultado.ready : null,
+        message: String(resultado?.message || ''),
+        errors: Array.isArray(resultado?.errors) ? resultado.errors : [],
+        checked: !!resultado?.checked,
+        backendUnavailable: !!resultado?.backendUnavailable
+      }
       const { box, indicador, resumen, errores } = obtenerElementosFacturacionProductos()
-      if (!box || !indicador || !resumen || !errores) return
-      if (!resultado?.checked) {
+      if (box) {
         box.style.display = 'none'
+      }
+      if (indicador) {
         indicador.style.display = 'none'
         indicador.dataset.state = ''
         indicador.textContent = ''
         indicador.title = ''
+      }
+      if (resumen) {
         resumen.style.display = 'none'
         resumen.dataset.state = ''
         resumen.textContent = ''
+      }
+      if (errores) {
         errores.style.display = 'none'
         errores.innerHTML = ''
-        return
       }
-      box.style.display = 'flex'
-      indicador.style.display = 'inline-flex'
-      const listaErrores = Array.isArray(resultado.errors) ? resultado.errors : []
-      if (resultado.ready === true) {
-        indicador.dataset.state = 'ready'
-        indicador.textContent = '✓'
-        indicador.title = 'Todos los productos están aptos para factura electrónica'
-        resumen.style.display = 'block'
-        resumen.dataset.state = 'ready'
-        resumen.textContent = resultado.message || 'Todos los productos están aptos para factura electrónica'
-        errores.style.display = 'none'
-        errores.innerHTML = ''
-        return
-      }
-      if (resultado.ready === false) {
-        indicador.dataset.state = 'error'
-        indicador.textContent = '✕'
-        indicador.title = resultado.message || 'Hay productos con errores para factura electrónica'
-        resumen.style.display = 'block'
-        resumen.dataset.state = 'error'
-        resumen.textContent = resultado.message || 'Hay productos con errores para factura electrónica'
-        errores.innerHTML = listaErrores.map(error => `<li>${error}</li>`).join('')
-        errores.style.display = listaErrores.length ? 'block' : 'none'
-        return
-      }
-      indicador.dataset.state = 'loading'
-      indicador.textContent = '...'
-      indicador.title = 'Validando productos para factura electrónica'
-      resumen.style.display = 'block'
-      resumen.dataset.state = 'loading'
-      resumen.textContent = resultado.message || 'Validando productos para factura electrónica...'
-      errores.style.display = 'none'
-      errores.innerHTML = ''
+      sincronizarIndicadorFacturacionElectronicaUnificado()
     }
     function marcarProductosFacturacionPendiente() {
       const { checkbox } = obtenerElementosFacturacionElectronica()
@@ -4151,12 +4158,14 @@ try {
       const requestId = ++facturacionProductosRequestId
       const items = obtenerFilasProductosFacturacion()
       limpiarErroresVisualesFacturacionProductos()
-      renderIndicadorProductosFactus({
+      facturacionProductosEstadoActual = {
         checked: true,
         ready: null,
         message: 'Validando productos para factura electrónica...',
-        errors: []
-      })
+        errors: [],
+        backendUnavailable: false
+      }
+      renderIndicadorProductosFactus(facturacionProductosEstadoActual)
       if (items.length === 0) {
         facturacionProductosEstadoActual = {
           ready: true,
@@ -4281,6 +4290,12 @@ try {
       }
       const requestId = ++facturacionElectronicaRequestId
       const url = getApiBase() + '/api/clientes/' + encodeURIComponent(clienteIdNormalizado) + '/facturacion-status'
+      facturacionElectronicaEstadoActual = {
+        clienteId: clienteIdNormalizado,
+        ready: null,
+        message: 'Consultando requisitos fiscales del cliente...',
+        checked: true
+      }
       actualizarPanelFacturacionElectronica(
         'loading',
         'Validando cliente para factura electronica',
@@ -4382,29 +4397,18 @@ try {
         return true
       }
       const clienteId = getSelectedClientId()
-      if (!clienteId) {
-        manejarFacturacionElectronicaSinCliente()
-        alert(MENSAJE_FACTURA_ELECTRONICA_SIN_CLIENTE)
-        return false
-      }
-      const estado = await consultarEstadoFacturacionElectronica(clienteId, { forzar: true })
-      if (!estado.ready) {
-        alert(estado.message || 'Cliente no apto para facturacion electronica')
-        return false
-      }
+      const estado = clienteId
+        ? await consultarEstadoFacturacionElectronica(clienteId, { forzar: true })
+        : manejarFacturacionElectronicaSinCliente()
       const estadoProductos = await validarProductosFacturacionElectronica({ forzar: true })
-      if (!estadoProductos.ready) {
-        const detalleErrores = Array.isArray(estadoProductos.errors) && estadoProductos.errors.length
-          ? '\n\n' + estadoProductos.errors.join('\n')
-          : ''
-        alert((estadoProductos.message || 'Hay productos con errores para factura electronica') + detalleErrores)
+      if (!estado.ready || !estadoProductos.ready) {
+        alert(construirMensajeIndicadorFacturacionElectronica() || 'Hay errores de facturacion electronica')
         return false
       }
       return true
     }
     function inicializarFacturacionElectronica() {
       const { checkbox, indicador } = obtenerElementosFacturacionElectronica()
-      const { indicador: indicadorProductos } = obtenerElementosFacturacionProductos()
       if (!checkbox) return
       checkbox.addEventListener('change', () => {
         if (checkbox.checked) {
@@ -4420,17 +4424,7 @@ try {
       if (indicador) {
         indicador.addEventListener('click', () => {
           if (indicador.dataset.state === 'error') {
-            alert(facturacionElectronicaEstadoActual.message || 'Cliente no apto para facturacion electronica')
-          }
-        })
-      }
-      if (indicadorProductos) {
-        indicadorProductos.addEventListener('click', () => {
-          if (indicadorProductos.dataset.state === 'error') {
-            const detalleErrores = Array.isArray(facturacionProductosEstadoActual.errors) && facturacionProductosEstadoActual.errors.length
-              ? '\n\n' + facturacionProductosEstadoActual.errors.join('\n')
-              : ''
-            alert((facturacionProductosEstadoActual.message || 'Hay productos con errores para factura electronica') + detalleErrores)
+            alert(construirMensajeIndicadorFacturacionElectronica() || 'Hay errores de facturacion electronica')
           }
         })
       }
