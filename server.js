@@ -74,10 +74,104 @@ async function ensureSchema() {
       eliminado_at TIMESTAMP NULL DEFAULT NULL
     ) ENGINE=InnoDB;
   `
+  const createVentasDetalle = `
+    CREATE TABLE IF NOT EXISTS ventas_detalle (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      venta_id BIGINT NOT NULL,
+      producto_id INT NULL,
+      descripcion VARCHAR(255) NOT NULL,
+      cantidad DECIMAL(14,2) NOT NULL DEFAULT 0,
+      precio_unitario DECIMAL(14,2) NOT NULL DEFAULT 0,
+      discount_rate DECIMAL(10,2) NOT NULL DEFAULT 0,
+      subtotal DECIMAL(14,2) NOT NULL DEFAULT 0,
+      valor_total DECIMAL(14,2) NOT NULL DEFAULT 0,
+      factus_code_reference VARCHAR(120) NULL,
+      factus_unit_measure_code VARCHAR(32) NULL,
+      factus_standard_code VARCHAR(64) NULL,
+      factus_tax_code VARCHAR(32) NULL,
+      factus_tax_rate DECIMAL(10,2) NULL,
+      factus_is_excluded TINYINT(1) NOT NULL DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_ventas_detalle_venta_id (venta_id),
+      INDEX idx_ventas_detalle_producto_id (producto_id)
+    ) ENGINE=InnoDB;
+  `
+  const createVentasPaymentDetails = `
+    CREATE TABLE IF NOT EXISTS ventas_payment_details (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      venta_id BIGINT NOT NULL,
+      payment_form VARCHAR(32) NOT NULL,
+      payment_method_code VARCHAR(32) NOT NULL,
+      amount DECIMAL(14,2) NOT NULL DEFAULT 0,
+      due_date DATE NULL,
+      reference_code VARCHAR(120) NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_ventas_payment_details_venta_id (venta_id)
+    ) ENGINE=InnoDB;
+  `
+  const createFactusDocumentos = `
+    CREATE TABLE IF NOT EXISTS factus_documentos (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      venta_id BIGINT NOT NULL,
+      environment VARCHAR(32) NOT NULL DEFAULT 'sandbox',
+      reference_code VARCHAR(120) NOT NULL,
+      status VARCHAR(32) NOT NULL DEFAULT 'pending',
+      is_validated TINYINT(1) NOT NULL DEFAULT 0,
+      request_payload_json LONGTEXT NULL,
+      response_payload_json LONGTEXT NULL,
+      error_message TEXT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uq_factus_documentos_venta_id (venta_id),
+      UNIQUE KEY uq_factus_documentos_reference_code (reference_code)
+    ) ENGINE=InnoDB;
+  `
   await pool.query(createVentas)
   await pool.query(createItems)
   await pool.query(createProgramados)
   await pool.query(createCajaEgresos)
+  await pool.query(createVentasDetalle)
+  await pool.query(createVentasPaymentDetails)
+  await pool.query(createFactusDocumentos)
+
+  const ventasColumns = await getTableColumns('ventas')
+  const ventasColumnSet = new Set(ventasColumns.map((column) => String(column || '').toLowerCase()))
+  const missingVentasColumns = [
+    {
+      name: 'subtotal',
+      sql: 'ALTER TABLE ventas ADD COLUMN subtotal DECIMAL(14,2) NULL DEFAULT NULL'
+    },
+    {
+      name: 'total_discount',
+      sql: 'ALTER TABLE ventas ADD COLUMN total_discount DECIMAL(14,2) NOT NULL DEFAULT 0'
+    },
+    {
+      name: 'total_tax',
+      sql: 'ALTER TABLE ventas ADD COLUMN total_tax DECIMAL(14,2) NOT NULL DEFAULT 0'
+    },
+    {
+      name: 'observation',
+      sql: 'ALTER TABLE ventas ADD COLUMN observation TEXT NULL'
+    },
+    {
+      name: 'factura_electronica',
+      sql: 'ALTER TABLE ventas ADD COLUMN factura_electronica TINYINT(1) NOT NULL DEFAULT 0'
+    },
+    {
+      name: 'electronic_status',
+      sql: "ALTER TABLE ventas ADD COLUMN electronic_status VARCHAR(32) NULL DEFAULT NULL"
+    },
+    {
+      name: 'factus_number',
+      sql: "ALTER TABLE ventas ADD COLUMN factus_number VARCHAR(64) NULL DEFAULT NULL"
+    }
+  ]
+
+  for (const column of missingVentasColumns) {
+    if (!ventasColumnSet.has(column.name.toLowerCase())) {
+      await pool.query(column.sql)
+    }
+  }
 }
 
 let pool
@@ -179,6 +273,187 @@ function pickFirstExistingColumn(columns, candidates) {
     }
   }
   return null
+}
+
+function parseBooleanLike(value) {
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'number') return value === 1
+  const normalized = String(value || '').trim().toLowerCase()
+  return normalized === 'true' || normalized === '1' || normalized === 'si' || normalized === 'sí'
+}
+
+function normalizeVentaDetalleItems(body) {
+  if (Array.isArray(body?.items) && body.items.length) {
+    return body.items
+  }
+  if (Array.isArray(body?.venta_detalle) && body.venta_detalle.length) {
+    return body.venta_detalle
+  }
+  return []
+}
+
+function normalizeVentaPaymentDetails(body) {
+  if (Array.isArray(body?.payment_details) && body.payment_details.length) {
+    return body.payment_details
+  }
+  if (Array.isArray(body?.facturacion?.pagos) && body.facturacion.pagos.length) {
+    return body.facturacion.pagos
+  }
+  return []
+}
+
+function toSafeJson(value) {
+  try {
+    return JSON.stringify(value ?? null)
+  } catch {
+    return JSON.stringify({ serialization_error: true })
+  }
+}
+
+function normalizeVentaNumeric(value, fallback = 0) {
+  const numberValue = Number(value)
+  return Number.isFinite(numberValue) ? numberValue : fallback
+}
+
+function normalizeVentaDate(value) {
+  const text = String(value || '').trim()
+  if (!text) return null
+  const match = text.match(/^(\d{4}-\d{2}-\d{2})/)
+  return match ? match[1] : null
+}
+
+async function insertVentaCabecera(conn, payload) {
+  const ventasColumns = await getTableColumns('ventas', conn)
+  const columnSet = new Set(ventasColumns.map((column) => String(column || '').toLowerCase()))
+  const insertColumns = [
+    'id_consecutivo',
+    'usuario_id',
+    'cliente_id',
+    'total',
+    'tipo_pago',
+    'forma_pago',
+    'punto_venta'
+  ]
+  const insertValues = [
+    Number(payload.id_consecutivo),
+    Number(payload.usuario_id),
+    Number(payload.cliente_id),
+    normalizeVentaNumeric(payload.total, 0),
+    String(payload.tipo_pago || 'CONTADO'),
+    String(payload.forma_pago || ''),
+    String(payload.punto_venta || 'ferreteria')
+  ]
+
+  const optionalColumns = [
+    ['subtotal', payload.subtotal ?? null],
+    ['total_discount', payload.total_discount ?? 0],
+    ['total_tax', payload.total_tax ?? 0],
+    ['observation', payload.observation || null],
+    ['factura_electronica', payload.factura_electronica ? 1 : 0],
+    ['electronic_status', payload.electronic_status || null],
+    ['factus_number', payload.factus_number || null]
+  ]
+
+  for (const [column, value] of optionalColumns) {
+    if (columnSet.has(column.toLowerCase())) {
+      insertColumns.push(column)
+      insertValues.push(value)
+    }
+  }
+
+  const placeholders = insertColumns.map(() => '?').join(', ')
+  await conn.query(
+    `INSERT INTO ventas (${insertColumns.join(', ')}) VALUES (${placeholders})`,
+    insertValues
+  )
+}
+
+async function persistVentaElectronicaData(conn, body, ventaId, items, paymentDetails) {
+  const environment = String(process.env.FACTUS_ENVIRONMENT || process.env.FACTUS_API_ENVIRONMENT || 'sandbox').trim() || 'sandbox'
+  const referenceCode = String(
+    body?.facturacion?.reference_code
+    || paymentDetails.find((pago) => String(pago?.reference_code || '').trim())?.reference_code
+    || `VENTA-${ventaId}`
+  ).trim()
+
+  for (const rawItem of items) {
+    const item = rawItem || {}
+    await conn.query(
+      `INSERT INTO ventas_detalle (
+        venta_id,
+        producto_id,
+        descripcion,
+        cantidad,
+        precio_unitario,
+        discount_rate,
+        subtotal,
+        valor_total,
+        factus_code_reference,
+        factus_unit_measure_code,
+        factus_standard_code,
+        factus_tax_code,
+        factus_tax_rate,
+        factus_is_excluded
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        Number(ventaId),
+        item.producto_id || item.id_producto ? Number(item.producto_id || item.id_producto) : null,
+        String(item.descripcion || ''),
+        normalizeVentaNumeric(item.cantidad, 0),
+        normalizeVentaNumeric(item.precio_unitario ?? item.valor_unitario, 0),
+        normalizeVentaNumeric(item.discount_rate, 0),
+        normalizeVentaNumeric(item.subtotal, 0),
+        normalizeVentaNumeric(item.valor_total ?? item.subtotal, 0),
+        item.factus_code_reference ? String(item.factus_code_reference) : null,
+        item.factus_unit_measure_code ? String(item.factus_unit_measure_code) : null,
+        item.factus_standard_code ? String(item.factus_standard_code) : null,
+        item.factus_tax_code ? String(item.factus_tax_code) : null,
+        item.factus_tax_rate === null || item.factus_tax_rate === undefined ? null : normalizeVentaNumeric(item.factus_tax_rate, 0),
+        parseBooleanLike(item.factus_is_excluded) ? 1 : 0
+      ]
+    )
+  }
+
+  for (const rawPago of paymentDetails) {
+    const pago = rawPago || {}
+    await conn.query(
+      `INSERT INTO ventas_payment_details (
+        venta_id,
+        payment_form,
+        payment_method_code,
+        amount,
+        due_date,
+        reference_code
+      ) VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        Number(ventaId),
+        String(pago.payment_form || 'contado'),
+        String(pago.payment_method_code || 'cash'),
+        normalizeVentaNumeric(pago.amount ?? body.total, 0),
+        normalizeVentaDate(pago.due_date),
+        pago.reference_code ? String(pago.reference_code) : null
+      ]
+    )
+  }
+
+  await conn.query(
+    `INSERT INTO factus_documentos (
+      venta_id,
+      environment,
+      reference_code,
+      status,
+      is_validated,
+      request_payload_json
+    ) VALUES (?, ?, ?, ?, ?, ?)`,
+    [
+      Number(ventaId),
+      environment,
+      referenceCode,
+      'pending',
+      0,
+      toSafeJson(body.facturacion || body)
+    ]
+  )
 }
 
 function buildClienteFacturacionStatus(cliente) {
@@ -1094,11 +1369,29 @@ app.post('/api/venta', async (req, res) => {
       tipo_pago, // 'CREDITO' | 'CONTADO'
       forma_pago, // 'EFECTIVO' | 'QR' | 'TARJETA' | etc
       punto_venta, // 'ferreteria' | 'bodega'
-      items = [],
     } = req.body || {}
+    const esFacturaElectronica = req.body?.factura_electronica === true
+    const items = normalizeVentaDetalleItems(req.body)
+    const paymentDetails = normalizeVentaPaymentDetails(req.body)
 
     if (!id_consecutivo || !usuario_id || !cliente_id) {
       return res.status(400).json({ ok: false, error: 'faltan_campos' })
+    }
+
+    if (esFacturaElectronica && !Array.isArray(items) || (esFacturaElectronica && items.length === 0)) {
+      return res.status(400).json({
+        ok: false,
+        error: 'items_factura_electronica_requeridos',
+        message: 'La venta electrónica requiere items persistibles.'
+      })
+    }
+
+    if (esFacturaElectronica && (!Number.isFinite(Number(cliente_id)) || Number(cliente_id) <= 0)) {
+      return res.status(400).json({
+        ok: false,
+        error: 'cliente_invalido',
+        message: 'La venta electrónica requiere un cliente válido.'
+      })
     }
 
     // Doble validación en backend antes de insertar
@@ -1109,16 +1402,32 @@ app.post('/api/venta', async (req, res) => {
 
     const t = Number(total || 0)
     await conn.beginTransaction()
-    await conn.query(
-      'INSERT INTO ventas (id_consecutivo, usuario_id, cliente_id, total, tipo_pago, forma_pago, punto_venta) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [Number(id_consecutivo), Number(usuario_id), Number(cliente_id), t, String(tipo_pago || 'CONTADO'), String(forma_pago || ''), String(punto_venta || 'ferreteria')]
-    )
+    await insertVentaCabecera(conn, {
+      id_consecutivo,
+      usuario_id,
+      cliente_id,
+      total: t,
+      tipo_pago,
+      forma_pago,
+      punto_venta,
+      subtotal: req.body?.subtotal ?? null,
+      total_discount: req.body?.total_discount ?? 0,
+      total_tax: req.body?.total_tax ?? 0,
+      observation: req.body?.observation || null,
+      factura_electronica: esFacturaElectronica,
+      electronic_status: esFacturaElectronica ? 'pending' : null,
+      factus_number: req.body?.factus_number || null
+    })
+
+    if (esFacturaElectronica) {
+      await persistVentaElectronicaData(conn, req.body, id_consecutivo, items, paymentDetails)
+    }
 
     // Descontar stock
     for (const it of items) {
       const cantidad = Number(it.cantidad || 0)
       const descripcion = String(it.descripcion || '')
-      const idProducto = it.id_producto ? Number(it.id_producto) : null
+      const idProducto = it.id_producto || it.producto_id ? Number(it.id_producto || it.producto_id) : null
       
       if (!cantidad) continue
 
@@ -1143,7 +1452,12 @@ app.post('/api/venta', async (req, res) => {
     }
 
     await conn.commit()
-    res.json({ ok: true, id_consecutivo })
+    res.json({
+      ok: true,
+      id_consecutivo,
+      venta_id: Number(id_consecutivo),
+      factura_electronica: esFacturaElectronica
+    })
   } catch (err) {
     try { await conn.rollback() } catch {}
     res.status(500).json({ ok: false, error: err.message })
