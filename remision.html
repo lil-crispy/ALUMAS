@@ -3701,6 +3701,53 @@ try {
       const totalText = document.getElementById('total-general')?.textContent || ''
       return parseInt(totalText.replace(/[^\d]/g, '')) || 0
     }
+    function extraerNumeroDesdeTexto(valor) {
+      if (typeof valor === 'number') {
+        return Number.isFinite(valor) ? valor : 0
+      }
+      const texto = String(valor || '').replace(/[^\d,.-]/g, '').replace(',', '.')
+      const numero = parseFloat(texto)
+      return Number.isFinite(numero) ? numero : 0
+    }
+    function obtenerFechaVentaPayload() {
+      const ahora = new Date()
+      const yyyy = ahora.getFullYear()
+      const mm = String(ahora.getMonth() + 1).padStart(2, '0')
+      const dd = String(ahora.getDate()).padStart(2, '0')
+      const hh = String(ahora.getHours()).padStart(2, '0')
+      const mi = String(ahora.getMinutes()).padStart(2, '0')
+      const ss = String(ahora.getSeconds()).padStart(2, '0')
+      return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`
+    }
+    function obtenerFechaVencimientoPayload() {
+      return obtenerFechaVentaPayload().slice(0, 10)
+    }
+    function obtenerObservacionVenta() {
+      const infoTransporte = document.getElementById('info-transporte')?.textContent || ''
+      return String(infoTransporte || '').trim()
+    }
+    function mapearPaymentForm(tipoPago) {
+      return String(tipoPago || '').toUpperCase() === 'CREDITO' ? 'credito' : 'contado'
+    }
+    function mapearPaymentMethodCode(metodo, tipoPago) {
+      if (String(tipoPago || '').toUpperCase() === 'CREDITO') return 'credit'
+      const metodoNormalizado = String(metodo || '').trim().toLowerCase()
+      if (metodoNormalizado === 'efectivo') return 'cash'
+      if (metodoNormalizado === 'tarjeta') return 'card'
+      if (metodoNormalizado === 'qr') return 'qr'
+      return metodoNormalizado || 'cash'
+    }
+    function construirPaymentDetailsVenta(tipoPago, metodo, total) {
+      const paymentForm = mapearPaymentForm(tipoPago)
+      return [
+        {
+          payment_form: paymentForm,
+          payment_method_code: mapearPaymentMethodCode(metodo, tipoPago),
+          amount: Number(total || 0),
+          due_date: paymentForm === 'credito' ? obtenerFechaVencimientoPayload() : null
+        }
+      ]
+    }
     function obtenerItemsBD() {
       const items = []
       tabla.querySelectorAll('tr').forEach(fila => {
@@ -3722,6 +3769,109 @@ try {
         }
       })
       return items
+    }
+    function construirPayloadVentaElectronica() {
+      const filas = obtenerFilasProductosFacturacion()
+      const errores = []
+      const items = []
+      let subtotal = 0
+      let totalTax = 0
+      let total = 0
+
+      filas.forEach((itemFila) => {
+        const filaNumero = itemFila.filaNumero
+        const celda = itemFila.celdaDesc
+        const dataset = celda?.dataset || {}
+        const productoId = Number(itemFila.id)
+        const cantidad = Number(itemFila.cantidad || 0)
+        const precioUnitario = extraerNumeroDesdeTexto(itemFila.fila.querySelector('.valor-u')?.textContent || '')
+        const totalFilaVisual = extraerNumeroDesdeTexto(itemFila.fila.querySelector('.valor-t')?.textContent || '')
+        const totalLinea = totalFilaVisual > 0 ? totalFilaVisual : cantidad * precioUnitario
+        const factusCodeReference = String(dataset.factusCodeReference || '').trim()
+        const factusUnitMeasureCode = String(dataset.factusUnitMeasureCode || '').trim()
+        const factusStandardCode = String(dataset.factusStandardCode || '').trim()
+        const factusTaxCode = String(dataset.factusTaxCode || '').trim()
+        const factusTaxRate = extraerNumeroDesdeTexto(dataset.factusTaxRate)
+        const factusIsExcluded = parsearBooleanoFacturacion(dataset.factusIsExcluded) === true
+        const missingFields = []
+
+        if (!Number.isFinite(productoId) || productoId <= 0) {
+          const mensaje = `La fila ${filaNumero} no corresponde a un producto registrado.`
+          marcarFilaConErrorFacturacionProducto(itemFila.fila, mensaje)
+          errores.push(mensaje)
+          return
+        }
+
+        if (!factusCodeReference) missingFields.push('factus_code_reference')
+        if (!itemFila.descripcion) missingFields.push('nombre')
+        if (!Number.isFinite(precioUnitario) || precioUnitario <= 0) missingFields.push('precio_final')
+        if (!factusUnitMeasureCode) missingFields.push('factus_unit_measure_code')
+        if (!factusStandardCode) missingFields.push('factus_standard_code')
+        if (!Object.prototype.hasOwnProperty.call(dataset, 'factusIsExcluded')) missingFields.push('factus_is_excluded')
+        if (!factusIsExcluded) {
+          if (!factusTaxCode) missingFields.push('factus_tax_code')
+          if (!Number.isFinite(factusTaxRate) || factusTaxRate < 0) missingFields.push('factus_tax_rate')
+        }
+
+        if (missingFields.length > 0) {
+          const estado = {
+            ready: false,
+            missing_fields: missingFields,
+            missing_labels: []
+          }
+          const mensajesFila = construirMensajesErrorProducto(filaNumero, estado)
+          marcarFilaConErrorFacturacionProducto(itemFila.fila, mensajesFila[0] || `El producto de la fila ${filaNumero} no cumple con los registros completos para facturarlo electrónicamente.`)
+          errores.push(`El producto de la fila ${filaNumero} no cumple con los registros completos para facturarlo electrónicamente.`)
+          errores.push(...mensajesFila)
+          return
+        }
+
+        let subtotalLinea = totalLinea
+        let totalImpuestoLinea = 0
+        if (!factusIsExcluded && factusTaxRate > 0) {
+          subtotalLinea = Math.round(totalLinea / (1 + (factusTaxRate / 100)))
+          totalImpuestoLinea = totalLinea - subtotalLinea
+        }
+
+        subtotal += subtotalLinea
+        totalTax += totalImpuestoLinea
+        total += totalLinea
+
+        items.push({
+          producto_id: productoId,
+          id_producto: productoId,
+          descripcion: itemFila.descripcion,
+          cantidad,
+          precio_unitario: precioUnitario,
+          valor_unitario: precioUnitario,
+          discount_rate: 0,
+          subtotal: subtotalLinea,
+          valor_total: totalLinea,
+          factus_code_reference: factusCodeReference,
+          factus_unit_measure_code: factusUnitMeasureCode,
+          factus_standard_code: factusStandardCode,
+          factus_tax_code: factusTaxCode || null,
+          factus_tax_rate: factusIsExcluded ? 0 : factusTaxRate,
+          factus_is_excluded: factusIsExcluded
+        })
+      })
+
+      if (errores.length > 0) {
+        errores.push('La venta no se puede enviar a Factus porque faltan datos persistibles en el detalle.')
+        return {
+          ok: false,
+          errors: Array.from(new Set(errores.filter(error => String(error || '').trim() !== '')))
+        }
+      }
+
+      return {
+        ok: true,
+        subtotal,
+        total_discount: 0,
+        total_tax: totalTax,
+        total,
+        items
+      }
     }
     async function buscarClientesRemoto(termino) {
       try {
@@ -4677,6 +4827,7 @@ try {
       const total = obtenerTotalNumerico()
       const clienteTexto = document.getElementById('nombre-cliente')?.value.trim() || ''
       const tipo_pago = getTipoPago()
+      const facturaElectronicaActiva = !!document.getElementById('factura-electronica-checkbox')?.checked
       const { usuario_id, cliente_id } = getIds()
       if (tipo_pago === 'CREDITO') {
         if (!clienteSeleccionado || !clienteSeleccionado.id) {
@@ -4726,6 +4877,47 @@ try {
         punto_venta: getPuntoVenta(),
         items,
         cliente_nombre: clienteTexto
+      }
+      if (facturaElectronicaActiva) {
+        const clienteIdSeleccionado = getSelectedClientId()
+        if (!clienteIdSeleccionado) {
+          alert(MENSAJE_FACTURA_ELECTRONICA_SIN_CLIENTE)
+          return false
+        }
+        const estructuraVentaElectronica = construirPayloadVentaElectronica()
+        if (!estructuraVentaElectronica.ok) {
+          alert(estructuraVentaElectronica.errors.join('\n'))
+          return false
+        }
+        const fechaVenta = obtenerFechaVentaPayload()
+        const paymentDetails = construirPaymentDetailsVenta(tipo_pago, metodo, estructuraVentaElectronica.total)
+        payload.cliente_id = clienteIdSeleccionado
+        payload.fecha = fechaVenta
+        payload.subtotal = estructuraVentaElectronica.subtotal
+        payload.total_discount = estructuraVentaElectronica.total_discount
+        payload.total_tax = estructuraVentaElectronica.total_tax
+        payload.total = estructuraVentaElectronica.total
+        payload.observation = obtenerObservacionVenta()
+        payload.factura_electronica = true
+        payload.items = estructuraVentaElectronica.items
+        payload.payment_details = paymentDetails
+        payload.venta_detalle = estructuraVentaElectronica.items
+        payload.facturacion = {
+          cabecera: {
+            cliente_id: clienteIdSeleccionado,
+            fecha: fechaVenta,
+            tipo_pago,
+            forma_pago: (metodo || '').toUpperCase(),
+            subtotal: estructuraVentaElectronica.subtotal,
+            total_discount: estructuraVentaElectronica.total_discount,
+            total_tax: estructuraVentaElectronica.total_tax,
+            total: estructuraVentaElectronica.total,
+            observation: payload.observation,
+            factura_electronica: true
+          },
+          detalle: estructuraVentaElectronica.items,
+          pagos: paymentDetails
+        }
       }
       const resp = await fetch(getApiBase() + '/api/venta', {
         method: 'POST',
