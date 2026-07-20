@@ -557,8 +557,33 @@ async function getFactusActiveNumberingRange() {
     configured_id: configuredId > 0 ? configuredId : null,
     environment: getFactusEnvironmentName()
   }))
-  const payload = await factusApiRequest(`/v2/numbering-ranges?${params.toString()}`)
+  let payload
+  try {
+    payload = await factusApiRequest(`/v2/numbering-ranges?${params.toString()}`)
+    console.log('[Factus][NumberingRange] Respuesta completa:', JSON.stringify({
+      typeof_payload: typeof payload,
+      payload,
+      payload_data: payload?.data,
+      is_array_payload_data: Array.isArray(payload?.data),
+      payload_data_length: Array.isArray(payload?.data)
+        ? payload.data.length
+        : (payload?.data && typeof payload.data.length !== 'undefined' ? payload.data.length : null)
+    }))
+  } catch (err) {
+    console.error('[Factus][NumberingRange] Excepcion consultando rangos:', JSON.stringify({
+      message: err?.message || null,
+      stack: err?.stack || null,
+      response: err?.payload || err?.response || null
+    }))
+    throw err
+  }
+
   const ranges = parseFactusNumberingResponse(payload)
+  if (!Array.isArray(ranges) || ranges.length === 0) {
+    console.warn('[Factus][NumberingRange] No se encontraron rangos activos:', JSON.stringify({
+      payload
+    }))
+  }
   const activeRange = ranges.find((range) => Number(range?.is_active || 0) === 1 && Number(range?.is_expired || 0) === 0)
     || ranges[0]
 
