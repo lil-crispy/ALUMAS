@@ -436,6 +436,14 @@ function extractFactusErrorMessage(payload, fallback = 'No se pudo procesar la s
   return fallback
 }
 
+function sanitizeFactusAuthResponse(data) {
+  return removeEmptyObjectFields({
+    token_type: data?.token_type,
+    expires_in: data?.expires_in,
+    scope: data?.scope
+  })
+}
+
 async function getFactusAccessToken(forceRefresh = false) {
   ensureFactusConfigured()
   if (!forceRefresh && factusTokenCache.accessToken && Date.now() < factusTokenCache.expiresAt - 60000) {
@@ -449,6 +457,14 @@ async function getFactusAccessToken(forceRefresh = false) {
   form.set('username', String(process.env.FACTUS_USERNAME || '').trim())
   form.set('password', String(process.env.FACTUS_PASSWORD || '').trim())
 
+  console.log('[Factus][OAuth] Solicitud de token:', JSON.stringify({
+    environment: getFactusEnvironmentName(),
+    endpoint: `${getFactusApiBase()}/oauth/token`,
+    force_refresh: !!forceRefresh,
+    username: String(process.env.FACTUS_USERNAME || '').trim(),
+    grant_type: 'password'
+  }))
+
   const response = await fetch(`${getFactusApiBase()}/oauth/token`, {
     method: 'POST',
     headers: {
@@ -459,8 +475,17 @@ async function getFactusAccessToken(forceRefresh = false) {
   })
   const data = await response.json().catch(() => null)
   if (!response.ok || !data?.access_token) {
+    console.error('[Factus][OAuth] Error de autenticacion:', JSON.stringify({
+      status: response.status,
+      response: data
+    }))
     throw new Error(extractFactusErrorMessage(data, 'No se pudo autenticar contra Factus.'))
   }
+
+  console.log('[Factus][OAuth] Respuesta recibida:', JSON.stringify({
+    status: response.status,
+    response: sanitizeFactusAuthResponse(data)
+  }))
 
   const expiresIn = Number(data.expires_in || 3600)
   factusTokenCache = {
@@ -527,6 +552,11 @@ async function getFactusActiveNumberingRange() {
     params.set('filter[id]', String(configuredId))
   }
 
+  console.log('[Factus][NumberingRange] Consulta de rangos:', JSON.stringify({
+    endpoint: `/v2/numbering-ranges?${params.toString()}`,
+    configured_id: configuredId > 0 ? configuredId : null,
+    environment: getFactusEnvironmentName()
+  }))
   const payload = await factusApiRequest(`/v2/numbering-ranges?${params.toString()}`)
   const ranges = parseFactusNumberingResponse(payload)
   const activeRange = ranges.find((range) => Number(range?.is_active || 0) === 1 && Number(range?.is_expired || 0) === 0)
@@ -535,6 +565,11 @@ async function getFactusActiveNumberingRange() {
   if (!activeRange?.id) {
     throw new Error('Factus no devolvió un rango de numeración activo para factura electrónica.')
   }
+
+  console.log('[Factus][NumberingRange] Rango seleccionado:', JSON.stringify({
+    total_ranges: ranges.length,
+    selected: activeRange
+  }))
 
   return {
     id: Number(activeRange.id),
@@ -2021,6 +2056,14 @@ app.post('/api/venta', async (req, res) => {
     })
   } catch (err) {
     try { await conn.rollback() } catch {}
+    console.error('[Factus][Venta] Excepcion completa:', JSON.stringify({
+      venta_id: req.body?.id_consecutivo || null,
+      factura_electronica: req.body?.factura_electronica === true,
+      message: err?.message || 'Error desconocido',
+      statusCode: err?.statusCode || null,
+      payload: err?.payload || null,
+      stack: err?.stack || null
+    }))
     res.status(500).json({ ok: false, error: err.message })
   } finally {
     conn.release()
