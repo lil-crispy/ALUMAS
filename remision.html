@@ -1048,7 +1048,7 @@
     </div>
 
     <div class="consecutivo-display" id="consecutivo-display">
-      CONSECUTIVO: <span id="numero-consecutivo">----</span>
+      <span id="consecutivo-label">CONSECUTIVO:</span> <span id="numero-consecutivo" data-internal-consecutivo="">----</span>
       <span class="edit-consecutivo" onclick="editarConsecutivo()" title="Editar consecutivo">✏️</span>
     </div>
 
@@ -2048,6 +2048,9 @@
       actualizarPanelFacturacionElectronica('', '', '', false);
       resetEstadoFacturacionProductos();
       renderIndicadorProductosFactus({ checked: false, ready: null, message: '', errors: [] });
+      factusNumberingPreviewActual = null;
+      ultimaFacturaElectronicaEmitida = null;
+      actualizarVisualConsecutivo();
 
       // Limpiar transporte (Inputs del Modal)
       // trans-costo eliminado del DOM pero lo dejamos en la lista para evitar errores si reaparece
@@ -3035,14 +3038,14 @@ try {
         return;
       }
       aplicarVentaUI();
-      let ok = false
+      let resultadoVenta = null
       try {
-        ok = await guardarVentaBD(metodo);
+        resultadoVenta = await guardarVentaBD(metodo);
       } catch (e) {
         alert('Error guardando la venta');
         return;
       }
-      if (!ok) {
+      if (!resultadoVenta?.ok) {
         alert('La venta no se pudo guardar. Intente de nuevo.');
         return;
       }
@@ -3054,6 +3057,17 @@ try {
           ...
       }
       */
+
+      if (resultadoVenta?.factura_electronica) {
+        const numeroFactura = resultadoVenta?.factus?.number || lastConsecutivo || 'sin numeracion'
+        const mensajeFactura = `La factura electronica se genero correctamente con numeracion ${numeroFactura}.`
+        alert(mensajeFactura)
+        const metodoReporte = metodo || (tipo === 'CREDITO' ? 'credito' : null);
+        if (metodoReporte) agregarVentaReporte(metodoReporte);
+        setTimeout(limpiarTabla, 1000);
+        window.location.reload();
+        return
+      }
 
       const mensaje = lastConsecutivo
         ? 'La venta se guardó correctamente con consecutivo ' + lastConsecutivo + '. ¿Desea imprimir la remisión?'
@@ -3705,8 +3719,35 @@ try {
       if (typeof valor === 'number') {
         return Number.isFinite(valor) ? valor : 0
       }
-      const texto = String(valor || '').replace(/[^\d,.-]/g, '').replace(',', '.')
-      const numero = parseFloat(texto)
+      const textoOriginal = String(valor || '').trim()
+      if (!textoOriginal) return 0
+
+      const texto = textoOriginal.replace(/[^\d,.-]/g, '')
+      if (!texto) return 0
+
+      const ultimoPunto = texto.lastIndexOf('.')
+      const ultimaComa = texto.lastIndexOf(',')
+      let normalizado = texto
+
+      if (ultimoPunto !== -1 && ultimaComa !== -1) {
+        if (ultimoPunto > ultimaComa) {
+          normalizado = texto.replace(/,/g, '')
+        } else {
+          normalizado = texto.replace(/\./g, '').replace(',', '.')
+        }
+      } else if (ultimaComa !== -1) {
+        const decimales = texto.length - ultimaComa - 1
+        normalizado = decimales > 0 && decimales <= 2
+          ? texto.replace(/\./g, '').replace(',', '.')
+          : texto.replace(/,/g, '')
+      } else if (ultimoPunto !== -1) {
+        const decimales = texto.length - ultimoPunto - 1
+        if (texto.indexOf('.') !== ultimoPunto || decimales === 3) {
+          normalizado = texto.replace(/\./g, '')
+        }
+      }
+
+      const numero = parseFloat(normalizado)
       return Number.isFinite(numero) ? numero : 0
     }
     function obtenerFechaVentaPayload() {
@@ -4560,16 +4601,29 @@ try {
     function inicializarFacturacionElectronica() {
       const { checkbox, indicador } = obtenerElementosFacturacionElectronica()
       if (!checkbox) return
-      checkbox.addEventListener('change', () => {
+      checkbox.addEventListener('change', async () => {
         if (checkbox.checked) {
+          try {
+            await solicitarNumeracionFactusPreview()
+          } catch (error) {
+            checkbox.checked = false
+            factusNumberingPreviewActual = null
+            ultimaFacturaElectronicaEmitida = null
+            actualizarVisualConsecutivo()
+            alert(error?.message || 'No se pudo obtener la numeracion de Factus.')
+            return
+          }
           sincronizarFacturacionElectronicaUI({ forzar: true })
           sincronizarFacturacionProductosUI({ forzar: true })
           return
         }
+        factusNumberingPreviewActual = null
+        ultimaFacturaElectronicaEmitida = null
         resetEstadoFacturacionElectronica()
         actualizarPanelFacturacionElectronica('', '', '', false)
         resetEstadoFacturacionProductos()
         renderIndicadorProductosFactus({ checked: false, ready: null, message: '', errors: [] })
+        actualizarVisualConsecutivo()
       })
       if (indicador) {
         indicador.addEventListener('click', () => {
@@ -4727,10 +4781,98 @@ try {
       return { usuario_id: u, cliente_id: c }
     }
     let lastConsecutivo = null
+    let lastConsecutivoInterno = null
+    let factusNumberingPreviewActual = null
+    let ultimaFacturaElectronicaEmitida = null
     let clienteSeleccionado = null
     let clienteSearchTimer = null
     let remisionTransporteProgramada = false
     let remisionTransporteProgramadaId = null
+
+    function obtenerElementoNumeroConsecutivo() {
+      return document.getElementById('numero-consecutivo')
+    }
+    function obtenerLabelConsecutivo() {
+      return document.getElementById('consecutivo-label')
+    }
+    function facturaElectronicaCheckboxActivo() {
+      return !!document.getElementById('factura-electronica-checkbox')?.checked
+    }
+    function setConsecutivoInterno(valor) {
+      const numero = Number(valor)
+      const normalizado = Number.isFinite(numero) && numero > 0 ? Math.trunc(numero) : null
+      lastConsecutivoInterno = normalizado
+      const el = obtenerElementoNumeroConsecutivo()
+      if (el) {
+        if (normalizado) {
+          el.dataset.internalConsecutivo = String(normalizado)
+        } else {
+          delete el.dataset.internalConsecutivo
+        }
+      }
+      if (!facturaElectronicaCheckboxActivo()) {
+        lastConsecutivo = normalizado
+      }
+      actualizarVisualConsecutivo()
+      return normalizado
+    }
+    function getConsecutivoInterno() {
+      if (Number.isFinite(lastConsecutivoInterno) && lastConsecutivoInterno > 0) {
+        return lastConsecutivoInterno
+      }
+      const el = obtenerElementoNumeroConsecutivo()
+      const dataValue = el?.dataset?.internalConsecutivo
+      const numero = Number(dataValue)
+      if (Number.isFinite(numero) && numero > 0) {
+        lastConsecutivoInterno = Math.trunc(numero)
+        return lastConsecutivoInterno
+      }
+      const texto = el?.textContent || ''
+      const desdeTexto = parseInt(texto, 10)
+      return Number.isFinite(desdeTexto) && desdeTexto > 0 ? desdeTexto : null
+    }
+    function actualizarVisualConsecutivo() {
+      const label = obtenerLabelConsecutivo()
+      const el = obtenerElementoNumeroConsecutivo()
+      const edit = document.querySelector('.edit-consecutivo')
+      if (!label || !el) return
+
+      if (facturaElectronicaCheckboxActivo()) {
+        label.textContent = 'FACTURA FE:'
+        el.textContent = (
+          ultimaFacturaElectronicaEmitida?.number
+          || factusNumberingPreviewActual?.preview_number
+          || (getConsecutivoInterno() ? `PENDIENTE ${getConsecutivoInterno()}` : 'CONSULTANDO...')
+        )
+        if (edit) edit.style.display = 'none'
+        return
+      }
+
+      label.textContent = 'CONSECUTIVO:'
+      el.textContent = getConsecutivoInterno() || '----'
+      if (edit) edit.style.display = ''
+    }
+    async function solicitarNumeracionFactusPreview() {
+      const resp = await fetch(getApiBase() + '/api/factus/numbering-preview')
+      const data = await resp.json().catch(() => ({}))
+      if (!resp.ok || !data?.ok) {
+        throw new Error(data?.error || 'No se pudo consultar la numeración de Factus.')
+      }
+      factusNumberingPreviewActual = data
+      actualizarVisualConsecutivo()
+      return data
+    }
+    function aplicarResultadoFacturaElectronica(resultadoFactus) {
+      ultimaFacturaElectronicaEmitida = resultadoFactus || null
+      if (resultadoFactus?.number) {
+        lastConsecutivo = resultadoFactus.number
+        factusNumberingPreviewActual = {
+          ...(factusNumberingPreviewActual || {}),
+          preview_number: resultadoFactus.number
+        }
+      }
+      actualizarVisualConsecutivo()
+    }
 
     function marcarTransporteNoProgramado() {
       remisionTransporteProgramada = false
@@ -4774,7 +4916,12 @@ try {
     }
 
     async function editarConsecutivo() {
-      const actual = document.getElementById('numero-consecutivo').innerText;
+      if (facturaElectronicaCheckboxActivo()) {
+        alert('Cuando la factura electrónica está activa, la numeración visible la define Factus y no se puede editar manualmente.')
+        return
+      }
+
+      const actual = String(getConsecutivoInterno() || '')
       const nuevo = prompt("Ingrese el nuevo número de consecutivo (4 dígitos):", actual);
       
       if (nuevo === null) return; // Cancelado
@@ -4802,7 +4949,7 @@ try {
         
         // Si es válido y no existe
         lastConsecutivo = num;
-        document.getElementById('numero-consecutivo').innerText = num;
+        setConsecutivoInterno(num);
         
       } catch (e) {
         console.error(e);
@@ -4817,8 +4964,7 @@ try {
       const numero = data && (data.id_consecutivo ?? data.consecutivo ?? data.numero)
       if (!numero) throw new Error('respuesta sin consecutivo')
       lastConsecutivo = numero
-      const el = document.getElementById('numero-consecutivo')
-      if (el) el.textContent = numero
+      setConsecutivoInterno(numero)
       return numero
     }
     async function guardarVentaBD(metodo) {
@@ -4837,8 +4983,7 @@ try {
       }
       
       // Validar consecutivo actual antes de enviar
-      let id_consecutivo = document.getElementById('numero-consecutivo').innerText.trim();
-      id_consecutivo = parseInt(id_consecutivo);
+      let id_consecutivo = getConsecutivoInterno()
       
       if (!id_consecutivo || isNaN(id_consecutivo) || id_consecutivo < 1000) {
           // Si no es válido, intentar obtener uno nuevo
@@ -4866,6 +5011,7 @@ try {
           }
       }
 
+      setConsecutivoInterno(id_consecutivo)
       lastConsecutivo = id_consecutivo
       const payload = {
         id_consecutivo,
@@ -4899,6 +5045,8 @@ try {
         payload.total = estructuraVentaElectronica.total
         payload.observation = obtenerObservacionVenta()
         payload.factura_electronica = true
+        payload.factus_numbering_range_id = factusNumberingPreviewActual?.numbering_range_id || null
+        payload.factus_preview_number = factusNumberingPreviewActual?.preview_number || null
         payload.items = estructuraVentaElectronica.items
         payload.payment_details = paymentDetails
         payload.venta_detalle = estructuraVentaElectronica.items
@@ -4926,15 +5074,21 @@ try {
       })
       
       if (resp.status === 409) { // Conflicto / Duplicado
-          const errData = await resp.json();
+          const errData = await resp.json().catch(() => ({}));
           alert(`Error: El consecutivo ${id_consecutivo} ya fue registrado por otra venta hace un instante. Por favor intente de nuevo con otro número.`);
           await solicitarConsecutivo(); // Generar uno nuevo automáticamente
-          return false;
+          return { ok: false, ...errData };
       }
 
-      if (!resp.ok) return false
-      const data = await resp.json()
-      return !!data?.ok
+      const data = await resp.json().catch(() => ({}))
+      if (!resp.ok) {
+        alert(data?.message || data?.error || 'La venta no se pudo guardar.')
+        return data
+      }
+      if (payload.factura_electronica && data?.factus) {
+        aplicarResultadoFacturaElectronica(data.factus)
+      }
+      return data
     }
 // Seleccionar todo el contenido de la celda activa al presionar Shift
 tabla.addEventListener('keydown', (e) => {
@@ -5648,8 +5802,8 @@ function cargarPedidoProgramado(id) {
   
   // Restaurar Consecutivo
   if (pedido.consecutivo) {
-      document.getElementById('numero-consecutivo').innerText = pedido.consecutivo;
       lastConsecutivo = pedido.consecutivo;
+      setConsecutivoInterno(pedido.consecutivo);
   }
   
   // Restaurar Items

@@ -115,12 +115,18 @@ async function ensureSchema() {
       venta_id BIGINT NOT NULL,
       environment VARCHAR(32) NOT NULL DEFAULT 'sandbox',
       reference_code VARCHAR(120) NOT NULL,
+      factus_bill_id BIGINT NULL,
+      number VARCHAR(64) NULL,
+      prefix VARCHAR(16) NULL,
+      cufe VARCHAR(255) NULL,
       status VARCHAR(32) NOT NULL DEFAULT 'pending',
       is_validated TINYINT(1) NOT NULL DEFAULT 0,
       request_payload_json LONGTEXT NULL,
-      response_payload_json LONGTEXT NULL,
+      response_json LONGTEXT NULL,
       error_message TEXT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      validated_at TIMESTAMP NULL DEFAULT NULL,
+      last_sync_at TIMESTAMP NULL DEFAULT NULL,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       UNIQUE KEY uq_factus_documentos_venta_id (venta_id),
       UNIQUE KEY uq_factus_documentos_reference_code (reference_code)
@@ -169,6 +175,45 @@ async function ensureSchema() {
 
   for (const column of missingVentasColumns) {
     if (!ventasColumnSet.has(column.name.toLowerCase())) {
+      await pool.query(column.sql)
+    }
+  }
+
+  const factusColumns = await getTableColumns('factus_documentos')
+  const factusColumnSet = new Set(factusColumns.map((column) => String(column || '').toLowerCase()))
+  const missingFactusColumns = [
+    {
+      name: 'factus_bill_id',
+      sql: 'ALTER TABLE factus_documentos ADD COLUMN factus_bill_id BIGINT NULL DEFAULT NULL'
+    },
+    {
+      name: 'number',
+      sql: 'ALTER TABLE factus_documentos ADD COLUMN number VARCHAR(64) NULL DEFAULT NULL'
+    },
+    {
+      name: 'prefix',
+      sql: 'ALTER TABLE factus_documentos ADD COLUMN prefix VARCHAR(16) NULL DEFAULT NULL'
+    },
+    {
+      name: 'cufe',
+      sql: 'ALTER TABLE factus_documentos ADD COLUMN cufe VARCHAR(255) NULL DEFAULT NULL'
+    },
+    {
+      name: 'validated_at',
+      sql: 'ALTER TABLE factus_documentos ADD COLUMN validated_at TIMESTAMP NULL DEFAULT NULL'
+    },
+    {
+      name: 'last_sync_at',
+      sql: 'ALTER TABLE factus_documentos ADD COLUMN last_sync_at TIMESTAMP NULL DEFAULT NULL'
+    },
+    {
+      name: 'response_json',
+      sql: 'ALTER TABLE factus_documentos ADD COLUMN response_json LONGTEXT NULL DEFAULT NULL'
+    }
+  ]
+
+  for (const column of missingFactusColumns) {
+    if (!factusColumnSet.has(column.name.toLowerCase())) {
       await pool.query(column.sql)
     }
   }
@@ -322,6 +367,454 @@ function normalizeVentaDate(value) {
   return match ? match[1] : null
 }
 
+function normalizeVentaTime(value) {
+  const text = String(value || '').trim()
+  if (!text) return null
+  const match = text.match(/(\d{2}:\d{2}:\d{2})$/)
+  return match ? match[1] : null
+}
+
+function formatFactusDecimal(value, decimals = 2) {
+  return normalizeVentaNumeric(value, 0).toFixed(decimals)
+}
+
+function removeEmptyObjectFields(input) {
+  const output = {}
+  Object.entries(input || {}).forEach(([key, value]) => {
+    if (value === null || value === undefined) return
+    if (typeof value === 'string' && value.trim() === '') return
+    if (Array.isArray(value) && value.length === 0) return
+    output[key] = value
+  })
+  return output
+}
+
+function getFactusEnvironmentName() {
+  const raw = String(process.env.FACTUS_ENVIRONMENT || process.env.FACTUS_API_ENVIRONMENT || 'sandbox').trim().toLowerCase()
+  return raw === 'production' ? 'production' : 'sandbox'
+}
+
+function getFactusApiBase() {
+  return getFactusEnvironmentName() === 'production'
+    ? 'https://api.factus.com.co'
+    : 'https://api-sandbox.factus.com.co'
+}
+
+function ensureFactusConfigured() {
+  const required = [
+    ['FACTUS_CLIENT_ID', process.env.FACTUS_CLIENT_ID],
+    ['FACTUS_CLIENT_SECRET', process.env.FACTUS_CLIENT_SECRET],
+    ['FACTUS_USERNAME', process.env.FACTUS_USERNAME],
+    ['FACTUS_PASSWORD', process.env.FACTUS_PASSWORD]
+  ]
+  const missing = required
+    .filter(([, value]) => String(value || '').trim() === '')
+    .map(([name]) => name)
+
+  if (missing.length > 0) {
+    throw new Error(`Factus no está configurado. Faltan variables: ${missing.join(', ')}`)
+  }
+}
+
+let factusTokenCache = {
+  accessToken: null,
+  expiresAt: 0
+}
+
+function extractFactusErrorMessage(payload, fallback = 'No se pudo procesar la solicitud en Factus.') {
+  if (!payload) return fallback
+  if (typeof payload === 'string' && payload.trim()) return payload.trim()
+  if (typeof payload?.message === 'string' && payload.message.trim()) return payload.message.trim()
+  if (typeof payload?.error === 'string' && payload.error.trim()) return payload.error.trim()
+  if (Array.isArray(payload?.errors) && payload.errors.length) {
+    return payload.errors.map((item) => {
+      if (typeof item === 'string') return item
+      if (typeof item?.message === 'string') return item.message
+      return JSON.stringify(item)
+    }).join(' | ')
+  }
+  return fallback
+}
+
+async function getFactusAccessToken(forceRefresh = false) {
+  ensureFactusConfigured()
+  if (!forceRefresh && factusTokenCache.accessToken && Date.now() < factusTokenCache.expiresAt - 60000) {
+    return factusTokenCache.accessToken
+  }
+
+  const form = new URLSearchParams()
+  form.set('grant_type', 'password')
+  form.set('client_id', String(process.env.FACTUS_CLIENT_ID || '').trim())
+  form.set('client_secret', String(process.env.FACTUS_CLIENT_SECRET || '').trim())
+  form.set('username', String(process.env.FACTUS_USERNAME || '').trim())
+  form.set('password', String(process.env.FACTUS_PASSWORD || '').trim())
+
+  const response = await fetch(`${getFactusApiBase()}/oauth/token`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: form.toString()
+  })
+  const data = await response.json().catch(() => null)
+  if (!response.ok || !data?.access_token) {
+    throw new Error(extractFactusErrorMessage(data, 'No se pudo autenticar contra Factus.'))
+  }
+
+  const expiresIn = Number(data.expires_in || 3600)
+  factusTokenCache = {
+    accessToken: data.access_token,
+    expiresAt: Date.now() + (Number.isFinite(expiresIn) ? expiresIn * 1000 : 3600000)
+  }
+  return factusTokenCache.accessToken
+}
+
+async function factusApiRequest(pathname, options = {}) {
+  const {
+    method = 'GET',
+    body,
+    headers = {},
+    retryAuth = true
+  } = options
+
+  const token = await getFactusAccessToken(false)
+  const response = await fetch(`${getFactusApiBase()}${pathname}`, {
+    method,
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+      ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+      ...headers
+    },
+    body: body !== undefined ? JSON.stringify(body) : undefined
+  })
+
+  const contentType = response.headers.get('content-type') || ''
+  const payload = contentType.includes('application/json')
+    ? await response.json().catch(() => null)
+    : await response.text().catch(() => '')
+
+  if (response.status === 401 && retryAuth) {
+    await getFactusAccessToken(true)
+    return factusApiRequest(pathname, { method, body, headers, retryAuth: false })
+  }
+
+  if (!response.ok) {
+    const error = new Error(extractFactusErrorMessage(payload))
+    error.statusCode = response.status
+    error.payload = payload
+    throw error
+  }
+
+  return payload
+}
+
+function parseFactusNumberingResponse(payload) {
+  if (Array.isArray(payload?.data)) return payload.data
+  if (Array.isArray(payload?.data?.data)) return payload.data.data
+  if (Array.isArray(payload)) return payload
+  return []
+}
+
+async function getFactusActiveNumberingRange() {
+  ensureFactusConfigured()
+  const configuredId = Number(process.env.FACTUS_NUMBERING_RANGE_ID || 0)
+  const params = new URLSearchParams()
+  params.set('filter[document]', '01')
+  params.set('filter[is_active]', '1')
+  if (configuredId > 0) {
+    params.set('filter[id]', String(configuredId))
+  }
+
+  const payload = await factusApiRequest(`/v2/numbering-ranges?${params.toString()}`)
+  const ranges = parseFactusNumberingResponse(payload)
+  const activeRange = ranges.find((range) => Number(range?.is_active || 0) === 1 && Number(range?.is_expired || 0) === 0)
+    || ranges[0]
+
+  if (!activeRange?.id) {
+    throw new Error('Factus no devolvió un rango de numeración activo para factura electrónica.')
+  }
+
+  return {
+    id: Number(activeRange.id),
+    prefix: String(activeRange.prefix || '').trim(),
+    current: String(activeRange.current || '').trim(),
+    preview_number: `${String(activeRange.prefix || '').trim()}${String(activeRange.current || '').trim()}`,
+    raw: activeRange
+  }
+}
+
+function buildFactusReferenceCode(body, ventaId) {
+  const candidate = String(
+    body?.facturacion?.reference_code
+    || body?.reference_code
+    || `VENTA-${ventaId}`
+  ).trim()
+  return candidate || `VENTA-${ventaId}`
+}
+
+async function getClienteForFactus(clienteId, conn = pool) {
+  const columns = await getTableColumns('clientes', conn)
+  const columnSet = new Set(columns.map((column) => String(column || '').toLowerCase()))
+  const selectField = (field, alias = field) => {
+    if (columnSet.has(field.toLowerCase())) {
+      return field === alias ? `\`${field}\`` : `\`${field}\` AS \`${alias}\``
+    }
+    return `NULL AS \`${alias}\``
+  }
+
+  const [rows] = await conn.query(
+    `SELECT
+       \`id_cliente\` AS id,
+       \`nombre\`,
+       \`nit_cc\`,
+       \`telefono\`,
+       \`direccion\`,
+       ${selectField('identification')}
+       , ${selectField('identification_document_code')}
+       , ${selectField('legal_organization_code')}
+       , ${selectField('tribute_code')}
+       , ${selectField('email')}
+       , ${selectField('company')}
+       , ${selectField('trade_name')}
+       , ${selectField('names')}
+       , ${selectField('dv')}
+       , ${selectField('municipality_code')}
+       , ${selectField('country_code')}
+     FROM clientes
+     WHERE id_cliente = ?
+     LIMIT 1`,
+    [Number(clienteId)]
+  )
+
+  return rows && rows.length ? rows[0] : null
+}
+
+function mapFactusPaymentForm(value) {
+  const normalized = String(value || '').trim().toLowerCase()
+  if (normalized === '2' || normalized === 'credito' || normalized === 'crédito') return '2'
+  return '1'
+}
+
+function mapFactusPaymentMethodCode(value, paymentForm) {
+  const normalized = String(value || '').trim().toLowerCase()
+  if (/^\d+$/.test(normalized)) return normalized
+  if (normalized === 'cash' || normalized === 'efectivo') return '10'
+  if (normalized === 'card' || normalized === 'tarjeta') return '48'
+  if (normalized === 'qr') return '42'
+  if (normalized === 'credit' || paymentForm === '2') return '1'
+  return '10'
+}
+
+function buildFactusCustomerPayload(cliente) {
+  if (!cliente) {
+    throw new Error('No se encontró el cliente a facturar en la base de datos.')
+  }
+
+  const legalOrganizationCode = String(cliente.legal_organization_code || '').trim()
+  const identification = String(cliente.identification || cliente.nit_cc || '').trim()
+  const company = String(cliente.company || cliente.trade_name || '').trim()
+  const names = String(cliente.names || cliente.nombre || '').trim()
+  const payload = removeEmptyObjectFields({
+    identification_document_code: String(cliente.identification_document_code || '').trim(),
+    identification,
+    dv: String(cliente.dv || '').trim() || undefined,
+    legal_organization_code: legalOrganizationCode,
+    tribute_code: String(cliente.tribute_code || 'ZZ').trim() || 'ZZ',
+    company: legalOrganizationCode === '1' ? (company || names) : company,
+    trade_name: String(cliente.trade_name || '').trim(),
+    names: legalOrganizationCode === '1' ? (names || company) : (names || company),
+    address: String(cliente.direccion || '').trim(),
+    email: String(cliente.email || '').trim(),
+    phone: String(cliente.telefono || '').trim(),
+    country_code: String(cliente.country_code || '').trim() || undefined,
+    municipality_code: String(cliente.municipality_code || '').trim() || undefined
+  })
+
+  if (!payload.identification_document_code || !payload.identification || !payload.legal_organization_code || !payload.address || !payload.email) {
+    throw new Error('El cliente no tiene todos los datos requeridos para construir la factura electrónica en Factus.')
+  }
+
+  if (payload.legal_organization_code === '1' && !payload.company) {
+    payload.company = names || identification
+  }
+  if (payload.legal_organization_code !== '1' && !payload.names) {
+    payload.names = company || identification
+  }
+
+  return payload
+}
+
+function buildFactusItemsPayload(items) {
+  if (!Array.isArray(items) || items.length === 0) {
+    throw new Error('No hay items válidos para enviar a Factus.')
+  }
+
+  return items.map((item) => {
+    const quantity = normalizeVentaNumeric(item.cantidad, 0)
+    const subtotal = normalizeVentaNumeric(item.subtotal, 0)
+    const rawUnitPrice = normalizeVentaNumeric(item.precio_unitario ?? item.valor_unitario, 0)
+    const unitPrice = quantity > 0 && subtotal > 0 ? subtotal / quantity : rawUnitPrice
+    const factusIsExcluded = parseBooleanLike(item.factus_is_excluded)
+    const taxes = factusIsExcluded
+      ? []
+      : [{
+          code: String(item.factus_tax_code || '').trim(),
+          rate: formatFactusDecimal(item.factus_tax_rate ?? 0)
+        }]
+
+    if (!String(item.factus_code_reference || '').trim() || !String(item.descripcion || '').trim() || !String(item.factus_unit_measure_code || '').trim() || !String(item.factus_standard_code || '').trim()) {
+      throw new Error('Hay productos sin metadatos Factus completos para emitir la factura electrónica.')
+    }
+
+    if (!factusIsExcluded && (!taxes[0]?.code || normalizeVentaNumeric(item.factus_tax_rate, -1) < 0)) {
+      throw new Error('Hay productos gravados sin impuesto o tarifa válida para Factus.')
+    }
+
+    return removeEmptyObjectFields({
+      code_reference: String(item.factus_code_reference || '').trim(),
+      name: String(item.descripcion || '').trim(),
+      quantity: formatFactusDecimal(quantity),
+      discount_rate: formatFactusDecimal(item.discount_rate ?? 0),
+      price: formatFactusDecimal(unitPrice),
+      unit_measure_code: String(item.factus_unit_measure_code || '').trim(),
+      standard_code: String(item.factus_standard_code || '').trim(),
+      taxes,
+      withholding_taxes: []
+    })
+  })
+}
+
+function buildFactusBillPayload({ body, ventaId, cliente, items, paymentDetails, numberingRange, referenceCode }) {
+  const paymentForm = mapFactusPaymentForm(paymentDetails[0]?.payment_form || body?.tipo_pago)
+  const factusPaymentDetails = paymentDetails.map((pago) => removeEmptyObjectFields({
+    payment_form: mapFactusPaymentForm(pago.payment_form || body?.tipo_pago),
+    payment_method_code: mapFactusPaymentMethodCode(pago.payment_method_code || body?.forma_pago, paymentForm),
+    amount: formatFactusDecimal(pago.amount ?? body?.total ?? 0),
+    due_date: mapFactusPaymentForm(pago.payment_form || body?.tipo_pago) === '2'
+      ? (normalizeVentaDate(pago.due_date || body?.fecha) || normalizeVentaDate(body?.fecha))
+      : undefined,
+    reference_code: pago.reference_code ? String(pago.reference_code).trim() : undefined
+  }))
+
+  const payload = removeEmptyObjectFields({
+    reference_code: referenceCode,
+    document: '01',
+    numbering_range_id: numberingRange?.id || undefined,
+    operation_type: String(body?.operation_type || '10'),
+    send_email: parseBooleanLike(process.env.FACTUS_SEND_EMAIL || 'false'),
+    observation: String(body?.observation || '').trim() || undefined,
+    created_time: normalizeVentaTime(body?.fecha) || undefined,
+    customer: buildFactusCustomerPayload(cliente),
+    payment_details: factusPaymentDetails,
+    items: buildFactusItemsPayload(items)
+  })
+
+  if (!Array.isArray(payload.payment_details) || payload.payment_details.length === 0) {
+    throw new Error('La venta no tiene métodos de pago válidos para Factus.')
+  }
+
+  return payload
+}
+
+function parseFactusInvoiceResult(payload) {
+  const data = payload?.data || payload
+  const bill = data?.bill || data
+  const number = String(data?.number || bill?.number || '').trim()
+  const prefix = String(data?.prefix || bill?.prefix || '').trim()
+  const cufe = String(data?.cufe || bill?.cufe || '').trim()
+  const qr = String(data?.qr || bill?.qr || data?.qr_url || '').trim()
+  const documentUrl = String(
+    data?.document_url
+    || bill?.document_url
+    || data?.pdf_url
+    || bill?.pdf_url
+    || ''
+  ).trim()
+  const urls = removeEmptyObjectFields({
+    document_url: documentUrl || undefined,
+    pdf_url: String(data?.pdf_url || bill?.pdf_url || '').trim() || undefined,
+    xml_url: String(data?.xml_url || bill?.xml_url || '').trim() || undefined,
+    zip_url: String(data?.zip_url || bill?.zip_url || '').trim() || undefined,
+    qr_url: qr || undefined
+  })
+  const referenceCode = String(data?.reference_code || bill?.reference_code || '').trim()
+  const validated = (
+    typeof data?.is_validated === 'boolean' ? data.is_validated
+      : typeof bill?.is_validated === 'boolean' ? bill.is_validated
+        : parseBooleanLike(data?.is_validated ?? bill?.is_validated)
+  )
+  const status = String(data?.status_name || bill?.status_name || data?.status || bill?.status || '').trim() || 'validated'
+  const billId = Number(data?.id || bill?.id || 0) || null
+
+  return {
+    bill_id: billId,
+    number,
+    prefix: prefix || (number ? number.replace(/\d+$/, '') : ''),
+    cufe,
+    qr,
+    document_url: documentUrl,
+    urls,
+    reference_code: referenceCode,
+    status,
+    is_validated: validated,
+    raw: payload
+  }
+}
+
+async function updateFactusPersistedData(conn, ventaId, referenceCode, factusPayload, factusResponse) {
+  const factus = parseFactusInvoiceResult(factusResponse)
+  const statusText = String(factus.status || '').trim() || (factus.is_validated ? 'validated' : 'created')
+  const responseWithDerivedUrls = {
+    ...(factusResponse || {}),
+    derived_urls: factus.urls || {}
+  }
+
+  await conn.query(
+    `UPDATE ventas
+     SET factus_number = ?, electronic_status = ?
+     WHERE id_consecutivo = ?`,
+    [
+      factus.number || null,
+      statusText,
+      Number(ventaId)
+    ]
+  )
+
+  await conn.query(
+    `UPDATE factus_documentos
+     SET
+       factus_bill_id = ?,
+       number = ?,
+       prefix = ?,
+       cufe = ?,
+       status = ?,
+       is_validated = ?,
+       request_payload_json = ?,
+       response_json = ?,
+       error_message = NULL,
+       validated_at = ?,
+       last_sync_at = NOW()
+     WHERE venta_id = ? AND reference_code = ?`,
+    [
+      factus.bill_id,
+      factus.number || null,
+      factus.prefix || null,
+      factus.cufe || null,
+      statusText,
+      factus.is_validated ? 1 : 0,
+      toSafeJson(factusPayload),
+      toSafeJson(responseWithDerivedUrls),
+      factus.is_validated ? new Date() : null,
+      Number(ventaId),
+      referenceCode
+    ]
+  )
+
+  return factus
+}
+
 async function insertVentaCabecera(conn, payload) {
   const ventasColumns = await getTableColumns('ventas', conn)
   const columnSet = new Set(ventasColumns.map((column) => String(column || '').toLowerCase()))
@@ -368,10 +861,11 @@ async function insertVentaCabecera(conn, payload) {
   )
 }
 
-async function persistVentaElectronicaData(conn, body, ventaId, items, paymentDetails) {
+async function persistVentaElectronicaData(conn, body, ventaId, items, paymentDetails, options = {}) {
   const environment = String(process.env.FACTUS_ENVIRONMENT || process.env.FACTUS_API_ENVIRONMENT || 'sandbox').trim() || 'sandbox'
   const referenceCode = String(
-    body?.facturacion?.reference_code
+    options.referenceCode
+    || body?.facturacion?.reference_code
     || paymentDetails.find((pago) => String(pago?.reference_code || '').trim())?.reference_code
     || `VENTA-${ventaId}`
   ).trim()
@@ -454,6 +948,8 @@ async function persistVentaElectronicaData(conn, body, ventaId, items, paymentDe
       toSafeJson(body.facturacion || body)
     ]
   )
+
+  return referenceCode
 }
 
 function buildClienteFacturacionStatus(cliente) {
@@ -1345,6 +1841,24 @@ app.post('/api/consecutivo', async (req, res) => {
   }
 })
 
+app.get('/api/factus/numbering-preview', async (req, res) => {
+  try {
+    const numberingRange = await getFactusActiveNumberingRange()
+    res.json({
+      ok: true,
+      numbering_range_id: numberingRange.id,
+      prefix: numberingRange.prefix,
+      current: numberingRange.current,
+      preview_number: numberingRange.preview_number
+    })
+  } catch (err) {
+    res.status(503).json({
+      ok: false,
+      error: err.message
+    })
+  }
+})
+
 app.get('/api/check-consecutivo/:id', async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -1373,6 +1887,9 @@ app.post('/api/venta', async (req, res) => {
     const esFacturaElectronica = req.body?.factura_electronica === true
     const items = normalizeVentaDetalleItems(req.body)
     const paymentDetails = normalizeVentaPaymentDetails(req.body)
+    let factusPayload = null
+    let factusResult = null
+    let factusReferenceCode = null
 
     if (!id_consecutivo || !usuario_id || !cliente_id) {
       return res.status(400).json({ ok: false, error: 'faltan_campos' })
@@ -1392,6 +1909,26 @@ app.post('/api/venta', async (req, res) => {
         error: 'cliente_invalido',
         message: 'La venta electrónica requiere un cliente válido.'
       })
+    }
+
+    if (esFacturaElectronica) {
+      const clienteFactus = await getClienteForFactus(Number(cliente_id), conn)
+      const numberingRange = await getFactusActiveNumberingRange()
+      factusReferenceCode = buildFactusReferenceCode(req.body, id_consecutivo)
+      factusPayload = buildFactusBillPayload({
+        body: req.body,
+        ventaId: id_consecutivo,
+        cliente: clienteFactus,
+        items,
+        paymentDetails,
+        numberingRange,
+        referenceCode: factusReferenceCode
+      })
+      console.log('[Factus] Payload a enviar:', JSON.stringify({
+        venta_id: Number(id_consecutivo),
+        reference_code: factusReferenceCode,
+        payload: factusPayload
+      }))
     }
 
     // Doble validación en backend antes de insertar
@@ -1416,11 +1953,13 @@ app.post('/api/venta', async (req, res) => {
       observation: req.body?.observation || null,
       factura_electronica: esFacturaElectronica,
       electronic_status: esFacturaElectronica ? 'pending' : null,
-      factus_number: req.body?.factus_number || null
+      factus_number: null
     })
 
     if (esFacturaElectronica) {
-      await persistVentaElectronicaData(conn, req.body, id_consecutivo, items, paymentDetails)
+      await persistVentaElectronicaData(conn, req.body, id_consecutivo, items, paymentDetails, {
+        referenceCode: factusReferenceCode
+      })
     }
 
     // Descontar stock
@@ -1451,12 +1990,34 @@ app.post('/api/venta', async (req, res) => {
       }
     }
 
+    if (esFacturaElectronica) {
+      const factusResponse = await factusApiRequest('/v2/bills/validate', {
+        method: 'POST',
+        body: factusPayload
+      })
+      console.log('[Factus] Respuesta recibida:', JSON.stringify({
+        venta_id: Number(id_consecutivo),
+        reference_code: factusReferenceCode,
+        response: factusResponse
+      }))
+      factusResult = await updateFactusPersistedData(conn, id_consecutivo, factusReferenceCode, factusPayload, factusResponse)
+    }
+
     await conn.commit()
     res.json({
       ok: true,
       id_consecutivo,
       venta_id: Number(id_consecutivo),
-      factura_electronica: esFacturaElectronica
+      factura_electronica: esFacturaElectronica,
+      factus_number: factusResult?.number || null,
+      prefix: factusResult?.prefix || null,
+      number: factusResult?.number || null,
+      cufe: factusResult?.cufe || null,
+      status: factusResult?.status || null,
+      is_validated: typeof factusResult?.is_validated === 'boolean' ? factusResult.is_validated : null,
+      document_url: factusResult?.document_url || null,
+      urls: factusResult?.urls || null,
+      factus: factusResult
     })
   } catch (err) {
     try { await conn.rollback() } catch {}
