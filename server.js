@@ -1147,6 +1147,36 @@ async function persistVentaElectronicaData(conn, body, ventaId, items, paymentDe
   return referenceCode
 }
 
+function normalizeConsecutivoValue(value) {
+  const numero = Number(value)
+  if (!Number.isFinite(numero) || numero <= 0) return null
+  return Math.trunc(numero)
+}
+
+async function getNextVentaConsecutivo(conn = pool) {
+  const [rows] = await conn.query(
+    'SELECT id_consecutivo FROM ventas WHERE id_consecutivo >= 1000 ORDER BY id_consecutivo DESC LIMIT 1'
+  )
+  const ultimo = rows && rows.length ? Number(rows[0].id_consecutivo) : 999
+  return Math.max(1000, (Number.isFinite(ultimo) ? ultimo : 999) + 1)
+}
+
+async function resolveVentaConsecutivo(conn, requestedId) {
+  const preferred = normalizeConsecutivoValue(requestedId)
+  if (preferred) {
+    const [[existing]] = await conn.query(
+      'SELECT id_consecutivo FROM ventas WHERE id_consecutivo = ? LIMIT 1',
+      [preferred]
+    )
+    if (!existing) {
+      return preferred
+    }
+  }
+
+  const nextId = await getNextVentaConsecutivo(conn)
+  return normalizeConsecutivoValue(nextId)
+}
+
 function buildClienteFacturacionStatus(cliente) {
   const displayName = String(
     cliente?.company ||
@@ -2017,22 +2047,17 @@ app.post('/api/confirmar-pass', async (req, res) => {
 
 // Generar consecutivo único de 4 dígitos validando en tabla ventas
 app.post('/api/consecutivo', async (req, res) => {
+  const conn = await pool.getConnection()
   try {
-    let intentos = 0
-    let numero = null
-    while (intentos < 100) {
-      const n = Math.floor(1000 + Math.random() * 9000)
-      const [[row]] = await pool.query('SELECT 1 AS ex FROM ventas WHERE id_consecutivo = ? LIMIT 1', [n])
-      if (!row || !row.ex) {
-        numero = n
-        break
-      }
-      intentos++
+    const numero = await getNextVentaConsecutivo(conn)
+    if (!numero) {
+      return res.status(409).json({ ok: false, error: 'no_consecutivo', msg: 'No se pudo generar un consecutivo único' })
     }
-    if (!numero) return res.status(409).json({ ok: false, error: 'no_consecutivo', msg: 'No se pudo generar un consecutivo único' })
     res.json({ ok: true, id_consecutivo: numero })
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message })
+  } finally {
+    conn.release()
   }
 })
 
@@ -2079,14 +2104,16 @@ app.post('/api/venta', async (req, res) => {
       forma_pago, // 'EFECTIVO' | 'QR' | 'TARJETA' | etc
       punto_venta, // 'ferreteria' | 'bodega'
     } = req.body || {}
+    const requestedConsecutivo = id_consecutivo
     const esFacturaElectronica = req.body?.factura_electronica === true
     const items = normalizeVentaDetalleItems(req.body)
     const paymentDetails = normalizeVentaPaymentDetails(req.body)
     let factusPayload = null
     let factusResult = null
     let factusReferenceCode = null
+    let resolvedConsecutivo = normalizeConsecutivoValue(requestedConsecutivo)
 
-    if (!id_consecutivo || !usuario_id || !cliente_id) {
+    if (!usuario_id || !cliente_id) {
       return res.status(400).json({ ok: false, error: 'faltan_campos' })
     }
 
@@ -2106,10 +2133,14 @@ app.post('/api/venta', async (req, res) => {
       })
     }
 
+    await conn.beginTransaction()
+    resolvedConsecutivo = await resolveVentaConsecutivo(conn, requestedConsecutivo)
+
     if (esFacturaElectronica) {
       const clienteFactus = await getClienteForFactus(Number(cliente_id), conn)
       const clienteFactusStatus = buildClienteFactusEmissionStatus(clienteFactus)
       if (!clienteFactusStatus.ready) {
+        await conn.rollback()
         return res.status(422).json({
           ok: false,
           error: 'cliente_factus_incompleto',
@@ -2118,10 +2149,10 @@ app.post('/api/venta', async (req, res) => {
         })
       }
       const numberingRange = await getFactusActiveNumberingRange()
-      factusReferenceCode = buildFactusReferenceCode(req.body, id_consecutivo)
+      factusReferenceCode = buildFactusReferenceCode(req.body, resolvedConsecutivo)
       factusPayload = buildFactusBillPayload({
         body: req.body,
-        ventaId: id_consecutivo,
+        ventaId: resolvedConsecutivo,
         cliente: clienteFactus,
         items,
         paymentDetails,
@@ -2129,22 +2160,15 @@ app.post('/api/venta', async (req, res) => {
         referenceCode: factusReferenceCode
       })
       console.log('[Factus] Payload a enviar:', JSON.stringify({
-        venta_id: Number(id_consecutivo),
+        venta_id: Number(resolvedConsecutivo),
         reference_code: factusReferenceCode,
         payload: factusPayload
       }))
     }
 
-    // Doble validación en backend antes de insertar
-    const [[existente]] = await conn.query('SELECT 1 FROM ventas WHERE id_consecutivo = ?', [Number(id_consecutivo)]);
-    if (existente) {
-        return res.status(409).json({ ok: false, error: 'consecutivo_duplicado', msg: 'El consecutivo ya existe' });
-    }
-
     const t = Number(total || 0)
-    await conn.beginTransaction()
     await insertVentaCabecera(conn, {
-      id_consecutivo,
+      id_consecutivo: resolvedConsecutivo,
       usuario_id,
       cliente_id,
       total: t,
@@ -2161,7 +2185,7 @@ app.post('/api/venta', async (req, res) => {
     })
 
     if (esFacturaElectronica) {
-      await persistVentaElectronicaData(conn, req.body, id_consecutivo, items, paymentDetails, {
+      await persistVentaElectronicaData(conn, req.body, resolvedConsecutivo, items, paymentDetails, {
         referenceCode: factusReferenceCode
       })
     }
@@ -2200,18 +2224,18 @@ app.post('/api/venta', async (req, res) => {
         body: factusPayload
       })
       console.log('[Factus] Respuesta recibida:', JSON.stringify({
-        venta_id: Number(id_consecutivo),
+        venta_id: Number(resolvedConsecutivo),
         reference_code: factusReferenceCode,
         response: factusResponse
       }))
-      factusResult = await updateFactusPersistedData(conn, id_consecutivo, factusReferenceCode, factusPayload, factusResponse)
+      factusResult = await updateFactusPersistedData(conn, resolvedConsecutivo, factusReferenceCode, factusPayload, factusResponse)
     }
 
     await conn.commit()
     res.json({
       ok: true,
-      id_consecutivo,
-      venta_id: Number(id_consecutivo),
+      id_consecutivo: Number(resolvedConsecutivo),
+      venta_id: Number(resolvedConsecutivo),
       factura_electronica: esFacturaElectronica,
       factus_number: factusResult?.number || null,
       prefix: factusResult?.prefix || null,
@@ -2226,7 +2250,7 @@ app.post('/api/venta', async (req, res) => {
   } catch (err) {
     try { await conn.rollback() } catch {}
     console.error('[Factus][Venta] Excepcion completa:', JSON.stringify({
-      venta_id: req.body?.id_consecutivo || null,
+      venta_id: resolvedConsecutivo || req.body?.id_consecutivo || null,
       factura_electronica: req.body?.factura_electronica === true,
       message: err?.message || 'Error desconocido',
       statusCode: err?.statusCode || null,
