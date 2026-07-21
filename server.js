@@ -650,6 +650,7 @@ async function getClienteForFactus(clienteId, conn = pool) {
        , ${selectField('trade_name')}
        , ${selectField('names')}
        , ${selectField('dv')}
+       , ${selectField('department_code')}
        , ${selectField('municipality_code')}
        , ${selectField('country_code')}
      FROM clientes
@@ -683,15 +684,34 @@ function buildFactusCustomerPayload(cliente) {
   }
 
   const legalOrganizationCode = String(cliente.legal_organization_code || '').trim()
+  const identificationDocumentCode = String(cliente.identification_document_code || '').trim()
   const identification = String(cliente.identification || cliente.nit_cc || '').trim()
   const company = String(cliente.company || cliente.trade_name || '').trim()
   const names = String(cliente.names || cliente.nombre || '').trim()
+  const factusStatus = buildClienteFactusEmissionStatus(cliente)
+  if (!factusStatus.ready) {
+    const error = new Error(factusStatus.message)
+    error.statusCode = 422
+    error.payload = {
+      status: 'Validation error',
+      message: factusStatus.message,
+      data: {
+        message: factusStatus.message,
+        errors: factusStatus.missing_fields.reduce((acc, key, index) => {
+          acc[key] = factusStatus.missing_labels[index] || key
+          return acc
+        }, {})
+      }
+    }
+    throw error
+  }
+
   const payload = removeEmptyObjectFields({
-    identification_document_code: String(cliente.identification_document_code || '').trim(),
+    identification_document_code: identificationDocumentCode,
     identification,
     dv: String(cliente.dv || '').trim() || undefined,
     legal_organization_code: legalOrganizationCode,
-    tribute_code: String(cliente.tribute_code || 'ZZ').trim() || 'ZZ',
+    tribute_code: String(cliente.tribute_code || '').trim() || undefined,
     company: legalOrganizationCode === '1' ? (company || names) : company,
     trade_name: String(cliente.trade_name || '').trim(),
     names: legalOrganizationCode === '1' ? (names || company) : (names || company),
@@ -702,7 +722,7 @@ function buildFactusCustomerPayload(cliente) {
     municipality_code: String(cliente.municipality_code || '').trim() || undefined
   })
 
-  if (!payload.identification_document_code || !payload.identification || !payload.legal_organization_code || !payload.address || !payload.email) {
+  if (!payload.identification_document_code || !payload.identification || !payload.legal_organization_code || !payload.tribute_code || !payload.address || !payload.email || !payload.country_code || !payload.municipality_code) {
     throw new Error('El cliente no tiene todos los datos requeridos para construir la factura electrónica en Factus.')
   }
 
@@ -714,6 +734,111 @@ function buildFactusCustomerPayload(cliente) {
   }
 
   return payload
+}
+
+function buildClienteFactusEmissionStatus(cliente) {
+  const baseStatus = buildClienteFacturacionStatus(cliente)
+  const identificationDocumentCode = String(cliente?.identification_document_code || '').trim()
+  const extraFields = [
+    {
+      key: 'municipality_code',
+      label: 'Municipio DIAN / Factus',
+      value: String(cliente?.municipality_code || '').trim()
+    },
+    {
+      key: 'country_code',
+      label: 'Pais DIAN / Factus',
+      value: String(cliente?.country_code || '').trim()
+    }
+  ]
+
+  if (String(cliente?.department_code || '').trim()) {
+    extraFields.push({
+      key: 'department_code',
+      label: 'Departamento DIAN / Factus',
+      value: String(cliente?.department_code || '').trim()
+    })
+  }
+
+  if (identificationDocumentCode === '31') {
+    extraFields.push({
+      key: 'dv',
+      label: 'Digito de verificacion (DV)',
+      value: String(cliente?.dv || '').trim()
+    })
+  }
+
+  const missingMap = new Map()
+  for (const field of [
+    ...baseStatus.missing_fields.map((key, index) => ({
+      key,
+      label: baseStatus.missing_labels[index] || key
+    })),
+    ...extraFields
+      .filter((field) => !String(field.value || '').trim())
+      .map((field) => ({ key: field.key, label: field.label }))
+  ]) {
+    if (!missingMap.has(field.key)) {
+      missingMap.set(field.key, field.label)
+    }
+  }
+
+  if (missingMap.size === 0) {
+    return {
+      ready: true,
+      missing_fields: [],
+      missing_labels: [],
+      message: 'Cliente apto para emisión en Factus.'
+    }
+  }
+
+  const missing_fields = Array.from(missingMap.keys())
+  const missing_labels = Array.from(missingMap.values())
+  return {
+    ready: false,
+    missing_fields,
+    missing_labels,
+    message: `No se puede enviar la factura electronica a Factus porque al cliente le faltan estos datos: ${missing_labels.join(', ')}. Verifica ademas que el nombre o razon social coincida exactamente con el RUT.`
+  }
+}
+
+function getFactusValidationEntries(payload) {
+  const errors = payload?.data?.errors || payload?.errors || {}
+  return Object.entries(errors).flatMap(([code, value]) => {
+    if (Array.isArray(value)) {
+      return value.map((message) => [code, String(message || '').trim()])
+    }
+    return [[code, String(value || '').trim()]]
+  })
+}
+
+function buildFriendlyFactusValidationMessage(payload) {
+  const entries = getFactusValidationEntries(payload)
+  if (entries.length === 0) {
+    return String(payload?.message || 'Factus rechazó la factura electrónica.')
+  }
+
+  const codes = new Set(entries.map(([code]) => code))
+  const lines = ['No se pudo emitir la factura electronica en Factus por estas validaciones:']
+
+  if (codes.has('FAK28') || codes.has('FAK08')) {
+    lines.push('- La direccion fiscal del cliente esta incompleta. Verifica direccion, municipio, departamento y pais.')
+  }
+  if (codes.has('FAK29')) {
+    lines.push('- El tipo de documento del cliente no es valido en Factus.')
+  }
+  if (codes.has('FAK09')) {
+    lines.push('- El tributo del cliente no es valido en Factus.')
+  }
+  if (codes.has('FAK32')) {
+    lines.push('- La organizacion legal del cliente no es valida en Factus.')
+  }
+  if (codes.has('FAJ44b') || codes.has('FAJ43b')) {
+    lines.push('- El nombre o razon social del cliente no coincide con el NIT o documento registrado en el RUT.')
+  }
+
+  const details = entries.map(([code, message]) => `- ${code}: ${message}`)
+  return `${lines.join('\n')}\n\nDetalle Factus:\n${details.join('\n')}`
 }
 
 function buildFactusItemsPayload(items) {
@@ -1983,6 +2108,15 @@ app.post('/api/venta', async (req, res) => {
 
     if (esFacturaElectronica) {
       const clienteFactus = await getClienteForFactus(Number(cliente_id), conn)
+      const clienteFactusStatus = buildClienteFactusEmissionStatus(clienteFactus)
+      if (!clienteFactusStatus.ready) {
+        return res.status(422).json({
+          ok: false,
+          error: 'cliente_factus_incompleto',
+          message: clienteFactusStatus.message,
+          facturacion: clienteFactusStatus
+        })
+      }
       const numberingRange = await getFactusActiveNumberingRange()
       factusReferenceCode = buildFactusReferenceCode(req.body, id_consecutivo)
       factusPayload = buildFactusBillPayload({
@@ -2099,7 +2233,21 @@ app.post('/api/venta', async (req, res) => {
       payload: err?.payload || null,
       stack: err?.stack || null
     }))
-    res.status(500).json({ ok: false, error: err.message })
+    const statusCode = Number(err?.statusCode || 0)
+    if (statusCode === 422) {
+      return res.status(422).json({
+        ok: false,
+        error: 'factus_validation_error',
+        message: buildFriendlyFactusValidationMessage(err?.payload || {}),
+        factus_validation_errors: err?.payload?.data?.errors || err?.payload?.errors || null,
+        factus_payload: err?.payload || null
+      })
+    }
+    res.status(statusCode >= 400 ? statusCode : 500).json({
+      ok: false,
+      error: err.message,
+      message: err.message
+    })
   } finally {
     conn.release()
   }
