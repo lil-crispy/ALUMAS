@@ -542,14 +542,18 @@ function parseFactusNumberingResponse(payload) {
   return []
 }
 
-function getFactusDocumentCode() {
+function getFactusNumberingDocumentCode() {
   return String(process.env.FACTUS_DOCUMENT_CODE || '21').trim() || '21'
+}
+
+function getFactusBillDocumentCode() {
+  return String(process.env.FACTUS_BILL_DOCUMENT_CODE || '01').trim() || '01'
 }
 
 async function getFactusActiveNumberingRange() {
   ensureFactusConfigured()
   const configuredId = Number(process.env.FACTUS_NUMBERING_RANGE_ID || 0)
-  const documentCode = getFactusDocumentCode()
+  const documentCode = getFactusNumberingDocumentCode()
   const params = new URLSearchParams()
   params.set('filter[document]', documentCode)
   params.set('filter[is_active]', '1')
@@ -766,7 +770,7 @@ function buildFactusBillPayload({ body, ventaId, cliente, items, paymentDetails,
 
   const payload = removeEmptyObjectFields({
     reference_code: referenceCode,
-    document: getFactusDocumentCode(),
+    document: getFactusBillDocumentCode(),
     numbering_range_id: numberingRange?.id || undefined,
     operation_type: String(body?.operation_type || '10'),
     send_email: parseBooleanLike(process.env.FACTUS_SEND_EMAIL || 'false'),
