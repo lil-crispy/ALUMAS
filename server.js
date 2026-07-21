@@ -2094,6 +2094,7 @@ app.get('/api/check-consecutivo/:id', async (req, res) => {
 // Guardar encabezado de venta en tabla ventas y descontar stock en productos
 app.post('/api/venta', async (req, res) => {
   const conn = await pool.getConnection()
+  let resolvedConsecutivo = normalizeConsecutivoValue(req.body?.id_consecutivo)
   try {
     const {
       id_consecutivo,
@@ -2111,7 +2112,7 @@ app.post('/api/venta', async (req, res) => {
     let factusPayload = null
     let factusResult = null
     let factusReferenceCode = null
-    let resolvedConsecutivo = normalizeConsecutivoValue(requestedConsecutivo)
+    resolvedConsecutivo = normalizeConsecutivoValue(requestedConsecutivo)
 
     if (!usuario_id || !cliente_id) {
       return res.status(400).json({ ok: false, error: 'faltan_campos' })
