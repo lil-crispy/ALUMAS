@@ -378,6 +378,28 @@ function formatFactusDecimal(value, decimals = 2) {
   return normalizeVentaNumeric(value, 0).toFixed(decimals)
 }
 
+function roundFactusMoney(value) {
+  const numericValue = normalizeVentaNumeric(value, 0)
+  return Number(numericValue.toFixed(2))
+}
+
+function calculateFactusItemsTotal(items) {
+  return (Array.isArray(items) ? items : []).reduce((acc, item) => {
+    const quantity = roundFactusMoney(item?.quantity)
+    const price = roundFactusMoney(item?.price)
+    const discountRate = roundFactusMoney(item?.discount_rate)
+    const lineBase = roundFactusMoney(quantity * price)
+    const discountValue = roundFactusMoney(lineBase * (discountRate / 100))
+    const taxableBase = roundFactusMoney(lineBase - discountValue)
+    const taxes = Array.isArray(item?.taxes) ? item.taxes : []
+    const lineTaxes = taxes.reduce((taxAcc, tax) => {
+      const rate = roundFactusMoney(tax?.rate)
+      return roundFactusMoney(taxAcc + roundFactusMoney(taxableBase * (rate / 100)))
+    }, 0)
+    return roundFactusMoney(acc + taxableBase + lineTaxes)
+  }, 0)
+}
+
 function removeEmptyObjectFields(input) {
   const output = {}
   Object.entries(input || {}).forEach(([key, value]) => {
@@ -882,11 +904,19 @@ function buildFactusItemsPayload(items) {
 }
 
 function buildFactusBillPayload({ body, ventaId, cliente, items, paymentDetails, numberingRange, referenceCode }) {
+  const factusItems = buildFactusItemsPayload(items)
+  const canonicalTotal = calculateFactusItemsTotal(factusItems)
   const paymentForm = mapFactusPaymentForm(paymentDetails[0]?.payment_form || body?.tipo_pago)
-  const factusPaymentDetails = paymentDetails.map((pago) => removeEmptyObjectFields({
+  const factusPaymentDetails = paymentDetails.map((pago, index, pagos) => removeEmptyObjectFields({
     payment_form: mapFactusPaymentForm(pago.payment_form || body?.tipo_pago),
     payment_method_code: mapFactusPaymentMethodCode(pago.payment_method_code || body?.forma_pago, paymentForm),
-    amount: formatFactusDecimal(pago.amount ?? body?.total ?? 0),
+    amount: formatFactusDecimal(
+      pagos.length === 1
+        ? canonicalTotal
+        : (index === pagos.length - 1
+          ? roundFactusMoney(canonicalTotal - pagos.slice(0, -1).reduce((acc, current) => acc + roundFactusMoney(current?.amount), 0))
+          : roundFactusMoney(pago.amount ?? 0))
+    ),
     due_date: mapFactusPaymentForm(pago.payment_form || body?.tipo_pago) === '2'
       ? (normalizeVentaDate(pago.due_date || body?.fecha) || normalizeVentaDate(body?.fecha))
       : undefined,
@@ -903,7 +933,7 @@ function buildFactusBillPayload({ body, ventaId, cliente, items, paymentDetails,
     created_time: normalizeVentaTime(body?.fecha) || undefined,
     customer: buildFactusCustomerPayload(cliente),
     payment_details: factusPaymentDetails,
-    items: buildFactusItemsPayload(items)
+    items: factusItems
   })
 
   if (!Array.isArray(payload.payment_details) || payload.payment_details.length === 0) {
@@ -1044,14 +1074,52 @@ async function fetchFactusDocumentDownload(number, kind) {
   }
 }
 
+async function getFactusBillByNumber(number) {
+  const safeNumber = String(number || '').trim()
+  if (!safeNumber) {
+    throw new Error('Número de factura inválido para consultar en Factus.')
+  }
+  return factusApiRequest(`/v2/bills/${encodeURIComponent(safeNumber)}`)
+}
+
 async function updateFactusPersistedData(conn, ventaId, referenceCode, factusPayload, factusResponse) {
-  const factus = parseFactusInvoiceResult(factusResponse)
+  let factus = parseFactusInvoiceResult(factusResponse)
+  let factusLookupResponse = null
+
+  if (!factus.bill_id && factus.number) {
+    try {
+      factusLookupResponse = await getFactusBillByNumber(factus.number)
+      const lookedUpFactus = parseFactusInvoiceResult(factusLookupResponse)
+      factus = {
+        ...factus,
+        ...lookedUpFactus,
+        bill_id: lookedUpFactus.bill_id || factus.bill_id,
+        number: lookedUpFactus.number || factus.number,
+        prefix: lookedUpFactus.prefix || factus.prefix,
+        cufe: lookedUpFactus.cufe || factus.cufe,
+        document_url: lookedUpFactus.document_url || factus.document_url,
+        urls: mergeFactusUrls(lookedUpFactus.urls || {}, factus.urls || {})
+      }
+    } catch (lookupError) {
+      console.error('[Factus][BillLookup] No se pudo consultar la factura emitida:', JSON.stringify({
+        venta_id: Number(ventaId),
+        reference_code: referenceCode,
+        number: factus.number || null,
+        message: lookupError?.message || null,
+        statusCode: lookupError?.statusCode || null,
+        payload: lookupError?.payload || null,
+        stack: lookupError?.stack || null
+      }))
+    }
+  }
+
   const proxyUrls = factus.number ? buildFactusProxyUrls(factus.number) : {}
   factus.urls = mergeFactusUrls(factus.urls || {}, proxyUrls)
   factus.document_url = factus.document_url || factus.urls.document_url || null
   const statusText = String(factus.status || '').trim() || (factus.is_validated ? 'validated' : 'created')
   const responseWithDerivedUrls = {
     ...(factusResponse || {}),
+    bill_lookup: factusLookupResponse || undefined,
     derived_urls: factus.urls || {}
   }
 
