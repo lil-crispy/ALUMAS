@@ -3794,10 +3794,15 @@ try {
         {
           payment_form: paymentForm,
           payment_method_code: mapearPaymentMethodCode(metodo, tipoPago),
-          amount: Number(total || 0),
+          amount: redondearValorFacturacion(total || 0),
           due_date: paymentForm === 'credito' ? obtenerFechaVencimientoPayload() : null
         }
       ]
+    }
+    function redondearValorFacturacion(valor) {
+      const numero = Number(valor || 0)
+      if (!Number.isFinite(numero)) return 0
+      return Number(numero.toFixed(2))
     }
     function obtenerItemsBD() {
       const items = []
@@ -3880,13 +3885,17 @@ try {
         let subtotalLinea = totalLinea
         let totalImpuestoLinea = 0
         if (!factusIsExcluded && factusTaxRate > 0) {
-          subtotalLinea = Math.round(totalLinea / (1 + (factusTaxRate / 100)))
-          totalImpuestoLinea = totalLinea - subtotalLinea
+          subtotalLinea = redondearValorFacturacion(totalLinea / (1 + (factusTaxRate / 100)))
+          totalImpuestoLinea = redondearValorFacturacion(totalLinea - subtotalLinea)
         }
 
-        subtotal += subtotalLinea
-        totalTax += totalImpuestoLinea
-        total += totalLinea
+        subtotalLinea = redondearValorFacturacion(subtotalLinea)
+        totalImpuestoLinea = redondearValorFacturacion(totalImpuestoLinea)
+        const totalLineaFacturacion = redondearValorFacturacion(subtotalLinea + totalImpuestoLinea)
+
+        subtotal = redondearValorFacturacion(subtotal + subtotalLinea)
+        totalTax = redondearValorFacturacion(totalTax + totalImpuestoLinea)
+        total = redondearValorFacturacion(total + totalLineaFacturacion)
 
         items.push({
           producto_id: productoId,
@@ -3897,7 +3906,7 @@ try {
           valor_unitario: precioUnitario,
           discount_rate: 0,
           subtotal: subtotalLinea,
-          valor_total: totalLinea,
+          valor_total: totalLineaFacturacion,
           factus_code_reference: factusCodeReference,
           factus_unit_measure_code: factusUnitMeasureCode,
           factus_standard_code: factusStandardCode,
