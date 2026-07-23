@@ -916,6 +916,16 @@ function buildFactusBillPayload({ body, ventaId, cliente, items, paymentDetails,
 function parseFactusInvoiceResult(payload) {
   const data = payload?.data || payload
   const bill = data?.bill || data
+  const rawBillId = (
+    data?.id
+    ?? bill?.id
+    ?? data?.bill_id
+    ?? bill?.bill_id
+    ?? data?.bill?.id
+    ?? data?.data?.id
+    ?? data?.data?.bill_id
+    ?? null
+  )
   const number = String(data?.number || bill?.number || '').trim()
   const prefix = String(data?.prefix || bill?.prefix || '').trim()
   const cufe = String(data?.cufe || bill?.cufe || '').trim()
@@ -941,7 +951,10 @@ function parseFactusInvoiceResult(payload) {
         : parseBooleanLike(data?.is_validated ?? bill?.is_validated)
   )
   const status = String(data?.status_name || bill?.status_name || data?.status || bill?.status || '').trim() || 'validated'
-  const billId = Number(data?.id || bill?.id || 0) || null
+  const normalizedBillId = Number(rawBillId)
+  const billId = Number.isFinite(normalizedBillId) && normalizedBillId > 0
+    ? Math.trunc(normalizedBillId)
+    : (rawBillId !== null && rawBillId !== undefined && String(rawBillId).trim() !== '' ? String(rawBillId).trim() : null)
 
   return {
     bill_id: billId,
@@ -958,8 +971,84 @@ function parseFactusInvoiceResult(payload) {
   }
 }
 
+function getServerPublicBaseUrl(req = null) {
+  const configured = String(
+    process.env.PUBLIC_BASE_URL
+    || process.env.APP_BASE_URL
+    || process.env.BASE_URL
+    || ''
+  ).trim()
+  if (configured) {
+    return configured.replace(/\/+$/, '')
+  }
+
+  if (req) {
+    const protocol = String(req.headers['x-forwarded-proto'] || req.protocol || 'http').split(',')[0].trim()
+    const host = String(req.headers['x-forwarded-host'] || req.get('host') || '').split(',')[0].trim()
+    if (host) {
+      return `${protocol}://${host}`.replace(/\/+$/, '')
+    }
+  }
+
+  return `http://localhost:${Number(process.env.PORT || 8080)}`
+}
+
+function buildFactusProxyUrls(number, req = null) {
+  const safeNumber = encodeURIComponent(String(number || '').trim())
+  if (!safeNumber) return {}
+  const baseUrl = getServerPublicBaseUrl(req)
+  return {
+    document_url: `${baseUrl}/api/factus/bills/${safeNumber}/download-pdf`,
+    pdf_url: `${baseUrl}/api/factus/bills/${safeNumber}/download-pdf`,
+    xml_url: `${baseUrl}/api/factus/bills/${safeNumber}/download-xml`
+  }
+}
+
+function mergeFactusUrls(primary = {}, fallback = {}) {
+  return removeEmptyObjectFields({
+    document_url: primary.document_url || fallback.document_url,
+    pdf_url: primary.pdf_url || fallback.pdf_url,
+    xml_url: primary.xml_url || fallback.xml_url,
+    zip_url: primary.zip_url || fallback.zip_url,
+    qr_url: primary.qr_url || fallback.qr_url
+  })
+}
+
+async function fetchFactusDocumentDownload(number, kind) {
+  const safeNumber = encodeURIComponent(String(number || '').trim())
+  if (!safeNumber) {
+    throw new Error('Número de factura inválido para descarga.')
+  }
+  if (kind !== 'pdf' && kind !== 'xml') {
+    throw new Error('Tipo de descarga Factus no soportado.')
+  }
+
+  const payload = await factusApiRequest(`/v2/bills/${safeNumber}/download-${kind}`)
+  const data = payload?.data || payload || {}
+  const fileName = String(data?.file_name || `${safeNumber}.${kind}`).trim() || `${safeNumber}.${kind}`
+  const base64Key = kind === 'pdf' ? 'pdf_base_64_encoded' : 'xml_base_64_encoded'
+  const mimeType = kind === 'pdf' ? 'application/pdf' : 'application/xml'
+  const encoded = String(data?.[base64Key] || '').trim()
+
+  if (!encoded) {
+    const error = new Error(`Factus no devolvió ${kind.toUpperCase()} para la factura ${safeNumber}.`)
+    error.payload = payload
+    throw error
+  }
+
+  return {
+    payload,
+    file_name: fileName,
+    mime_type: mimeType,
+    buffer: Buffer.from(encoded, 'base64')
+  }
+}
+
 async function updateFactusPersistedData(conn, ventaId, referenceCode, factusPayload, factusResponse) {
   const factus = parseFactusInvoiceResult(factusResponse)
+  const proxyUrls = factus.number ? buildFactusProxyUrls(factus.number) : {}
+  factus.urls = mergeFactusUrls(factus.urls || {}, proxyUrls)
+  factus.document_url = factus.document_url || factus.urls.document_url || null
   const statusText = String(factus.status || '').trim() || (factus.is_validated ? 'validated' : 'created')
   const responseWithDerivedUrls = {
     ...(factusResponse || {}),
@@ -2075,6 +2164,46 @@ app.get('/api/factus/numbering-preview', async (req, res) => {
     res.status(503).json({
       ok: false,
       error: err.message
+    })
+  }
+})
+
+app.get('/api/factus/bills/:number/download-pdf', async (req, res) => {
+  try {
+    const documento = await fetchFactusDocumentDownload(req.params.number, 'pdf')
+    res.setHeader('Content-Type', documento.mime_type)
+    res.setHeader('Content-Disposition', `inline; filename="${documento.file_name.replace(/"/g, '')}"`)
+    res.send(documento.buffer)
+  } catch (err) {
+    console.error('[Factus][DownloadPDF] Error:', JSON.stringify({
+      number: req.params.number,
+      message: err?.message || null,
+      payload: err?.payload || null,
+      stack: err?.stack || null
+    }))
+    res.status(502).json({
+      ok: false,
+      error: err?.message || 'No se pudo descargar el PDF desde Factus.'
+    })
+  }
+})
+
+app.get('/api/factus/bills/:number/download-xml', async (req, res) => {
+  try {
+    const documento = await fetchFactusDocumentDownload(req.params.number, 'xml')
+    res.setHeader('Content-Type', documento.mime_type)
+    res.setHeader('Content-Disposition', `attachment; filename="${documento.file_name.replace(/"/g, '')}"`)
+    res.send(documento.buffer)
+  } catch (err) {
+    console.error('[Factus][DownloadXML] Error:', JSON.stringify({
+      number: req.params.number,
+      message: err?.message || null,
+      payload: err?.payload || null,
+      stack: err?.stack || null
+    }))
+    res.status(502).json({
+      ok: false,
+      error: err?.message || 'No se pudo descargar el XML desde Factus.'
     })
   }
 })
