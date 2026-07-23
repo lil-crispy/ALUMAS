@@ -3059,13 +3059,23 @@ try {
       */
 
       if (resultadoVenta?.factura_electronica) {
-        const numeroFactura = resultadoVenta?.factus?.number || lastConsecutivo || 'sin numeracion'
-        const mensajeFactura = `La factura electronica se genero correctamente con numeracion ${numeroFactura}.`
+        const resultadoFactus = resultadoVenta?.factus || resultadoVenta
+        let mensajeDescarga = ''
+        try {
+          const descarga = await descargarFacturaElectronicaGenerada(resultadoFactus)
+          if (descarga?.ok) {
+            mensajeDescarga = '\nSe inició la descarga automática del documento electrónico.'
+          }
+        } catch (error) {
+          console.error('No se pudo iniciar la descarga automática de la factura electrónica:', error)
+        }
+        const numeroFactura = resultadoFactus?.number || lastConsecutivo || 'sin numeracion'
+        const mensajeFactura = `La factura electronica se genero correctamente con numeracion ${numeroFactura}.${mensajeDescarga}`
         alert(mensajeFactura)
         const metodoReporte = metodo || (tipo === 'CREDITO' ? 'credito' : null);
         if (metodoReporte) agregarVentaReporte(metodoReporte);
         setTimeout(limpiarTabla, 1000);
-        window.location.reload();
+        setTimeout(() => window.location.reload(), 1200);
         return
       }
 
@@ -4872,6 +4882,88 @@ try {
         }
       }
       actualizarVisualConsecutivo()
+    }
+
+    function esperar(ms) {
+      return new Promise((resolve) => setTimeout(resolve, ms))
+    }
+
+    function obtenerNombreBaseFacturaElectronica(resultadoFactus) {
+      const numero = String(
+        resultadoFactus?.number
+        || resultadoFactus?.factus_number
+        || lastConsecutivo
+        || 'factura_electronica'
+      ).trim()
+      return numero.replace(/[^\w.-]+/g, '_') || 'factura_electronica'
+    }
+
+    function obtenerUrlsDescargaFacturaElectronica(resultadoFactus) {
+      const urls = resultadoFactus?.urls || {}
+      const candidatos = [
+        { url: urls.pdf_url || resultadoFactus?.pdf_url || '', extension: 'pdf', etiqueta: 'pdf' },
+        { url: urls.document_url || resultadoFactus?.document_url || '', extension: 'pdf', etiqueta: 'documento' },
+        { url: urls.xml_url || resultadoFactus?.xml_url || '', extension: 'xml', etiqueta: 'xml' }
+      ]
+
+      const usados = new Set()
+      return candidatos.filter((item) => {
+        const url = String(item.url || '').trim()
+        if (!url || usados.has(url)) return false
+        usados.add(url)
+        item.url = url
+        return true
+      })
+    }
+
+    function dispararDescargaDirecta(url, nombreArchivo) {
+      const enlace = document.createElement('a')
+      enlace.href = url
+      enlace.download = nombreArchivo
+      enlace.target = '_blank'
+      enlace.rel = 'noopener'
+      enlace.style.display = 'none'
+      document.body.appendChild(enlace)
+      enlace.click()
+      enlace.remove()
+    }
+
+    async function intentarDescargarArchivoFactura(url, nombreArchivo) {
+      try {
+        const resp = await fetch(url, { mode: 'cors' })
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+        const blob = await resp.blob()
+        const blobUrl = URL.createObjectURL(blob)
+        try {
+          dispararDescargaDirecta(blobUrl, nombreArchivo)
+        } finally {
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 15000)
+        }
+        return true
+      } catch (error) {
+        console.warn('No se pudo descargar por blob, se intentará apertura directa:', url, error)
+        dispararDescargaDirecta(url, nombreArchivo)
+        return false
+      }
+    }
+
+    async function descargarFacturaElectronicaGenerada(resultadoFactus) {
+      const archivos = obtenerUrlsDescargaFacturaElectronica(resultadoFactus)
+      if (!archivos.length) {
+        return { ok: false, message: 'Factus no devolvió URL de documento para descarga.' }
+      }
+
+      const nombreBase = obtenerNombreBaseFacturaElectronica(resultadoFactus)
+      let descargasIniciadas = 0
+
+      for (const archivo of archivos) {
+        const nombreArchivo = `${nombreBase}.${archivo.extension}`
+        await intentarDescargarArchivoFactura(archivo.url, nombreArchivo)
+        descargasIniciadas += 1
+        await esperar(250)
+      }
+
+      return { ok: descargasIniciadas > 0, count: descargasIniciadas }
     }
 
     function marcarTransporteNoProgramado() {
