@@ -955,6 +955,11 @@
     <div style="margin-top: 10px;">
         <div style="text-align: center;">
             <div style="font-size: 16px; font-weight: bold; margin-bottom: 8px;" id="pdf-total">TOTAL: $ 0</div>
+            <div id="pdf-factus-qr-container" style="display: none; margin: 8px 0 12px; text-align: center;">
+                <div style="font-size: 11px; font-weight: bold; margin-bottom: 4px;">QR FACTURA ELECTRONICA</div>
+                <img id="pdf-factus-qr-image" alt="QR Factura Electronica" style="width: 110px; height: 110px; object-fit: contain; border: 1px solid #ccc; padding: 4px; background: #fff;">
+                <div id="pdf-factus-qr-number" style="font-size: 10px; margin-top: 4px; font-weight: bold;"></div>
+            </div>
             <div id="pdf-aviso-transporte" style="display: none; font-size: 18px; font-weight: 900; margin-bottom: 8px; text-align: center;">OJO: TRANSPORTE LIBRE DE CARGUE Y DESCARGUE</div>
             <div style="font-size: 10px; font-weight: bold; margin-bottom: 10px;">***GRACIAS POR SU COMPRA***</div>
         </div>
@@ -2089,6 +2094,8 @@
       // Check context
       const consecutivoDisplay = document.getElementById('consecutivo-display');
       const isCotizacion = consecutivoDisplay && consecutivoDisplay.style.visibility === 'hidden';
+      const facturaElectronicaActiva = facturaElectronicaCheckboxActivo()
+      const resultadoFactus = ultimaFacturaElectronicaEmitida || null
 
       // 1. Preparar datos en la plantilla oculta
       const tbody = document.getElementById('pdf-table-body');
@@ -2104,6 +2111,8 @@
       if (elRem) {
           if (isCotizacion) {
               elRem.textContent = 'COTIZACIÓN';
+          } else if (facturaElectronicaActiva && resultadoFactus?.number) {
+              elRem.textContent = `FE ${resultadoFactus.number}`;
           } else {
               const consecutivo = document.getElementById('numero-consecutivo').textContent;
               elRem.textContent = `REM ${consecutivo}`;
@@ -2204,6 +2213,23 @@
       const totalTxt = document.getElementById('total-general').innerText;
       const elTotal = document.getElementById('pdf-total');
       if (elTotal) elTotal.innerText = totalTxt;
+      const qrContainer = document.getElementById('pdf-factus-qr-container');
+      const qrImage = document.getElementById('pdf-factus-qr-image');
+      const qrNumber = document.getElementById('pdf-factus-qr-number');
+      const qrFactus = obtenerQrFacturaElectronica(resultadoFactus);
+      if (qrContainer && qrImage) {
+        if (!isCotizacion && facturaElectronicaActiva && qrFactus) {
+          qrImage.src = qrFactus;
+          qrContainer.style.display = 'block';
+          if (qrNumber) {
+            qrNumber.textContent = resultadoFactus?.number ? `Factura ${resultadoFactus.number}` : '';
+          }
+        } else {
+          qrImage.removeAttribute('src');
+          qrContainer.style.display = 'none';
+          if (qrNumber) qrNumber.textContent = '';
+        }
+      }
       actualizarAvisoTransporte();
 
       // 3. Preparar contenedor para impresión si es Bodega
@@ -3060,17 +3086,8 @@ try {
 
       if (resultadoVenta?.factura_electronica) {
         const resultadoFactus = resultadoVenta?.factus || resultadoVenta
-        let mensajeDescarga = ''
-        try {
-          const descarga = await descargarFacturaElectronicaGenerada(resultadoFactus)
-          if (descarga?.ok) {
-            mensajeDescarga = '\nSe inició la descarga automática del documento electrónico.'
-          }
-        } catch (error) {
-          console.error('No se pudo iniciar la descarga automática de la factura electrónica:', error)
-        }
         const numeroFactura = resultadoFactus?.number || lastConsecutivo || 'sin numeracion'
-        const mensajeFactura = `La factura electronica se genero correctamente con numeracion ${numeroFactura}.${mensajeDescarga}`
+        const mensajeFactura = `La factura electronica se genero correctamente con numeracion ${numeroFactura}.`
         alert(mensajeFactura)
         const metodoReporte = metodo || (tipo === 'CREDITO' ? 'credito' : null);
         if (metodoReporte) agregarVentaReporte(metodoReporte);
@@ -4902,86 +4919,26 @@ try {
       actualizarVisualConsecutivo()
     }
 
-    function esperar(ms) {
-      return new Promise((resolve) => setTimeout(resolve, ms))
+    function esUrlODataUri(valor) {
+      const texto = String(valor || '').trim()
+      return /^https?:\/\//i.test(texto) || /^data:image\//i.test(texto)
     }
 
-    function obtenerNombreBaseFacturaElectronica(resultadoFactus) {
-      const numero = String(
-        resultadoFactus?.number
-        || resultadoFactus?.factus_number
-        || lastConsecutivo
-        || 'factura_electronica'
+    function construirUrlImagenQr(valorQr) {
+      const qr = String(valorQr || '').trim()
+      if (!qr) return ''
+      if (esUrlODataUri(qr)) return qr
+      return `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(qr)}`
+    }
+
+    function obtenerQrFacturaElectronica(resultadoFactus) {
+      const qr = String(
+        resultadoFactus?.qr
+        || resultadoFactus?.qr_url
+        || resultadoFactus?.urls?.qr_url
+        || ''
       ).trim()
-      return numero.replace(/[^\w.-]+/g, '_') || 'factura_electronica'
-    }
-
-    function obtenerUrlsDescargaFacturaElectronica(resultadoFactus) {
-      const urls = resultadoFactus?.urls || {}
-      const candidatos = [
-        { url: urls.pdf_url || resultadoFactus?.pdf_url || '', extension: 'pdf', etiqueta: 'pdf' },
-        { url: urls.document_url || resultadoFactus?.document_url || '', extension: 'pdf', etiqueta: 'documento' },
-        { url: urls.xml_url || resultadoFactus?.xml_url || '', extension: 'xml', etiqueta: 'xml' }
-      ]
-
-      const usados = new Set()
-      return candidatos.filter((item) => {
-        const url = String(item.url || '').trim()
-        if (!url || usados.has(url)) return false
-        usados.add(url)
-        item.url = url
-        return true
-      })
-    }
-
-    function dispararDescargaDirecta(url, nombreArchivo) {
-      const enlace = document.createElement('a')
-      enlace.href = url
-      enlace.download = nombreArchivo
-      enlace.target = '_blank'
-      enlace.rel = 'noopener'
-      enlace.style.display = 'none'
-      document.body.appendChild(enlace)
-      enlace.click()
-      enlace.remove()
-    }
-
-    async function intentarDescargarArchivoFactura(url, nombreArchivo) {
-      try {
-        const resp = await fetch(url, { mode: 'cors' })
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-        const blob = await resp.blob()
-        const blobUrl = URL.createObjectURL(blob)
-        try {
-          dispararDescargaDirecta(blobUrl, nombreArchivo)
-        } finally {
-          setTimeout(() => URL.revokeObjectURL(blobUrl), 15000)
-        }
-        return true
-      } catch (error) {
-        console.warn('No se pudo descargar por blob, se intentará apertura directa:', url, error)
-        dispararDescargaDirecta(url, nombreArchivo)
-        return false
-      }
-    }
-
-    async function descargarFacturaElectronicaGenerada(resultadoFactus) {
-      const archivos = obtenerUrlsDescargaFacturaElectronica(resultadoFactus)
-      if (!archivos.length) {
-        return { ok: false, message: 'Factus no devolvió URL de documento para descarga.' }
-      }
-
-      const nombreBase = obtenerNombreBaseFacturaElectronica(resultadoFactus)
-      let descargasIniciadas = 0
-
-      for (const archivo of archivos) {
-        const nombreArchivo = `${nombreBase}.${archivo.extension}`
-        await intentarDescargarArchivoFactura(archivo.url, nombreArchivo)
-        descargasIniciadas += 1
-        await esperar(250)
-      }
-
-      return { ok: descargasIniciadas > 0, count: descargasIniciadas }
+      return construirUrlImagenQr(qr)
     }
 
     function marcarTransporteNoProgramado() {
