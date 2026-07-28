@@ -3074,8 +3074,12 @@ try {
         alert(mensajeFactura)
         const metodoReporte = metodo || (tipo === 'CREDITO' ? 'credito' : null);
         if (metodoReporte) agregarVentaReporte(metodoReporte);
+        const confirmarImpresion = window.confirm('La factura electrónica se generó correctamente. ¿Desea previsualizar e imprimir el comprobante POS?')
+        if (confirmarImpresion) {
+          window.print()
+        }
         setTimeout(limpiarTabla, 1000);
-        setTimeout(() => window.location.reload(), 1200);
+        setTimeout(() => window.location.reload(), confirmarImpresion ? 1500 : 1200);
         return
       }
 
@@ -3771,7 +3775,12 @@ try {
       return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`
     }
     function obtenerFechaVencimientoPayload() {
-      return obtenerFechaVentaPayload().slice(0, 10)
+      const fecha = new Date()
+      fecha.setDate(fecha.getDate() + 1)
+      const yyyy = fecha.getFullYear()
+      const mm = String(fecha.getMonth() + 1).padStart(2, '0')
+      const dd = String(fecha.getDate()).padStart(2, '0')
+      return `${yyyy}-${mm}-${dd}`
     }
     function obtenerObservacionVenta() {
       const infoTransporte = document.getElementById('info-transporte')?.textContent || ''
