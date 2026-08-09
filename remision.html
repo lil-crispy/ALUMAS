@@ -4875,7 +4875,7 @@ try {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId: 'fe-qr-fecha',
-          runId: 'pre-fix',
+          runId: 'post-fix',
           hypothesisId,
           location,
           msg: `[DEBUG] ${msg}`,
@@ -4991,6 +4991,25 @@ try {
       return `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(qr)}`
     }
 
+    function obtenerContenidoFallbackQrFacturaElectronica(resultadoFactus) {
+      const documentUrl = String(
+        resultadoFactus?.document_url
+        || resultadoFactus?.urls?.document_url
+        || resultadoFactus?.urls?.pdf_url
+        || ''
+      ).trim()
+      if (documentUrl) return documentUrl
+
+      const number = String(resultadoFactus?.number || '').trim()
+      const cufe = String(resultadoFactus?.cufe || '').trim()
+      if (number && cufe) {
+        return `Factura FE ${number}\nCUFE: ${cufe}`
+      }
+      if (cufe) return cufe
+      if (number) return `Factura FE ${number}`
+      return ''
+    }
+
     function obtenerQrFacturaElectronica(resultadoFactus) {
       const qr = String(
         resultadoFactus?.qr
@@ -4998,7 +5017,7 @@ try {
         || resultadoFactus?.urls?.qr_url
         || ''
       ).trim()
-      return construirUrlImagenQr(qr)
+      return construirUrlImagenQr(qr || obtenerContenidoFallbackQrFacturaElectronica(resultadoFactus))
     }
 
     function marcarTransporteNoProgramado() {
