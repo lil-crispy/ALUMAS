@@ -2217,6 +2217,15 @@
       const qrImage = document.getElementById('pdf-factus-qr-image');
       const qrNumber = document.getElementById('pdf-factus-qr-number');
       const qrFactus = obtenerQrFacturaElectronica(resultadoFactus);
+      // #region debug-point C:qr-render-state
+      reportDebugFeQrFecha('C', 'remision.html:prepararDatosPDF', 'Estado QR al preparar POS', {
+        facturaElectronicaActiva,
+        isCotizacion: !!isCotizacion,
+        factusNumber: resultadoFactus?.number || null,
+        hasQrValue: !!(resultadoFactus?.qr || resultadoFactus?.qr_url || resultadoFactus?.urls?.qr_url),
+        qrPreviewUrl: qrFactus || null
+      })
+      // #endregion
       if (qrContainer && qrImage) {
         if (!isCotizacion && facturaElectronicaActiva && qrFactus) {
           qrImage.src = qrFactus;
@@ -3093,6 +3102,13 @@ try {
         if (metodoReporte) agregarVentaReporte(metodoReporte);
         const confirmarImpresion = window.confirm('La factura electrónica se generó correctamente. ¿Desea previsualizar e imprimir el comprobante POS?')
         if (confirmarImpresion) {
+          // #region debug-point D:before-print-fe
+          reportDebugFeQrFecha('D', 'remision.html:imprimirVenta', 'Se va a imprimir comprobante POS FE', {
+            factusNumber: resultadoFactus?.number || null,
+            hasQrInState: !!(ultimaFacturaElectronicaEmitida?.qr || ultimaFacturaElectronicaEmitida?.qr_url || ultimaFacturaElectronicaEmitida?.urls?.qr_url),
+            currentStateNumber: ultimaFacturaElectronicaEmitida?.number || null
+          })
+          // #endregion
           window.print()
         }
         setTimeout(limpiarTabla, 1000);
@@ -3797,7 +3813,15 @@ try {
       const yyyy = fecha.getFullYear()
       const mm = String(fecha.getMonth() + 1).padStart(2, '0')
       const dd = String(fecha.getDate()).padStart(2, '0')
-      return `${yyyy}-${mm}-${dd}`
+      const dueDate = `${yyyy}-${mm}-${dd}`
+      // #region debug-point A:due-date-build
+      reportDebugFeQrFecha('A', 'remision.html:obtenerFechaVencimientoPayload', 'Fecha de vencimiento FE calculada', {
+        dueDate,
+        timezoneOffset: fecha.getTimezoneOffset(),
+        nowIso: new Date().toISOString()
+      })
+      // #endregion
+      return dueDate
     }
     function obtenerObservacionVenta() {
       const infoTransporte = document.getElementById('info-transporte')?.textContent || ''
@@ -3816,7 +3840,7 @@ try {
     }
     function construirPaymentDetailsVenta(tipoPago, metodo, total) {
       const paymentForm = mapearPaymentForm(tipoPago)
-      return [
+      const details = [
         {
           payment_form: paymentForm,
           payment_method_code: mapearPaymentMethodCode(metodo, tipoPago),
@@ -3824,6 +3848,16 @@ try {
           due_date: paymentForm === 'credito' ? obtenerFechaVencimientoPayload() : null
         }
       ]
+      // #region debug-point E:payment-details-build
+      reportDebugFeQrFecha('E', 'remision.html:construirPaymentDetailsVenta', 'Payment details FE construidos', {
+        tipoPago,
+        metodo,
+        paymentForm,
+        amount: details[0]?.amount,
+        dueDate: details[0]?.due_date
+      })
+      // #endregion
+      return details
     }
     function redondearValorFacturacion(valor) {
       const numero = Number(valor || 0)
@@ -4834,6 +4868,24 @@ try {
     let remisionTransporteProgramada = false
     let remisionTransporteProgramadaId = null
 
+    // #region debug-point helper:fe-qr-fecha
+    function reportDebugFeQrFecha(hypothesisId, location, msg, data = {}) {
+      fetch('http://127.0.0.1:7777/event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: 'fe-qr-fecha',
+          runId: 'pre-fix',
+          hypothesisId,
+          location,
+          msg: `[DEBUG] ${msg}`,
+          data,
+          ts: Date.now()
+        })
+      }).catch(() => {})
+    }
+    // #endregion
+
     function obtenerElementoNumeroConsecutivo() {
       return document.getElementById('numero-consecutivo')
     }
@@ -4909,6 +4961,14 @@ try {
     }
     function aplicarResultadoFacturaElectronica(resultadoFactus) {
       ultimaFacturaElectronicaEmitida = resultadoFactus || null
+      // #region debug-point B:factus-result-applied
+      reportDebugFeQrFecha('B', 'remision.html:aplicarResultadoFacturaElectronica', 'Resultado FE aplicado al estado del frontend', {
+        factusNumber: resultadoFactus?.number || null,
+        hasQr: !!(resultadoFactus?.qr || resultadoFactus?.qr_url || resultadoFactus?.urls?.qr_url),
+        qrKeys: resultadoFactus ? Object.keys(resultadoFactus).filter((key) => String(key).toLowerCase().includes('qr')) : [],
+        urlsKeys: resultadoFactus?.urls ? Object.keys(resultadoFactus.urls) : []
+      })
+      // #endregion
       if (resultadoFactus?.number) {
         lastConsecutivo = resultadoFactus.number
         factusNumberingPreviewActual = {
