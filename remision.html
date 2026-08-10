@@ -1349,6 +1349,11 @@
   
     <p class="total" id="total-general">TOTAL: $ 0</p>
     <p class="aviso-transporte" id="aviso-transporte">OJO: TRANSPORTE LIBRE DE CARGUE Y DESCARGUE</p>
+    <div id="pos-factus-qr-container" style="display: none; margin: 10px 0 14px; text-align: center;">
+      <div style="font-size: 11px; font-weight: bold; margin-bottom: 4px;">QR FACTURA ELECTRONICA</div>
+      <img id="pos-factus-qr-image" alt="QR Factura Electronica" style="width: 110px; height: 110px; object-fit: contain; border: 1px solid #ccc; padding: 4px; background: #fff;">
+      <div id="pos-factus-qr-number" style="font-size: 10px; margin-top: 4px; font-weight: bold;"></div>
+    </div>
     
 
     <img src="./img/LOGO3.webp" alt="Logo ALUMAS" class="logo-grande">
@@ -2214,11 +2219,9 @@
       const totalTxt = document.getElementById('total-general').innerText;
       const elTotal = document.getElementById('pdf-total');
       if (elTotal) elTotal.innerText = totalTxt;
-      const qrContainer = template?.querySelector('#pdf-factus-qr-container');
-      const qrImage = template?.querySelector('#pdf-factus-qr-image');
-      const qrNumber = template?.querySelector('#pdf-factus-qr-number');
       const qrRealDisponible = !!(resultadoFactus?.qr || resultadoFactus?.qr_url || resultadoFactus?.urls?.qr_url);
       const qrFactus = obtenerQrFacturaElectronica(resultadoFactus);
+      const debeMostrarQrFe = !isCotizacion && facturaElectronicaActiva && !!qrFactus;
       // #region debug-point C:qr-render-state
       reportDebugFeQrFecha('C', 'remision.html:prepararDatosPDF', 'Estado QR al preparar POS', {
         facturaElectronicaActiva,
@@ -2228,21 +2231,24 @@
         qrPreviewUrl: qrFactus || null
       })
       // #endregion
-      if (qrContainer && qrImage) {
-        if (!isCotizacion && facturaElectronicaActiva && qrFactus) {
-          qrImage.src = qrFactus;
-          qrContainer.style.display = 'block';
-          if (qrNumber) {
-            qrNumber.textContent = resultadoFactus?.number
-              ? (qrRealDisponible ? `Factura ${resultadoFactus.number}` : `Factura ${resultadoFactus.number} - QR provisional`)
-              : (qrRealDisponible ? '' : 'QR provisional')
-          }
-        } else {
-          qrImage.removeAttribute('src');
-          qrContainer.style.display = 'none';
-          if (qrNumber) qrNumber.textContent = '';
-        }
-      }
+      actualizarBloqueQrFacturaElectronica(document, {
+        mostrar: debeMostrarQrFe,
+        qrSrc: qrFactus,
+        numeroFactura: resultadoFactus?.number || '',
+        qrRealDisponible,
+        containerId: 'pos-factus-qr-container',
+        imageId: 'pos-factus-qr-image',
+        numberId: 'pos-factus-qr-number'
+      })
+      actualizarBloqueQrFacturaElectronica(template, {
+        mostrar: debeMostrarQrFe,
+        qrSrc: qrFactus,
+        numeroFactura: resultadoFactus?.number || '',
+        qrRealDisponible,
+        containerId: 'pdf-factus-qr-container',
+        imageId: 'pdf-factus-qr-image',
+        numberId: 'pdf-factus-qr-number'
+      })
       actualizarAvisoTransporte();
 
       // 3. Preparar contenedor para impresión si es Bodega
@@ -2253,24 +2259,15 @@
           const clone = template.cloneNode(true);
           clone.id = 'pdf-template-clone';
           clone.style.display = 'block';
-          const cloneQrContainer = clone.querySelector('#pdf-factus-qr-container');
-          const cloneQrImage = clone.querySelector('#pdf-factus-qr-image');
-          const cloneQrNumber = clone.querySelector('#pdf-factus-qr-number');
-          if (cloneQrContainer && cloneQrImage) {
-            if (!isCotizacion && facturaElectronicaActiva && qrFactus) {
-              cloneQrImage.src = qrFactus;
-              cloneQrContainer.style.display = 'block';
-              if (cloneQrNumber) {
-                cloneQrNumber.textContent = resultadoFactus?.number
-                  ? (qrRealDisponible ? `Factura ${resultadoFactus.number}` : `Factura ${resultadoFactus.number} - QR provisional`)
-                  : (qrRealDisponible ? '' : 'QR provisional')
-              }
-            } else {
-              cloneQrImage.removeAttribute('src');
-              cloneQrContainer.style.display = 'none';
-              if (cloneQrNumber) cloneQrNumber.textContent = '';
-            }
-          }
+          actualizarBloqueQrFacturaElectronica(clone, {
+            mostrar: debeMostrarQrFe,
+            qrSrc: qrFactus,
+            numeroFactura: resultadoFactus?.number || '',
+            qrRealDisponible,
+            containerId: 'pdf-factus-qr-container',
+            imageId: 'pdf-factus-qr-image',
+            numberId: 'pdf-factus-qr-number'
+          })
           container.appendChild(clone);
       }
     }
@@ -5091,8 +5088,39 @@ try {
       return construirImagenQrProvisional(obtenerContenidoFallbackQrFacturaElectronica(resultadoFactus))
     }
 
+    function actualizarBloqueQrFacturaElectronica(root, options = {}) {
+      if (!root) return
+      const {
+        mostrar = false,
+        qrSrc = '',
+        numeroFactura = '',
+        qrRealDisponible = false,
+        containerId,
+        imageId,
+        numberId
+      } = options
+      const qrContainer = root.querySelector(`#${containerId}`)
+      const qrImage = root.querySelector(`#${imageId}`)
+      const qrNumber = root.querySelector(`#${numberId}`)
+      if (!qrContainer || !qrImage) return
+
+      if (mostrar && qrSrc) {
+        qrImage.src = qrSrc
+        qrContainer.style.display = 'block'
+        if (qrNumber) {
+          qrNumber.textContent = numeroFactura
+            ? (qrRealDisponible ? `Factura ${numeroFactura}` : `Factura ${numeroFactura} - QR provisional`)
+            : (qrRealDisponible ? '' : 'QR provisional')
+        }
+      } else {
+        qrImage.removeAttribute('src')
+        qrContainer.style.display = 'none'
+        if (qrNumber) qrNumber.textContent = ''
+      }
+    }
+
     function obtenerImagenesQrPos() {
-      return Array.from(document.querySelectorAll('#pdf-template #pdf-factus-qr-image, #print-bodega-container #pdf-factus-qr-image'))
+      return Array.from(document.querySelectorAll('#pos-factus-qr-image, #pdf-template #pdf-factus-qr-image, #print-bodega-container #pdf-factus-qr-image'))
         .filter((img) => img && String(img.getAttribute('src') || '').trim())
     }
 
