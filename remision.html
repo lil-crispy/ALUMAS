@@ -2219,7 +2219,7 @@
       const totalTxt = document.getElementById('total-general').innerText;
       const elTotal = document.getElementById('pdf-total');
       if (elTotal) elTotal.innerText = totalTxt;
-      const qrRealDisponible = !!(resultadoFactus?.qr || resultadoFactus?.qr_url || resultadoFactus?.urls?.qr_url);
+      const qrRealDisponible = !!obtenerValorQrFacturaElectronica(resultadoFactus);
       const qrFactus = obtenerQrFacturaElectronica(resultadoFactus);
       const debeMostrarQrFe = !isCotizacion && facturaElectronicaActiva && !!qrFactus;
       // #region debug-point C:qr-render-state
@@ -2227,7 +2227,7 @@
         facturaElectronicaActiva,
         isCotizacion: !!isCotizacion,
         factusNumber: resultadoFactus?.number || null,
-        hasQrValue: !!(resultadoFactus?.qr || resultadoFactus?.qr_url || resultadoFactus?.urls?.qr_url),
+        hasQrValue: !!obtenerValorQrFacturaElectronica(resultadoFactus),
         qrPreviewUrl: qrFactus || null
       })
       // #endregion
@@ -3124,7 +3124,7 @@ try {
           // #region debug-point D:before-print-fe
           reportDebugFeQrFecha('D', 'remision.html:imprimirVenta', 'Se va a imprimir comprobante POS FE', {
             factusNumber: resultadoFactus?.number || null,
-            hasQrInState: !!(ultimaFacturaElectronicaEmitida?.qr || ultimaFacturaElectronicaEmitida?.qr_url || ultimaFacturaElectronicaEmitida?.urls?.qr_url),
+            hasQrInState: !!obtenerValorQrFacturaElectronica(ultimaFacturaElectronicaEmitida),
             currentStateNumber: ultimaFacturaElectronicaEmitida?.number || null,
             qrImageCount: obtenerImagenesQrPos().length
           })
@@ -4984,7 +4984,7 @@ try {
       // #region debug-point B:factus-result-applied
       reportDebugFeQrFecha('B', 'remision.html:aplicarResultadoFacturaElectronica', 'Resultado FE aplicado al estado del frontend', {
         factusNumber: resultadoFactus?.number || null,
-        hasQr: !!(resultadoFactus?.qr || resultadoFactus?.qr_url || resultadoFactus?.urls?.qr_url),
+        hasQr: !!obtenerValorQrFacturaElectronica(resultadoFactus),
         qrKeys: resultadoFactus ? Object.keys(resultadoFactus).filter((key) => String(key).toLowerCase().includes('qr')) : [],
         urlsKeys: resultadoFactus?.urls ? Object.keys(resultadoFactus.urls) : []
       })
@@ -5011,70 +5011,33 @@ try {
       return `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(qr)}`
     }
 
-    function construirImagenQrProvisional(texto = '') {
-      const seed = String(texto || 'ALUMAS FE').trim()
-      const modules = []
-      for (let row = 0; row < 13; row += 1) {
-        for (let col = 0; col < 13; col += 1) {
-          const index = row * 13 + col
-          const charCode = seed.charCodeAt(index % seed.length) || 65
-          const on = ((row * 17 + col * 31 + charCode) % 5) < 2
-          const inFinderTopLeft = row < 3 && col < 3
-          const inFinderTopRight = row < 3 && col > 9
-          const inFinderBottomLeft = row > 9 && col < 3
-          if (on && !inFinderTopLeft && !inFinderTopRight && !inFinderBottomLeft) {
-            modules.push(`<rect x="${44 + (col * 4)}" y="${14 + (row * 4)}" width="4" height="4" fill="#000000"/>`)
-          }
-        }
+    function obtenerImagenQrProvisionalUrl() {
+      const relativePath = 'img/qrprovisional.PNG'
+      try {
+        return new URL(relativePath, window.location.href).href
+      } catch (_) {
+        return relativePath
       }
-      const svg = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="140" height="140" viewBox="0 0 140 140">
-          <rect width="140" height="140" fill="#ffffff"/>
-          <rect x="8" y="8" width="28" height="28" fill="#000000"/>
-          <rect x="12" y="12" width="20" height="20" fill="#ffffff"/>
-          <rect x="16" y="16" width="12" height="12" fill="#000000"/>
-          <rect x="104" y="8" width="28" height="28" fill="#000000"/>
-          <rect x="108" y="12" width="20" height="20" fill="#ffffff"/>
-          <rect x="112" y="16" width="12" height="12" fill="#000000"/>
-          <rect x="8" y="104" width="28" height="28" fill="#000000"/>
-          <rect x="12" y="108" width="20" height="20" fill="#ffffff"/>
-          <rect x="16" y="112" width="12" height="12" fill="#000000"/>
-          ${modules.join('')}
-        </svg>
-      `.trim()
-      return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
     }
 
-    function obtenerContenidoFallbackQrFacturaElectronica(resultadoFactus) {
-      const documentUrl = String(
-        resultadoFactus?.document_url
-        || resultadoFactus?.urls?.document_url
-        || resultadoFactus?.urls?.pdf_url
-        || ''
-      ).trim()
-      if (documentUrl) return documentUrl
-
-      const number = String(resultadoFactus?.number || '').trim()
-      const cufe = String(resultadoFactus?.cufe || '').trim()
-      if (number && cufe) {
-        return `Factura FE ${number}\nCUFE: ${cufe}`
-      }
-      if (cufe) return cufe
-      if (number) return `Factura FE ${number}`
-      return 'Factura electronica emitida ALUMAS'
-    }
-
-    function obtenerQrFacturaElectronica(resultadoFactus) {
-      const qr = String(
+    function obtenerValorQrFacturaElectronica(resultadoFactus) {
+      return String(
         resultadoFactus?.qr
         || resultadoFactus?.qr_url
         || resultadoFactus?.urls?.qr_url
+        || resultadoFactus?.links?.qr
+        || resultadoFactus?.raw?.data?.links?.qr
+        || resultadoFactus?.raw?.links?.qr
         || ''
       ).trim()
+    }
+
+    function obtenerQrFacturaElectronica(resultadoFactus) {
+      const qr = obtenerValorQrFacturaElectronica(resultadoFactus)
       if (qr) {
         return construirUrlImagenQr(qr)
       }
-      return construirImagenQrProvisional(obtenerContenidoFallbackQrFacturaElectronica(resultadoFactus))
+      return obtenerImagenQrProvisionalUrl()
     }
 
     function actualizarBloqueQrFacturaElectronica(root, options = {}) {

@@ -946,6 +946,8 @@ function buildFactusBillPayload({ body, ventaId, cliente, items, paymentDetails,
 function parseFactusInvoiceResult(payload) {
   const data = payload?.data || payload
   const bill = data?.bill || data
+  const dataLinks = data?.links || {}
+  const billLinks = bill?.links || {}
   const rawBillId = (
     data?.id
     ?? bill?.id
@@ -959,12 +961,22 @@ function parseFactusInvoiceResult(payload) {
   const number = String(data?.number || bill?.number || '').trim()
   const prefix = String(data?.prefix || bill?.prefix || '').trim()
   const cufe = String(data?.cufe || bill?.cufe || '').trim()
-  const qr = String(data?.qr || bill?.qr || data?.qr_url || '').trim()
+  const qr = String(
+    data?.qr
+    || bill?.qr
+    || data?.qr_url
+    || bill?.qr_url
+    || dataLinks?.qr
+    || billLinks?.qr
+    || ''
+  ).trim()
   const documentUrl = String(
     data?.document_url
     || bill?.document_url
     || data?.pdf_url
     || bill?.pdf_url
+    || dataLinks?.public_url
+    || billLinks?.public_url
     || ''
   ).trim()
   const urls = removeEmptyObjectFields({
@@ -972,6 +984,7 @@ function parseFactusInvoiceResult(payload) {
     pdf_url: String(data?.pdf_url || bill?.pdf_url || '').trim() || undefined,
     xml_url: String(data?.xml_url || bill?.xml_url || '').trim() || undefined,
     zip_url: String(data?.zip_url || bill?.zip_url || '').trim() || undefined,
+    public_url: String(dataLinks?.public_url || billLinks?.public_url || '').trim() || undefined,
     qr_url: qr || undefined
   })
   const referenceCode = String(data?.reference_code || bill?.reference_code || '').trim()
@@ -1037,6 +1050,7 @@ function buildFactusProxyUrls(number, req = null) {
 function mergeFactusUrls(primary = {}, fallback = {}) {
   return removeEmptyObjectFields({
     document_url: primary.document_url || fallback.document_url,
+    public_url: primary.public_url || fallback.public_url,
     pdf_url: primary.pdf_url || fallback.pdf_url,
     xml_url: primary.xml_url || fallback.xml_url,
     zip_url: primary.zip_url || fallback.zip_url,
