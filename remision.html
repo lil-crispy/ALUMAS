@@ -2096,6 +2096,7 @@
       const isCotizacion = consecutivoDisplay && consecutivoDisplay.style.visibility === 'hidden';
       const facturaElectronicaActiva = facturaElectronicaCheckboxActivo()
       const resultadoFactus = ultimaFacturaElectronicaEmitida || null
+      const template = document.getElementById('pdf-template');
 
       // 1. Preparar datos en la plantilla oculta
       const tbody = document.getElementById('pdf-table-body');
@@ -2213,9 +2214,9 @@
       const totalTxt = document.getElementById('total-general').innerText;
       const elTotal = document.getElementById('pdf-total');
       if (elTotal) elTotal.innerText = totalTxt;
-      const qrContainer = document.getElementById('pdf-factus-qr-container');
-      const qrImage = document.getElementById('pdf-factus-qr-image');
-      const qrNumber = document.getElementById('pdf-factus-qr-number');
+      const qrContainer = template?.querySelector('#pdf-factus-qr-container');
+      const qrImage = template?.querySelector('#pdf-factus-qr-image');
+      const qrNumber = template?.querySelector('#pdf-factus-qr-number');
       const qrFactus = obtenerQrFacturaElectronica(resultadoFactus);
       // #region debug-point C:qr-render-state
       reportDebugFeQrFecha('C', 'remision.html:prepararDatosPDF', 'Estado QR al preparar POS', {
@@ -2243,13 +2244,28 @@
 
       // 3. Preparar contenedor para impresión si es Bodega
       // Clonamos el template HTML del PDF y lo inyectamos en un div visible solo para impresión
-      const template = document.getElementById('pdf-template');
       const container = document.getElementById('print-bodega-container');
       if (template && container) {
           container.innerHTML = '';
           const clone = template.cloneNode(true);
           clone.id = 'pdf-template-clone';
           clone.style.display = 'block';
+          const cloneQrContainer = clone.querySelector('#pdf-factus-qr-container');
+          const cloneQrImage = clone.querySelector('#pdf-factus-qr-image');
+          const cloneQrNumber = clone.querySelector('#pdf-factus-qr-number');
+          if (cloneQrContainer && cloneQrImage) {
+            if (!isCotizacion && facturaElectronicaActiva && qrFactus) {
+              cloneQrImage.src = qrFactus;
+              cloneQrContainer.style.display = 'block';
+              if (cloneQrNumber) {
+                cloneQrNumber.textContent = resultadoFactus?.number ? `Factura ${resultadoFactus.number}` : '';
+              }
+            } else {
+              cloneQrImage.removeAttribute('src');
+              cloneQrContainer.style.display = 'none';
+              if (cloneQrNumber) cloneQrNumber.textContent = '';
+            }
+          }
           container.appendChild(clone);
       }
     }
@@ -3102,11 +3118,13 @@ try {
         if (metodoReporte) agregarVentaReporte(metodoReporte);
         const confirmarImpresion = window.confirm('La factura electrónica se generó correctamente. ¿Desea previsualizar e imprimir el comprobante POS?')
         if (confirmarImpresion) {
+          await prepararImpresionPosFacturaElectronica()
           // #region debug-point D:before-print-fe
           reportDebugFeQrFecha('D', 'remision.html:imprimirVenta', 'Se va a imprimir comprobante POS FE', {
             factusNumber: resultadoFactus?.number || null,
             hasQrInState: !!(ultimaFacturaElectronicaEmitida?.qr || ultimaFacturaElectronicaEmitida?.qr_url || ultimaFacturaElectronicaEmitida?.urls?.qr_url),
-            currentStateNumber: ultimaFacturaElectronicaEmitida?.number || null
+            currentStateNumber: ultimaFacturaElectronicaEmitida?.number || null,
+            qrImageCount: obtenerImagenesQrPos().length
           })
           // #endregion
           window.print()
@@ -5018,6 +5036,51 @@ try {
         || ''
       ).trim()
       return construirUrlImagenQr(qr || obtenerContenidoFallbackQrFacturaElectronica(resultadoFactus))
+    }
+
+    function obtenerImagenesQrPos() {
+      return Array.from(document.querySelectorAll('#pdf-template #pdf-factus-qr-image, #print-bodega-container #pdf-factus-qr-image'))
+        .filter((img) => img && String(img.getAttribute('src') || '').trim())
+    }
+
+    function esperarCargaImagen(img, timeoutMs = 2500) {
+      return new Promise((resolve) => {
+        if (!img) {
+          resolve(false)
+          return
+        }
+        if (img.complete && Number(img.naturalWidth || 0) > 0) {
+          resolve(true)
+          return
+        }
+        let settled = false
+        const done = (ok) => {
+          if (settled) return
+          settled = true
+          img.removeEventListener('load', onLoad)
+          img.removeEventListener('error', onError)
+          clearTimeout(timer)
+          resolve(ok)
+        }
+        const onLoad = () => done(true)
+        const onError = () => done(false)
+        const timer = setTimeout(() => done(false), timeoutMs)
+        img.addEventListener('load', onLoad, { once: true })
+        img.addEventListener('error', onError, { once: true })
+      })
+    }
+
+    async function prepararImpresionPosFacturaElectronica() {
+      prepararDatosPDF()
+      const imagenesQr = obtenerImagenesQrPos()
+      // #region debug-point C:qr-before-print
+      reportDebugFeQrFecha('C', 'remision.html:prepararImpresionPosFacturaElectronica', 'QR antes de imprimir POS FE', {
+        qrImageCount: imagenesQr.length,
+        qrSources: imagenesQr.map((img) => String(img.getAttribute('src') || '').trim()).filter(Boolean)
+      })
+      // #endregion
+      if (!imagenesQr.length) return
+      await Promise.all(imagenesQr.map((img) => esperarCargaImagen(img)))
     }
 
     function marcarTransporteNoProgramado() {
