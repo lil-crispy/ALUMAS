@@ -958,7 +958,7 @@
             <div id="pdf-factus-qr-container" style="display: none; margin: 8px 0 12px; text-align: center;">
                 <div style="font-size: 11px; font-weight: bold; margin-bottom: 4px;">QR FACTURA ELECTRONICA</div>
                 <img id="pdf-factus-qr-image" alt="QR Factura Electronica" style="width: 110px; height: 110px; object-fit: contain; border: 1px solid #ccc; padding: 4px; background: #fff;">
-                <div id="pdf-factus-qr-number" style="font-size: 10px; margin-top: 4px; font-weight: bold;"></div>
+                <div id="pdf-factus-qr-number" style="display: none;"></div>
             </div>
             <div id="pdf-aviso-transporte" style="display: none; font-size: 18px; font-weight: 900; margin-bottom: 8px; text-align: center;">OJO: TRANSPORTE LIBRE DE CARGUE Y DESCARGUE</div>
             <div style="font-size: 10px; font-weight: bold; margin-bottom: 10px;">***GRACIAS POR SU COMPRA***</div>
@@ -1352,7 +1352,7 @@
     <div id="pos-factus-qr-container" style="display: none; margin: 10px 0 14px; text-align: center;">
       <div style="font-size: 11px; font-weight: bold; margin-bottom: 4px;">QR FACTURA ELECTRONICA</div>
       <img id="pos-factus-qr-image" alt="QR Factura Electronica" style="width: 110px; height: 110px; object-fit: contain; border: 1px solid #ccc; padding: 4px; background: #fff;">
-      <div id="pos-factus-qr-number" style="font-size: 10px; margin-top: 4px; font-weight: bold;"></div>
+      <div id="pos-factus-qr-number" style="display: none;"></div>
     </div>
     
 
@@ -5012,9 +5012,21 @@ try {
     }
 
     function construirImagenQrProvisional(texto = '') {
-      const line1 = 'QR PROVISIONAL'
-      const line2 = 'FACTURA ELECTRONICA'
-      const line3 = String(texto || 'ALUMAS').trim().slice(0, 36)
+      const seed = String(texto || 'ALUMAS FE').trim()
+      const modules = []
+      for (let row = 0; row < 13; row += 1) {
+        for (let col = 0; col < 13; col += 1) {
+          const index = row * 13 + col
+          const charCode = seed.charCodeAt(index % seed.length) || 65
+          const on = ((row * 17 + col * 31 + charCode) % 5) < 2
+          const inFinderTopLeft = row < 3 && col < 3
+          const inFinderTopRight = row < 3 && col > 9
+          const inFinderBottomLeft = row > 9 && col < 3
+          if (on && !inFinderTopLeft && !inFinderTopRight && !inFinderBottomLeft) {
+            modules.push(`<rect x="${44 + (col * 4)}" y="${14 + (row * 4)}" width="4" height="4" fill="#000000"/>`)
+          }
+        }
+      }
       const svg = `
         <svg xmlns="http://www.w3.org/2000/svg" width="140" height="140" viewBox="0 0 140 140">
           <rect width="140" height="140" fill="#ffffff"/>
@@ -5027,30 +5039,7 @@ try {
           <rect x="8" y="104" width="28" height="28" fill="#000000"/>
           <rect x="12" y="108" width="20" height="20" fill="#ffffff"/>
           <rect x="16" y="112" width="12" height="12" fill="#000000"/>
-          <rect x="52" y="18" width="8" height="8" fill="#000000"/>
-          <rect x="64" y="18" width="8" height="8" fill="#000000"/>
-          <rect x="76" y="18" width="8" height="8" fill="#000000"/>
-          <rect x="52" y="30" width="8" height="8" fill="#000000"/>
-          <rect x="76" y="30" width="8" height="8" fill="#000000"/>
-          <rect x="46" y="46" width="8" height="8" fill="#000000"/>
-          <rect x="58" y="46" width="8" height="8" fill="#000000"/>
-          <rect x="70" y="46" width="8" height="8" fill="#000000"/>
-          <rect x="82" y="46" width="8" height="8" fill="#000000"/>
-          <rect x="94" y="46" width="8" height="8" fill="#000000"/>
-          <rect x="46" y="58" width="8" height="8" fill="#000000"/>
-          <rect x="70" y="58" width="8" height="8" fill="#000000"/>
-          <rect x="94" y="58" width="8" height="8" fill="#000000"/>
-          <rect x="46" y="70" width="8" height="8" fill="#000000"/>
-          <rect x="58" y="70" width="8" height="8" fill="#000000"/>
-          <rect x="82" y="70" width="8" height="8" fill="#000000"/>
-          <rect x="94" y="70" width="8" height="8" fill="#000000"/>
-          <rect x="46" y="82" width="8" height="8" fill="#000000"/>
-          <rect x="70" y="82" width="8" height="8" fill="#000000"/>
-          <rect x="82" y="82" width="8" height="8" fill="#000000"/>
-          <rect x="94" y="82" width="8" height="8" fill="#000000"/>
-          <text x="70" y="122" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="700" fill="#000000">${line1}</text>
-          <text x="70" y="132" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" fill="#000000">${line2}</text>
-          <text x="70" y="139" text-anchor="middle" font-family="Arial, sans-serif" font-size="6" fill="#000000">${line3}</text>
+          ${modules.join('')}
         </svg>
       `.trim()
       return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
@@ -5071,8 +5060,8 @@ try {
         return `Factura FE ${number}\nCUFE: ${cufe}`
       }
       if (cufe) return cufe
-      if (number) return `Factura FE ${number}\nQR provisional`
-      return 'Factura electronica emitida\nQR provisional ALUMAS'
+      if (number) return `Factura FE ${number}`
+      return 'Factura electronica emitida ALUMAS'
     }
 
     function obtenerQrFacturaElectronica(resultadoFactus) {
@@ -5108,14 +5097,16 @@ try {
         qrImage.src = qrSrc
         qrContainer.style.display = 'block'
         if (qrNumber) {
-          qrNumber.textContent = numeroFactura
-            ? (qrRealDisponible ? `Factura ${numeroFactura}` : `Factura ${numeroFactura} - QR provisional`)
-            : (qrRealDisponible ? '' : 'QR provisional')
+          qrNumber.textContent = ''
+          qrNumber.style.display = 'none'
         }
       } else {
         qrImage.removeAttribute('src')
         qrContainer.style.display = 'none'
-        if (qrNumber) qrNumber.textContent = ''
+        if (qrNumber) {
+          qrNumber.textContent = ''
+          qrNumber.style.display = 'none'
+        }
       }
     }
 
