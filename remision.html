@@ -4999,15 +4999,21 @@ try {
       actualizarVisualConsecutivo()
     }
 
-    function esUrlODataUri(valor) {
+    function esDataUriImagen(valor) {
       const texto = String(valor || '').trim()
-      return /^https?:\/\//i.test(texto) || /^data:image\//i.test(texto)
+      return /^data:image\//i.test(texto)
+    }
+
+    function esUrlImagenDirecta(valor) {
+      const texto = String(valor || '').trim()
+      if (!/^https?:\/\//i.test(texto)) return false
+      return /\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(texto)
     }
 
     function construirUrlImagenQr(valorQr) {
       const qr = String(valorQr || '').trim()
       if (!qr) return ''
-      if (esUrlODataUri(qr)) return qr
+      if (esDataUriImagen(qr) || esUrlImagenDirecta(qr)) return qr
       return `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(qr)}`
     }
 
