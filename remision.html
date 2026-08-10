@@ -2217,6 +2217,7 @@
       const qrContainer = template?.querySelector('#pdf-factus-qr-container');
       const qrImage = template?.querySelector('#pdf-factus-qr-image');
       const qrNumber = template?.querySelector('#pdf-factus-qr-number');
+      const qrRealDisponible = !!(resultadoFactus?.qr || resultadoFactus?.qr_url || resultadoFactus?.urls?.qr_url);
       const qrFactus = obtenerQrFacturaElectronica(resultadoFactus);
       // #region debug-point C:qr-render-state
       reportDebugFeQrFecha('C', 'remision.html:prepararDatosPDF', 'Estado QR al preparar POS', {
@@ -2232,7 +2233,9 @@
           qrImage.src = qrFactus;
           qrContainer.style.display = 'block';
           if (qrNumber) {
-            qrNumber.textContent = resultadoFactus?.number ? `Factura ${resultadoFactus.number}` : '';
+            qrNumber.textContent = resultadoFactus?.number
+              ? (qrRealDisponible ? `Factura ${resultadoFactus.number}` : `Factura ${resultadoFactus.number} - QR provisional`)
+              : (qrRealDisponible ? '' : 'QR provisional')
           }
         } else {
           qrImage.removeAttribute('src');
@@ -2258,7 +2261,9 @@
               cloneQrImage.src = qrFactus;
               cloneQrContainer.style.display = 'block';
               if (cloneQrNumber) {
-                cloneQrNumber.textContent = resultadoFactus?.number ? `Factura ${resultadoFactus.number}` : '';
+                cloneQrNumber.textContent = resultadoFactus?.number
+                  ? (qrRealDisponible ? `Factura ${resultadoFactus.number}` : `Factura ${resultadoFactus.number} - QR provisional`)
+                  : (qrRealDisponible ? '' : 'QR provisional')
               }
             } else {
               cloneQrImage.removeAttribute('src');
@@ -5009,6 +5014,51 @@ try {
       return `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(qr)}`
     }
 
+    function construirImagenQrProvisional(texto = '') {
+      const line1 = 'QR PROVISIONAL'
+      const line2 = 'FACTURA ELECTRONICA'
+      const line3 = String(texto || 'ALUMAS').trim().slice(0, 36)
+      const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="140" height="140" viewBox="0 0 140 140">
+          <rect width="140" height="140" fill="#ffffff"/>
+          <rect x="8" y="8" width="28" height="28" fill="#000000"/>
+          <rect x="12" y="12" width="20" height="20" fill="#ffffff"/>
+          <rect x="16" y="16" width="12" height="12" fill="#000000"/>
+          <rect x="104" y="8" width="28" height="28" fill="#000000"/>
+          <rect x="108" y="12" width="20" height="20" fill="#ffffff"/>
+          <rect x="112" y="16" width="12" height="12" fill="#000000"/>
+          <rect x="8" y="104" width="28" height="28" fill="#000000"/>
+          <rect x="12" y="108" width="20" height="20" fill="#ffffff"/>
+          <rect x="16" y="112" width="12" height="12" fill="#000000"/>
+          <rect x="52" y="18" width="8" height="8" fill="#000000"/>
+          <rect x="64" y="18" width="8" height="8" fill="#000000"/>
+          <rect x="76" y="18" width="8" height="8" fill="#000000"/>
+          <rect x="52" y="30" width="8" height="8" fill="#000000"/>
+          <rect x="76" y="30" width="8" height="8" fill="#000000"/>
+          <rect x="46" y="46" width="8" height="8" fill="#000000"/>
+          <rect x="58" y="46" width="8" height="8" fill="#000000"/>
+          <rect x="70" y="46" width="8" height="8" fill="#000000"/>
+          <rect x="82" y="46" width="8" height="8" fill="#000000"/>
+          <rect x="94" y="46" width="8" height="8" fill="#000000"/>
+          <rect x="46" y="58" width="8" height="8" fill="#000000"/>
+          <rect x="70" y="58" width="8" height="8" fill="#000000"/>
+          <rect x="94" y="58" width="8" height="8" fill="#000000"/>
+          <rect x="46" y="70" width="8" height="8" fill="#000000"/>
+          <rect x="58" y="70" width="8" height="8" fill="#000000"/>
+          <rect x="82" y="70" width="8" height="8" fill="#000000"/>
+          <rect x="94" y="70" width="8" height="8" fill="#000000"/>
+          <rect x="46" y="82" width="8" height="8" fill="#000000"/>
+          <rect x="70" y="82" width="8" height="8" fill="#000000"/>
+          <rect x="82" y="82" width="8" height="8" fill="#000000"/>
+          <rect x="94" y="82" width="8" height="8" fill="#000000"/>
+          <text x="70" y="122" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="700" fill="#000000">${line1}</text>
+          <text x="70" y="132" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" fill="#000000">${line2}</text>
+          <text x="70" y="139" text-anchor="middle" font-family="Arial, sans-serif" font-size="6" fill="#000000">${line3}</text>
+        </svg>
+      `.trim()
+      return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+    }
+
     function obtenerContenidoFallbackQrFacturaElectronica(resultadoFactus) {
       const documentUrl = String(
         resultadoFactus?.document_url
@@ -5024,8 +5074,8 @@ try {
         return `Factura FE ${number}\nCUFE: ${cufe}`
       }
       if (cufe) return cufe
-      if (number) return `Factura FE ${number}`
-      return ''
+      if (number) return `Factura FE ${number}\nQR provisional`
+      return 'Factura electronica emitida\nQR provisional ALUMAS'
     }
 
     function obtenerQrFacturaElectronica(resultadoFactus) {
@@ -5035,7 +5085,10 @@ try {
         || resultadoFactus?.urls?.qr_url
         || ''
       ).trim()
-      return construirUrlImagenQr(qr || obtenerContenidoFallbackQrFacturaElectronica(resultadoFactus))
+      if (qr) {
+        return construirUrlImagenQr(qr)
+      }
+      return construirImagenQrProvisional(obtenerContenidoFallbackQrFacturaElectronica(resultadoFactus))
     }
 
     function obtenerImagenesQrPos() {
