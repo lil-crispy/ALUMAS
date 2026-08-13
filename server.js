@@ -132,6 +132,35 @@ async function ensureSchema() {
       UNIQUE KEY uq_factus_documentos_reference_code (reference_code)
     ) ENGINE=InnoDB;
   `
+  const createMercadoLibreCuentas = `
+    CREATE TABLE IF NOT EXISTS mercadolibre_cuentas (
+      id BIGINT AUTO_INCREMENT PRIMARY KEY,
+      meli_user_id BIGINT NOT NULL,
+      nickname VARCHAR(120) NULL,
+      site_id VARCHAR(16) NULL,
+      scope VARCHAR(255) NULL,
+      access_token_encrypted TEXT NOT NULL,
+      refresh_token_encrypted TEXT NOT NULL,
+      token_expires_at DATETIME NULL,
+      connected_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      last_refresh_at DATETIME NULL DEFAULT NULL,
+      status VARCHAR(32) NOT NULL DEFAULT 'connected',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uq_mercadolibre_cuentas_meli_user_id (meli_user_id)
+    ) ENGINE=InnoDB;
+  `
+  const createMercadoLibreOauthStates = `
+    CREATE TABLE IF NOT EXISTS mercadolibre_oauth_states (
+      id BIGINT AUTO_INCREMENT PRIMARY KEY,
+      state_hash CHAR(64) NOT NULL,
+      expires_at DATETIME NOT NULL,
+      used_at DATETIME NULL DEFAULT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY uq_mercadolibre_oauth_states_state_hash (state_hash),
+      KEY idx_mercadolibre_oauth_states_expires_at (expires_at)
+    ) ENGINE=InnoDB;
+  `
   await pool.query(createVentas)
   await pool.query(createItems)
   await pool.query(createProgramados)
@@ -139,6 +168,8 @@ async function ensureSchema() {
   await pool.query(createVentasDetalle)
   await pool.query(createVentasPaymentDetails)
   await pool.query(createFactusDocumentos)
+  await pool.query(createMercadoLibreCuentas)
+  await pool.query(createMercadoLibreOauthStates)
 
   const ventasColumns = await getTableColumns('ventas')
   const ventasColumnSet = new Set(ventasColumns.map((column) => String(column || '').toLowerCase()))
@@ -409,6 +440,664 @@ function removeEmptyObjectFields(input) {
     output[key] = value
   })
   return output
+}
+
+const MERCADOLIBRE_AUTH_BASE = 'https://auth.mercadolibre.com.co'
+const MERCADOLIBRE_API_BASE = 'https://api.mercadolibre.com'
+const MERCADOLIBRE_OAUTH_STATE_COOKIE = 'alumas_meli_oauth_state'
+const MERCADOLIBRE_OAUTH_STATE_MAX_AGE_MS = 10 * 60 * 1000
+const MERCADOLIBRE_HTTP_TIMEOUT_MS = 15000
+const MERCADOLIBRE_REQUIRED_SCOPES = ['offline_access', 'read', 'write']
+const MERCADOLIBRE_AUTH_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000
+const MERCADOLIBRE_AUTH_RATE_LIMIT_MAX_ATTEMPTS = 5
+
+let mercadolibreEncryptionKeyCache = null
+const mercadolibreAuthRateLimitStore = new Map()
+let mercadolibreAuthRateLimitLastCleanupAt = 0
+
+function getMercadoLibreConfig() {
+  return {
+    clientId: String(process.env.MERCADOLIBRE_CLIENT_ID || '').trim(),
+    clientSecret: String(process.env.MERCADOLIBRE_CLIENT_SECRET || '').trim(),
+    redirectUri: String(process.env.MERCADOLIBRE_REDIRECT_URI || '').trim(),
+    stateSecret: String(process.env.MERCADOLIBRE_OAUTH_STATE_SECRET || '').trim(),
+    encryptionSecret: String(process.env.MERCADOLIBRE_TOKEN_ENCRYPTION_KEY || '').trim(),
+    adminAuthUser: String(process.env.MERCADOLIBRE_ADMIN_AUTH_USER || '').trim(),
+    adminAuthPassword: String(process.env.MERCADOLIBRE_ADMIN_AUTH_PASSWORD || '').trim(),
+    allowedUserId: String(process.env.MERCADOLIBRE_ALLOWED_USER_ID || '').trim()
+  }
+}
+
+function ensureMercadoLibreConfigured() {
+  const config = getMercadoLibreConfig()
+  const required = [
+    ['MERCADOLIBRE_CLIENT_ID', config.clientId],
+    ['MERCADOLIBRE_CLIENT_SECRET', config.clientSecret],
+    ['MERCADOLIBRE_REDIRECT_URI', config.redirectUri],
+    ['MERCADOLIBRE_OAUTH_STATE_SECRET', config.stateSecret],
+    ['MERCADOLIBRE_TOKEN_ENCRYPTION_KEY', config.encryptionSecret]
+  ]
+  const missing = required
+    .filter(([, value]) => !value)
+    .map(([name]) => name)
+
+  if (missing.length > 0) {
+    throw new Error(`Mercado Libre no está configurado. Faltan variables: ${missing.join(', ')}`)
+  }
+
+  return config
+}
+
+function getMercadoLibreEncryptionKey() {
+  if (mercadolibreEncryptionKeyCache) return mercadolibreEncryptionKeyCache
+  const { encryptionSecret } = ensureMercadoLibreConfigured()
+  mercadolibreEncryptionKeyCache = crypto
+    .createHash('sha256')
+    .update(encryptionSecret, 'utf8')
+    .digest()
+  return mercadolibreEncryptionKeyCache
+}
+
+function ensureMercadoLibreAdminConfigured() {
+  const { adminAuthUser, adminAuthPassword } = getMercadoLibreConfig()
+  const missing = []
+  if (!adminAuthUser) missing.push('MERCADOLIBRE_ADMIN_AUTH_USER')
+  if (!adminAuthPassword) missing.push('MERCADOLIBRE_ADMIN_AUTH_PASSWORD')
+  if (missing.length > 0) {
+    throw new Error(`Mercado Libre admin auth no está configurado. Faltan variables: ${missing.join(', ')}`)
+  }
+  return {
+    adminAuthUser,
+    adminAuthPassword
+  }
+}
+
+function toBase64Url(value) {
+  return Buffer.from(value).toString('base64url')
+}
+
+function fromBase64Url(value) {
+  return Buffer.from(String(value || ''), 'base64url')
+}
+
+function createSignedValue(payload, secret) {
+  const payloadBase64 = toBase64Url(JSON.stringify(payload))
+  const signature = crypto
+    .createHmac('sha256', secret)
+    .update(payloadBase64)
+    .digest('base64url')
+  return `${payloadBase64}.${signature}`
+}
+
+function readSignedValue(value, secret) {
+  const text = String(value || '').trim()
+  const separatorIndex = text.lastIndexOf('.')
+  if (separatorIndex <= 0) return null
+
+  const payloadBase64 = text.slice(0, separatorIndex)
+  const receivedSignature = text.slice(separatorIndex + 1)
+  const expectedSignature = crypto
+    .createHmac('sha256', secret)
+    .update(payloadBase64)
+    .digest('base64url')
+
+  const receivedBuffer = Buffer.from(receivedSignature, 'utf8')
+  const expectedBuffer = Buffer.from(expectedSignature, 'utf8')
+  if (receivedBuffer.length !== expectedBuffer.length) return null
+  if (!crypto.timingSafeEqual(receivedBuffer, expectedBuffer)) return null
+
+  try {
+    return JSON.parse(fromBase64Url(payloadBase64).toString('utf8'))
+  } catch {
+    return null
+  }
+}
+
+function parseCookies(req) {
+  const header = String(req.headers?.cookie || '')
+  const cookies = {}
+  header.split(';').forEach((part) => {
+    const trimmed = part.trim()
+    if (!trimmed) return
+    const separatorIndex = trimmed.indexOf('=')
+    if (separatorIndex <= 0) return
+    const name = trimmed.slice(0, separatorIndex).trim()
+    const value = trimmed.slice(separatorIndex + 1).trim()
+    cookies[name] = decodeURIComponent(value)
+  })
+  return cookies
+}
+
+function serializeCookie(name, value, options = {}) {
+  const parts = [`${name}=${encodeURIComponent(value)}`]
+  if (options.maxAge !== undefined) parts.push(`Max-Age=${Math.max(0, Math.floor(options.maxAge / 1000))}`)
+  if (options.path) parts.push(`Path=${options.path}`)
+  if (options.httpOnly) parts.push('HttpOnly')
+  if (options.secure) parts.push('Secure')
+  if (options.sameSite) parts.push(`SameSite=${options.sameSite}`)
+  if (options.expires) parts.push(`Expires=${options.expires.toUTCString()}`)
+  return parts.join('; ')
+}
+
+function appendSetCookie(res, cookieValue) {
+  const current = res.getHeader('Set-Cookie')
+  if (!current) {
+    res.setHeader('Set-Cookie', cookieValue)
+    return
+  }
+  if (Array.isArray(current)) {
+    res.setHeader('Set-Cookie', [...current, cookieValue])
+    return
+  }
+  res.setHeader('Set-Cookie', [current, cookieValue])
+}
+
+function setMercadoLibreStateCookie(res, state) {
+  const { stateSecret } = ensureMercadoLibreConfigured()
+  const issuedAt = Date.now()
+  const signedValue = createSignedValue({ state, issuedAt }, stateSecret)
+  appendSetCookie(res, serializeCookie(MERCADOLIBRE_OAUTH_STATE_COOKIE, signedValue, {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'Lax',
+    path: '/api/mercadolibre',
+    maxAge: MERCADOLIBRE_OAUTH_STATE_MAX_AGE_MS,
+    expires: new Date(issuedAt + MERCADOLIBRE_OAUTH_STATE_MAX_AGE_MS)
+  }))
+}
+
+function clearMercadoLibreStateCookie(res) {
+  appendSetCookie(res, serializeCookie(MERCADOLIBRE_OAUTH_STATE_COOKIE, '', {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'Lax',
+    path: '/api/mercadolibre',
+    maxAge: 0,
+    expires: new Date(0)
+  }))
+}
+
+function validateMercadoLibreState(req, state) {
+  const { stateSecret } = ensureMercadoLibreConfigured()
+  const cookies = parseCookies(req)
+  const signedValue = cookies[MERCADOLIBRE_OAUTH_STATE_COOKIE]
+  if (!signedValue) {
+    return { ok: false, reason: 'state_cookie_missing' }
+  }
+
+  const payload = readSignedValue(signedValue, stateSecret)
+  if (!payload?.state || !payload?.issuedAt) {
+    return { ok: false, reason: 'state_cookie_invalid' }
+  }
+
+  if (String(payload.state) !== String(state || '')) {
+    return { ok: false, reason: 'state_mismatch' }
+  }
+
+  if ((Date.now() - Number(payload.issuedAt || 0)) > MERCADOLIBRE_OAUTH_STATE_MAX_AGE_MS) {
+    return { ok: false, reason: 'state_expired' }
+  }
+
+  return { ok: true }
+}
+
+function hashMercadoLibreState(state) {
+  return crypto
+    .createHash('sha256')
+    .update(String(state || ''), 'utf8')
+    .digest('hex')
+}
+
+function createMercadoLibreState() {
+  return crypto.randomBytes(32).toString('base64url')
+}
+
+function buildMercadoLibreAuthorizationUrl(state) {
+  const { clientId, redirectUri } = ensureMercadoLibreConfigured()
+  const authUrl = new URL('/authorization', MERCADOLIBRE_AUTH_BASE)
+  authUrl.searchParams.set('response_type', 'code')
+  authUrl.searchParams.set('client_id', clientId)
+  authUrl.searchParams.set('redirect_uri', redirectUri)
+  authUrl.searchParams.set('state', state)
+  return authUrl.toString()
+}
+
+function sanitizeMercadoLibreTokenResponse(data) {
+  return removeEmptyObjectFields({
+    token_type: data?.token_type,
+    expires_in: data?.expires_in,
+    scope: data?.scope,
+    user_id: data?.user_id
+  })
+}
+
+function sanitizeMercadoLibreError(data) {
+  return removeEmptyObjectFields({
+    message: data?.message,
+    error: data?.error,
+    status: data?.status,
+    cause: Array.isArray(data?.cause) ? data.cause.length : undefined
+  })
+}
+
+function sanitizeMercadoLibreUser(data) {
+  return removeEmptyObjectFields({
+    id: data?.id,
+    nickname: data?.nickname,
+    site_id: data?.site_id,
+    status: data?.status
+  })
+}
+
+function encryptMercadoLibreToken(value) {
+  const plainText = String(value || '')
+  const key = getMercadoLibreEncryptionKey()
+  const iv = crypto.randomBytes(12)
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv)
+  const encrypted = Buffer.concat([cipher.update(plainText, 'utf8'), cipher.final()])
+  const authTag = cipher.getAuthTag()
+  return `v1:${iv.toString('base64url')}:${authTag.toString('base64url')}:${encrypted.toString('base64url')}`
+}
+
+function decryptMercadoLibreToken(value) {
+  const text = String(value || '').trim()
+  const [version, ivBase64, authTagBase64, encryptedBase64] = text.split(':')
+  if (version !== 'v1' || !ivBase64 || !authTagBase64 || !encryptedBase64) {
+    throw new Error('Formato de token cifrado de Mercado Libre inválido.')
+  }
+
+  const key = getMercadoLibreEncryptionKey()
+  const decipher = crypto.createDecipheriv(
+    'aes-256-gcm',
+    key,
+    Buffer.from(ivBase64, 'base64url')
+  )
+  decipher.setAuthTag(Buffer.from(authTagBase64, 'base64url'))
+  const decrypted = Buffer.concat([
+    decipher.update(Buffer.from(encryptedBase64, 'base64url')),
+    decipher.final()
+  ])
+  return decrypted.toString('utf8')
+}
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function buildMercadoLibreOAuthHtml({ title, message, success = false }) {
+  const safeTitle = escapeHtml(title || (success ? 'Mercado Libre conectado' : 'Mercado Libre OAuth'))
+  const safeMessage = escapeHtml(String(message || '').trim() || 'Proceso finalizado.')
+  const color = success ? '#0f7b0f' : '#b42318'
+  return `<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${safeTitle}</title>
+</head>
+<body style="font-family: Arial, sans-serif; margin: 0; background: #f6f8fb; color: #111827;">
+  <div style="max-width: 680px; margin: 48px auto; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px;">
+    <h1 style="margin: 0 0 12px; font-size: 24px; color: ${color};">${safeTitle}</h1>
+    <p style="margin: 0; font-size: 16px; line-height: 1.5;">${safeMessage}</p>
+  </div>
+</body>
+</html>`
+}
+
+function sendMercadoLibreOAuthPage(res, statusCode, options) {
+  res.status(statusCode).type('html').send(buildMercadoLibreOAuthHtml(options))
+}
+
+function parseBasicAuthCredentials(req) {
+  const authorization = String(req.headers?.authorization || '').trim()
+  if (!authorization.toLowerCase().startsWith('basic ')) return null
+
+  try {
+    const decoded = Buffer.from(authorization.slice(6), 'base64').toString('utf8')
+    const separatorIndex = decoded.indexOf(':')
+    if (separatorIndex < 0) return null
+    return {
+      user: decoded.slice(0, separatorIndex),
+      password: decoded.slice(separatorIndex + 1)
+    }
+  } catch {
+    return null
+  }
+}
+
+function getMercadoLibreRequestIp(req) {
+  return String(req.ip || req.socket?.remoteAddress || 'unknown').trim() || 'unknown'
+}
+
+function cleanupMercadoLibreAuthRateLimitStore(now = Date.now()) {
+  if ((now - mercadolibreAuthRateLimitLastCleanupAt) < MERCADOLIBRE_AUTH_RATE_LIMIT_WINDOW_MS) {
+    return
+  }
+
+  for (const [ip, entry] of mercadolibreAuthRateLimitStore.entries()) {
+    if (!entry || (now - Number(entry.windowStartedAt || 0)) > MERCADOLIBRE_AUTH_RATE_LIMIT_WINDOW_MS) {
+      mercadolibreAuthRateLimitStore.delete(ip)
+    }
+  }
+
+  mercadolibreAuthRateLimitLastCleanupAt = now
+}
+
+function checkMercadoLibreAuthRateLimit(req) {
+  const now = Date.now()
+  cleanupMercadoLibreAuthRateLimitStore(now)
+
+  const ip = getMercadoLibreRequestIp(req)
+  const current = mercadolibreAuthRateLimitStore.get(ip)
+
+  if (!current || (now - current.windowStartedAt) >= MERCADOLIBRE_AUTH_RATE_LIMIT_WINDOW_MS) {
+    mercadolibreAuthRateLimitStore.set(ip, {
+      attempts: 1,
+      windowStartedAt: now
+    })
+    return {
+      allowed: true,
+      ip,
+      attempts: 1,
+      attemptsRemaining: MERCADOLIBRE_AUTH_RATE_LIMIT_MAX_ATTEMPTS - 1,
+      retryAfterSeconds: 0
+    }
+  }
+
+  current.attempts += 1
+  mercadolibreAuthRateLimitStore.set(ip, current)
+
+  const retryAfterSeconds = Math.max(
+    1,
+    Math.ceil((MERCADOLIBRE_AUTH_RATE_LIMIT_WINDOW_MS - (now - current.windowStartedAt)) / 1000)
+  )
+
+  if (current.attempts > MERCADOLIBRE_AUTH_RATE_LIMIT_MAX_ATTEMPTS) {
+    return {
+      allowed: false,
+      ip,
+      attempts: current.attempts,
+      attemptsRemaining: 0,
+      retryAfterSeconds
+    }
+  }
+
+  return {
+    allowed: true,
+    ip,
+    attempts: current.attempts,
+    attemptsRemaining: Math.max(0, MERCADOLIBRE_AUTH_RATE_LIMIT_MAX_ATTEMPTS - current.attempts),
+    retryAfterSeconds
+  }
+}
+
+function requireMercadoLibreAdminAuthorization(req, res) {
+  const realm = 'ALUMAS Mercado Libre OAuth'
+
+  let config
+  try {
+    config = ensureMercadoLibreAdminConfigured()
+  } catch (err) {
+    console.error('[MercadoLibre][OAuth] Proteccion admin no configurada:', JSON.stringify({
+      error: err?.message || 'meli_admin_auth_missing'
+    }))
+    sendMercadoLibreOAuthPage(res, 503, {
+      title: 'Proteccion administrativa no configurada',
+      message: 'La autorizacion administrativa temporal de Mercado Libre no está configurada en el servidor.'
+    })
+    return false
+  }
+
+  const credentials = parseBasicAuthCredentials(req)
+  if (!credentials) {
+    res.setHeader('WWW-Authenticate', `Basic realm="${realm}", charset="UTF-8"`)
+    sendMercadoLibreOAuthPage(res, 401, {
+      title: 'Autorizacion requerida',
+      message: 'Debes autenticarte como administrador para iniciar la conexion OAuth de Mercado Libre.'
+    })
+    return false
+  }
+
+  const userBuffer = Buffer.from(String(credentials.user || ''), 'utf8')
+  const expectedUserBuffer = Buffer.from(config.adminAuthUser, 'utf8')
+  const passwordBuffer = Buffer.from(String(credentials.password || ''), 'utf8')
+  const expectedPasswordBuffer = Buffer.from(config.adminAuthPassword, 'utf8')
+
+  const userMatches = userBuffer.length === expectedUserBuffer.length
+    && crypto.timingSafeEqual(userBuffer, expectedUserBuffer)
+  const passwordMatches = passwordBuffer.length === expectedPasswordBuffer.length
+    && crypto.timingSafeEqual(passwordBuffer, expectedPasswordBuffer)
+
+  if (!userMatches || !passwordMatches) {
+    console.warn('[MercadoLibre][OAuth] Intento de acceso admin rechazado:', JSON.stringify({
+      ip: getMercadoLibreRequestIp(req),
+      user_agent: req.get('user-agent') || ''
+    }))
+    res.setHeader('WWW-Authenticate', `Basic realm="${realm}", charset="UTF-8"`)
+    sendMercadoLibreOAuthPage(res, 401, {
+      title: 'Autorizacion invalida',
+      message: 'La autorizacion administrativa para iniciar OAuth de Mercado Libre es inválida.'
+    })
+    return false
+  }
+
+  return true
+}
+
+async function createMercadoLibreOauthStateRecord(state, conn = pool) {
+  const expiresAt = new Date(Date.now() + MERCADOLIBRE_OAUTH_STATE_MAX_AGE_MS)
+  await conn.query(
+    `INSERT INTO mercadolibre_oauth_states (state_hash, expires_at)
+     VALUES (?, ?)`,
+    [hashMercadoLibreState(state), expiresAt]
+  )
+  return { expiresAt }
+}
+
+async function consumeMercadoLibreOauthState(state, conn = pool) {
+  const stateHash = hashMercadoLibreState(state)
+  const [updateResult] = await conn.query(
+    `UPDATE mercadolibre_oauth_states
+     SET used_at = NOW()
+     WHERE state_hash = ?
+       AND used_at IS NULL
+       AND expires_at >= NOW()`,
+    [stateHash]
+  )
+
+  if (updateResult?.affectedRows === 1) {
+    return { ok: true }
+  }
+
+  const [rows] = await conn.query(
+    `SELECT used_at, expires_at
+     FROM mercadolibre_oauth_states
+     WHERE state_hash = ?
+     LIMIT 1`,
+    [stateHash]
+  )
+
+  if (!rows || rows.length === 0) {
+    return { ok: false, reason: 'state_not_found' }
+  }
+
+  const row = rows[0]
+  if (row.used_at) {
+    return { ok: false, reason: 'state_already_used' }
+  }
+
+  const expiresAt = row.expires_at ? new Date(row.expires_at).getTime() : 0
+  if (!expiresAt || expiresAt < Date.now()) {
+    return { ok: false, reason: 'state_expired' }
+  }
+
+  return { ok: false, reason: 'state_invalid' }
+}
+
+function getMercadoLibreAllowedUserId() {
+  const { allowedUserId } = getMercadoLibreConfig()
+  if (!allowedUserId) return null
+
+  const normalized = String(allowedUserId).trim()
+  if (!/^\d+$/.test(normalized)) {
+    throw new Error('MERCADOLIBRE_ALLOWED_USER_ID debe contener solo digitos.')
+  }
+
+  return normalized
+}
+
+function buildMercadoLibreMissingScopes(scopeValue) {
+  const scopeSet = new Set(
+    String(scopeValue || '')
+      .split(/\s+/)
+      .map((item) => item.trim())
+      .filter(Boolean)
+  )
+  return MERCADOLIBRE_REQUIRED_SCOPES.filter((scope) => !scopeSet.has(scope))
+}
+
+async function mercadolibreApiRequest(url, options = {}) {
+  const {
+    method = 'GET',
+    headers = {},
+    body,
+    timeoutMs = MERCADOLIBRE_HTTP_TIMEOUT_MS,
+    operation = 'request'
+  } = options
+
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+
+  try {
+    const response = await fetch(url, {
+      method,
+      headers,
+      body,
+      signal: controller.signal
+    })
+
+    const contentType = response.headers.get('content-type') || ''
+    const data = contentType.includes('application/json')
+      ? await response.json().catch(() => null)
+      : await response.text().catch(() => '')
+
+    if (!response.ok) {
+      const error = new Error(`Mercado Libre respondió con error en ${operation}.`)
+      error.statusCode = response.status
+      error.payload = sanitizeMercadoLibreError(data)
+      throw error
+    }
+
+    return data
+  } catch (err) {
+    if (err?.name === 'AbortError') {
+      const timeoutError = new Error(`Tiempo de espera agotado en ${operation} de Mercado Libre.`)
+      timeoutError.statusCode = 504
+      timeoutError.payload = { error: 'timeout', operation }
+      throw timeoutError
+    }
+    throw err
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+async function exchangeMercadoLibreAuthorizationCode(code) {
+  const { clientId, clientSecret, redirectUri } = ensureMercadoLibreConfigured()
+  const form = new URLSearchParams()
+  form.set('grant_type', 'authorization_code')
+  form.set('client_id', clientId)
+  form.set('client_secret', clientSecret)
+  form.set('code', String(code || '').trim())
+  form.set('redirect_uri', redirectUri)
+
+  const data = await mercadolibreApiRequest(`${MERCADOLIBRE_API_BASE}/oauth/token`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: form.toString(),
+    operation: 'oauth_token'
+  })
+
+  if (!data?.access_token || !data?.refresh_token) {
+    const error = new Error('No se pudo obtener el token de Mercado Libre.')
+    error.statusCode = 502
+    error.payload = sanitizeMercadoLibreError(data)
+    throw error
+  }
+
+  return data
+}
+
+async function getMercadoLibreAuthenticatedUser(accessToken) {
+  const data = await mercadolibreApiRequest(`${MERCADOLIBRE_API_BASE}/users/me`, {
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${accessToken}`
+    },
+    operation: 'users_me'
+  })
+
+  if (!data?.id) {
+    const error = new Error('No se pudo consultar la cuenta de Mercado Libre.')
+    error.statusCode = 502
+    error.payload = sanitizeMercadoLibreError(data)
+    throw error
+  }
+
+  return data
+}
+
+async function getMercadoLibreAccountByUserId(meliUserId, conn = pool) {
+  const [rows] = await conn.query(
+    'SELECT * FROM mercadolibre_cuentas WHERE meli_user_id = ? LIMIT 1',
+    [String(meliUserId || '').trim()]
+  )
+  return rows && rows.length ? rows[0] : null
+}
+
+async function upsertMercadoLibreAccount(data, conn = pool) {
+  const sql = `
+    INSERT INTO mercadolibre_cuentas (
+      meli_user_id,
+      nickname,
+      site_id,
+      scope,
+      access_token_encrypted,
+      refresh_token_encrypted,
+      token_expires_at,
+      connected_at,
+      last_refresh_at,
+      status
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NULL, ?)
+    ON DUPLICATE KEY UPDATE
+      nickname = VALUES(nickname),
+      site_id = VALUES(site_id),
+      scope = VALUES(scope),
+      access_token_encrypted = VALUES(access_token_encrypted),
+      refresh_token_encrypted = VALUES(refresh_token_encrypted),
+      token_expires_at = VALUES(token_expires_at),
+      status = VALUES(status),
+      connected_at = VALUES(connected_at)
+  `
+
+  await conn.query(sql, [
+    String(data.meliUserId || '').trim(),
+    String(data.nickname || '').trim() || null,
+    String(data.siteId || '').trim() || null,
+    String(data.scope || '').trim() || null,
+    String(data.accessTokenEncrypted || '').trim(),
+    String(data.refreshTokenEncrypted || '').trim(),
+    data.tokenExpiresAt || null,
+    String(data.status || 'connected').trim() || 'connected'
+  ])
 }
 
 function getFactusEnvironmentName() {
@@ -1877,6 +2566,170 @@ app.get('/api/clientes-mayoristas-contactos', async (req, res) => {
     res.json({ ok: true, clientes: rows || [] })
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message })
+  }
+})
+
+app.get('/api/mercadolibre/auth', async (req, res) => {
+  try {
+    const rateLimit = checkMercadoLibreAuthRateLimit(req)
+    if (!rateLimit.allowed) {
+      res.setHeader('Retry-After', String(rateLimit.retryAfterSeconds))
+      console.warn('[MercadoLibre][OAuth] Rate limit excedido al iniciar autorizacion:', JSON.stringify({
+        ip: rateLimit.ip,
+        attempts: rateLimit.attempts,
+        retry_after_seconds: rateLimit.retryAfterSeconds
+      }))
+      return sendMercadoLibreOAuthPage(res, 429, {
+        title: 'Demasiados intentos',
+        message: 'Se excedió temporalmente el límite de intentos para iniciar OAuth de Mercado Libre. Intenta nuevamente más tarde.'
+      })
+    }
+
+    if (!requireMercadoLibreAdminAuthorization(req, res)) {
+      return
+    }
+    ensureMercadoLibreConfigured()
+    const state = createMercadoLibreState()
+    await createMercadoLibreOauthStateRecord(state)
+    setMercadoLibreStateCookie(res, state)
+    const authUrl = buildMercadoLibreAuthorizationUrl(state)
+    return res.redirect(authUrl)
+  } catch (err) {
+    console.error('[MercadoLibre][OAuth] No se pudo iniciar la autorizacion:', JSON.stringify({
+      error: err?.message || 'oauth_init_failed'
+    }))
+    return sendMercadoLibreOAuthPage(res, 500, {
+      title: 'Error iniciando Mercado Libre',
+      message: 'No se pudo iniciar la autorizacion de Mercado Libre. Verifica la configuracion del servidor.'
+    })
+  }
+})
+
+app.get('/api/mercadolibre/callback', async (req, res) => {
+  clearMercadoLibreStateCookie(res)
+
+  try {
+    ensureMercadoLibreConfigured()
+
+    const error = String(req.query.error || '').trim()
+    const errorDescription = String(req.query.error_description || '').trim()
+    const code = String(req.query.code || '').trim()
+    const state = String(req.query.state || '').trim()
+
+    if (!state) {
+      return sendMercadoLibreOAuthPage(res, 400, {
+        title: 'State ausente',
+        message: 'La respuesta de Mercado Libre no incluyo el parametro state.'
+      })
+    }
+
+    const stateValidation = validateMercadoLibreState(req, state)
+    if (!stateValidation.ok) {
+      return sendMercadoLibreOAuthPage(res, 400, {
+        title: 'State invalido',
+        message: 'La validacion de seguridad del flujo OAuth fallo. Intenta iniciar la conexion nuevamente.'
+      })
+    }
+
+    const consumedState = await consumeMercadoLibreOauthState(state)
+    if (!consumedState.ok) {
+      const messageByReason = {
+        state_not_found: 'El intento OAuth no existe o ya no está disponible.',
+        state_already_used: 'Este intento OAuth ya fue utilizado anteriormente y fue rechazado.',
+        state_expired: 'El intento OAuth expiró. Inicia nuevamente la conexión.',
+        state_invalid: 'El intento OAuth no es válido.'
+      }
+      return sendMercadoLibreOAuthPage(res, 400, {
+        title: 'State rechazado',
+        message: messageByReason[consumedState.reason] || 'No se pudo validar el intento OAuth.'
+      })
+    }
+
+    if (error) {
+      const wasDenied = error === 'access_denied'
+      return sendMercadoLibreOAuthPage(res, wasDenied ? 400 : 502, {
+        title: wasDenied ? 'Autorizacion cancelada' : 'Error de Mercado Libre',
+        message: wasDenied
+          ? 'La autorizacion de Mercado Libre fue cancelada por el usuario.'
+          : (errorDescription || 'Mercado Libre devolvio un error durante la autorizacion.')
+      })
+    }
+
+    if (!code) {
+      return sendMercadoLibreOAuthPage(res, 400, {
+        title: 'Codigo ausente',
+        message: 'Mercado Libre no devolvio el authorization code requerido.'
+      })
+    }
+
+    const tokenData = await exchangeMercadoLibreAuthorizationCode(code)
+    const missingScopes = buildMercadoLibreMissingScopes(tokenData.scope)
+    if (missingScopes.length > 0) {
+      console.error('[MercadoLibre][OAuth] La cuenta no tiene todos los scopes requeridos:', JSON.stringify({
+        missing_scopes: missingScopes,
+        token: sanitizeMercadoLibreTokenResponse(tokenData)
+      }))
+      return sendMercadoLibreOAuthPage(res, 403, {
+        title: 'Permisos insuficientes',
+        message: `La autorización de Mercado Libre no devolvió todos los permisos requeridos: ${missingScopes.join(', ')}. Revisa la configuración de la app en DevCenter.`
+      })
+    }
+
+    const userData = await getMercadoLibreAuthenticatedUser(tokenData.access_token)
+    const allowedUserId = getMercadoLibreAllowedUserId()
+    if (allowedUserId && String(userData.id) !== allowedUserId) {
+      console.error('[MercadoLibre][OAuth] La cuenta conectada no coincide con el vendedor permitido:', JSON.stringify({
+        expected_user_id: allowedUserId,
+        received_user: sanitizeMercadoLibreUser(userData)
+      }))
+      return sendMercadoLibreOAuthPage(res, 403, {
+        title: 'Cuenta no autorizada',
+        message: 'La cuenta de Mercado Libre autenticada no coincide con la cuenta permitida para este servidor.'
+      })
+    }
+
+    const existingAccount = await getMercadoLibreAccountByUserId(userData.id)
+
+    const expiresInSeconds = Number(tokenData.expires_in || 0)
+    const tokenExpiresAt = Number.isFinite(expiresInSeconds) && expiresInSeconds > 0
+      ? new Date(Date.now() + (expiresInSeconds * 1000))
+      : null
+
+    await upsertMercadoLibreAccount({
+      meliUserId: userData.id,
+      nickname: userData.nickname,
+      siteId: userData.site_id,
+      scope: tokenData.scope,
+      accessTokenEncrypted: encryptMercadoLibreToken(tokenData.access_token),
+      refreshTokenEncrypted: encryptMercadoLibreToken(tokenData.refresh_token),
+      tokenExpiresAt,
+      status: 'connected'
+    })
+
+    console.log('[MercadoLibre][OAuth] Cuenta conectada correctamente:', JSON.stringify({
+      account_existed: !!existingAccount,
+      token: sanitizeMercadoLibreTokenResponse(tokenData),
+      user: sanitizeMercadoLibreUser(userData)
+    }))
+
+    return sendMercadoLibreOAuthPage(res, 200, {
+      success: true,
+      title: existingAccount ? 'Cuenta actualizada' : 'Cuenta conectada',
+      message: existingAccount
+        ? `La cuenta de Mercado Libre ${userData.nickname || userData.id} ya estaba registrada y se actualizaron sus credenciales de forma segura.`
+        : `La cuenta de Mercado Libre ${userData.nickname || userData.id} fue conectada correctamente en ALUMAS.`
+    })
+  } catch (err) {
+    console.error('[MercadoLibre][OAuth] Error en callback:', JSON.stringify({
+      status: err?.statusCode,
+      error: err?.message || 'oauth_callback_failed',
+      payload: err?.payload || undefined
+    }))
+
+    return sendMercadoLibreOAuthPage(res, 500, {
+      title: 'Error conectando Mercado Libre',
+      message: 'No se pudo completar la conexion con Mercado Libre. Revisa la configuracion o vuelve a intentarlo.'
+    })
   }
 })
 
