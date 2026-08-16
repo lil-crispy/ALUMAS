@@ -1365,9 +1365,22 @@ function extractMercadoLibreAttributeValue(item, attributeIds = []) {
 function extractMercadoLibreSellerSku(item) {
   return String(
     item?.seller_custom_field
-    || extractMercadoLibreAttributeValue(item, ['SELLER_SKU', 'SELLER_CUSTOM_FIELD', 'GTIN', 'EAN'])
+    || extractMercadoLibreAttributeValue(item, ['SELLER_SKU', 'SELLER_CUSTOM_FIELD'])
     || ''
   ).trim()
+}
+
+function extractMercadoLibreGtin(item) {
+  return String(
+    item?.gtin
+    || extractMercadoLibreAttributeValue(item, ['GTIN', 'EAN'])
+    || ''
+  ).trim()
+}
+
+function isValidMercadoLibreGtin(value) {
+  const normalized = String(value || '').trim()
+  return /^\d{8,14}$/.test(normalized)
 }
 
 async function getProductoByIdProducto(idProducto, conn = pool) {
@@ -1431,18 +1444,15 @@ async function resolveMercadoLibreProductoForItem(item, conn = pool) {
     }
   }
 
-  const candidateValues = [
-    extractMercadoLibreSellerSku(item),
-    extractMercadoLibreAttributeValue(item, ['GTIN', 'EAN'])
-  ].filter(Boolean)
+  const sellerSku = extractMercadoLibreSellerSku(item)
+  if (/^\d+$/.test(sellerSku)) {
+    const productoById = await getProductoByIdProducto(sellerSku, conn)
+    if (productoById) return productoById
+  }
 
-  for (const candidate of candidateValues) {
-    if (/^\d+$/.test(candidate)) {
-      const productoById = await getProductoByIdProducto(candidate, conn)
-      if (productoById) return productoById
-    }
-
-    const productoByBarcode = await getProductoByCodigoBarras(candidate, conn)
+  const gtin = extractMercadoLibreGtin(item)
+  if (isValidMercadoLibreGtin(gtin)) {
+    const productoByBarcode = await getProductoByCodigoBarras(gtin, conn)
     if (productoByBarcode) return productoByBarcode
   }
 
