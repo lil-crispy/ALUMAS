@@ -161,6 +161,59 @@ async function ensureSchema() {
       KEY idx_mercadolibre_oauth_states_expires_at (expires_at)
     ) ENGINE=InnoDB;
   `
+  const createMercadoLibrePublicaciones = `
+    CREATE TABLE IF NOT EXISTS mercadolibre_publicaciones (
+      id BIGINT AUTO_INCREMENT PRIMARY KEY,
+      meli_user_id BIGINT NOT NULL,
+      item_id VARCHAR(32) NOT NULL,
+      producto_id INT NULL,
+      seller_sku VARCHAR(120) NULL,
+      title VARCHAR(255) NULL,
+      status VARCHAR(32) NULL,
+      price DECIMAL(14,2) NULL,
+      available_quantity INT NULL,
+      permalink TEXT NULL,
+      last_seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      last_stock_sync_at DATETIME NULL DEFAULT NULL,
+      last_stock_sync_status VARCHAR(32) NULL DEFAULT NULL,
+      last_stock_sync_message VARCHAR(255) NULL DEFAULT NULL,
+      raw_json LONGTEXT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uq_mercadolibre_publicaciones_item_id (item_id),
+      KEY idx_mercadolibre_publicaciones_producto_id (producto_id),
+      KEY idx_mercadolibre_publicaciones_meli_user_id (meli_user_id)
+    ) ENGINE=InnoDB;
+  `
+  const createMercadoLibreOrdenes = `
+    CREATE TABLE IF NOT EXISTS mercadolibre_ordenes (
+      id BIGINT AUTO_INCREMENT PRIMARY KEY,
+      order_id BIGINT NOT NULL,
+      meli_user_id BIGINT NOT NULL,
+      venta_id BIGINT NULL,
+      status VARCHAR(32) NULL,
+      status_detail VARCHAR(64) NULL,
+      date_created DATETIME NULL,
+      date_closed DATETIME NULL,
+      date_last_updated DATETIME NULL,
+      paid_at DATETIME NULL,
+      total_amount DECIMAL(14,2) NULL,
+      currency_id VARCHAR(16) NULL,
+      buyer_nickname VARCHAR(120) NULL,
+      buyer_first_name VARCHAR(120) NULL,
+      buyer_last_name VARCHAR(120) NULL,
+      processing_status VARCHAR(32) NOT NULL DEFAULT 'pending',
+      processing_message TEXT NULL,
+      raw_json LONGTEXT NULL,
+      last_processed_at DATETIME NULL DEFAULT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uq_mercadolibre_ordenes_order_id (order_id),
+      KEY idx_mercadolibre_ordenes_venta_id (venta_id),
+      KEY idx_mercadolibre_ordenes_processing_status (processing_status),
+      KEY idx_mercadolibre_ordenes_meli_user_id (meli_user_id)
+    ) ENGINE=InnoDB;
+  `
   await pool.query(createVentas)
   await pool.query(createItems)
   await pool.query(createProgramados)
@@ -170,6 +223,8 @@ async function ensureSchema() {
   await pool.query(createFactusDocumentos)
   await pool.query(createMercadoLibreCuentas)
   await pool.query(createMercadoLibreOauthStates)
+  await pool.query(createMercadoLibrePublicaciones)
+  await pool.query(createMercadoLibreOrdenes)
 
   const ventasColumns = await getTableColumns('ventas')
   const ventasColumnSet = new Set(ventasColumns.map((column) => String(column || '').toLowerCase()))
@@ -450,6 +505,10 @@ const MERCADOLIBRE_HTTP_TIMEOUT_MS = 15000
 const MERCADOLIBRE_REQUIRED_SCOPES = ['offline_access', 'read', 'write']
 const MERCADOLIBRE_AUTH_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000
 const MERCADOLIBRE_AUTH_RATE_LIMIT_MAX_ATTEMPTS = 5
+const MERCADOLIBRE_TOKEN_REFRESH_BUFFER_MS = 5 * 60 * 1000
+const MERCADOLIBRE_DEFAULT_REMOTE_PAGE_SIZE = 50
+const MERCADOLIBRE_DEFAULT_SYNC_LIMIT = 20
+const MERCADOLIBRE_ORDER_PROCESSABLE_STATUSES = new Set(['paid'])
 
 let mercadolibreEncryptionKeyCache = null
 const mercadolibreAuthRateLimitStore = new Map()
@@ -1063,6 +1122,19 @@ async function getMercadoLibreAccountByUserId(meliUserId, conn = pool) {
   return rows && rows.length ? rows[0] : null
 }
 
+async function getMercadoLibrePrimaryAccount(conn = pool) {
+  const [rows] = await conn.query(
+    `SELECT *
+     FROM mercadolibre_cuentas
+     ORDER BY
+       CASE WHEN LOWER(COALESCE(status, '')) = 'connected' THEN 0 ELSE 1 END,
+       connected_at DESC,
+       id DESC
+     LIMIT 1`
+  )
+  return rows && rows.length ? rows[0] : null
+}
+
 async function upsertMercadoLibreAccount(data, conn = pool) {
   const sql = `
     INSERT INTO mercadolibre_cuentas (
@@ -1098,6 +1170,978 @@ async function upsertMercadoLibreAccount(data, conn = pool) {
     data.tokenExpiresAt || null,
     String(data.status || 'connected').trim() || 'connected'
   ])
+}
+
+async function updateMercadoLibreAccountTokens(data, conn = pool) {
+  await conn.query(
+    `UPDATE mercadolibre_cuentas
+     SET
+       access_token_encrypted = ?,
+       refresh_token_encrypted = ?,
+       token_expires_at = ?,
+       scope = ?,
+       last_refresh_at = NOW(),
+       status = ?
+     WHERE meli_user_id = ?`,
+    [
+      String(data.accessTokenEncrypted || '').trim(),
+      String(data.refreshTokenEncrypted || '').trim(),
+      data.tokenExpiresAt || null,
+      String(data.scope || '').trim() || null,
+      String(data.status || 'connected').trim() || 'connected',
+      String(data.meliUserId || '').trim()
+    ]
+  )
+}
+
+function normalizeMercadoLibreDateTime(value) {
+  if (!value) return null
+  const parsed = new Date(value)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
+}
+
+function normalizeMercadoLibreInteger(value, fallback = 0) {
+  const numericValue = Number(value)
+  if (!Number.isFinite(numericValue)) return fallback
+  return Math.max(0, Math.trunc(numericValue))
+}
+
+function getMercadoLibreScopeValue(tokenData, fallback = '') {
+  return String(tokenData?.scope || fallback || '').trim()
+}
+
+async function refreshMercadoLibreAccessToken(account, conn = pool) {
+  if (!account?.meli_user_id) {
+    const error = new Error('No existe una cuenta de Mercado Libre para renovar el token.')
+    error.statusCode = 404
+    throw error
+  }
+
+  const { clientId, clientSecret } = ensureMercadoLibreConfigured()
+  const refreshToken = decryptMercadoLibreToken(account.refresh_token_encrypted)
+  const form = new URLSearchParams()
+  form.set('grant_type', 'refresh_token')
+  form.set('client_id', clientId)
+  form.set('client_secret', clientSecret)
+  form.set('refresh_token', refreshToken)
+
+  const tokenData = await mercadolibreApiRequest(`${MERCADOLIBRE_API_BASE}/oauth/token`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: form.toString(),
+    operation: 'oauth_refresh_token'
+  })
+
+  if (!tokenData?.access_token) {
+    const error = new Error('Mercado Libre no devolvió un access token al renovar la cuenta.')
+    error.statusCode = 502
+    error.payload = sanitizeMercadoLibreError(tokenData)
+    throw error
+  }
+
+  const scopeValue = getMercadoLibreScopeValue(tokenData, account.scope)
+  const missingScopes = buildMercadoLibreMissingScopes(scopeValue)
+  if (missingScopes.length > 0) {
+    const error = new Error(`La renovación OAuth no devolvió todos los permisos requeridos: ${missingScopes.join(', ')}`)
+    error.statusCode = 403
+    error.payload = { missing_scopes: missingScopes }
+    throw error
+  }
+
+  if (tokenData?.user_id && String(tokenData.user_id) !== String(account.meli_user_id)) {
+    const error = new Error('La renovación OAuth devolvió una cuenta distinta a la registrada.')
+    error.statusCode = 403
+    error.payload = {
+      expected_user_id: String(account.meli_user_id),
+      received_user_id: String(tokenData.user_id)
+    }
+    throw error
+  }
+
+  const expiresInSeconds = Number(tokenData.expires_in || 0)
+  const tokenExpiresAt = Number.isFinite(expiresInSeconds) && expiresInSeconds > 0
+    ? new Date(Date.now() + (expiresInSeconds * 1000))
+    : null
+
+  await updateMercadoLibreAccountTokens({
+    meliUserId: account.meli_user_id,
+    accessTokenEncrypted: encryptMercadoLibreToken(tokenData.access_token),
+    refreshTokenEncrypted: encryptMercadoLibreToken(tokenData.refresh_token || refreshToken),
+    tokenExpiresAt,
+    scope: scopeValue,
+    status: 'connected'
+  }, conn)
+
+  const updatedAccount = await getMercadoLibreAccountByUserId(account.meli_user_id, conn)
+  console.log('[MercadoLibre][OAuth] Token renovado correctamente:', JSON.stringify({
+    user_id: String(account.meli_user_id),
+    token: sanitizeMercadoLibreTokenResponse(tokenData)
+  }))
+
+  return {
+    account: updatedAccount || account,
+    accessToken: String(tokenData.access_token)
+  }
+}
+
+async function getValidMercadoLibreAccessToken(conn = pool, options = {}) {
+  const {
+    forceRefresh = false
+  } = options
+
+  const account = await getMercadoLibrePrimaryAccount(conn)
+  if (!account) {
+    const error = new Error('No hay una cuenta de Mercado Libre conectada en ALUMAS.')
+    error.statusCode = 404
+    throw error
+  }
+
+  const tokenExpiresAtMs = account.token_expires_at ? new Date(account.token_expires_at).getTime() : 0
+  const shouldRefresh = forceRefresh || (
+    tokenExpiresAtMs
+    && tokenExpiresAtMs <= (Date.now() + MERCADOLIBRE_TOKEN_REFRESH_BUFFER_MS)
+  )
+
+  if (!shouldRefresh) {
+    return {
+      account,
+      accessToken: decryptMercadoLibreToken(account.access_token_encrypted)
+    }
+  }
+
+  return refreshMercadoLibreAccessToken(account, conn)
+}
+
+function buildMercadoLibreApiUrl(pathname, searchParams = {}) {
+  const url = new URL(pathname, `${MERCADOLIBRE_API_BASE}/`)
+  for (const [key, value] of Object.entries(searchParams || {})) {
+    if (value === undefined || value === null || value === '') continue
+    url.searchParams.set(key, String(value))
+  }
+  return url.toString()
+}
+
+async function mercadolibreAuthenticatedRequest(accessToken, pathname, options = {}) {
+  const {
+    headers = {},
+    ...rest
+  } = options
+
+  return mercadolibreApiRequest(pathname.startsWith('http') ? pathname : buildMercadoLibreApiUrl(pathname), {
+    ...rest,
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+      ...headers
+    }
+  })
+}
+
+function chunkArray(items, size) {
+  const output = []
+  for (let index = 0; index < items.length; index += size) {
+    output.push(items.slice(index, index + size))
+  }
+  return output
+}
+
+function extractMercadoLibreAttributeValue(item, attributeIds = []) {
+  const normalizedIds = new Set(attributeIds.map((value) => String(value || '').trim().toUpperCase()))
+  const attributes = Array.isArray(item?.attributes) ? item.attributes : []
+  for (const attribute of attributes) {
+    const attributeId = String(attribute?.id || attribute?.name || '').trim().toUpperCase()
+    if (!normalizedIds.has(attributeId)) continue
+    const value = attribute?.value_name ?? attribute?.value_id ?? attribute?.value_struct?.number
+    if (value !== undefined && value !== null && String(value).trim() !== '') {
+      return String(value).trim()
+    }
+  }
+  return ''
+}
+
+function extractMercadoLibreSellerSku(item) {
+  return String(
+    item?.seller_custom_field
+    || extractMercadoLibreAttributeValue(item, ['SELLER_SKU', 'SELLER_CUSTOM_FIELD', 'GTIN', 'EAN'])
+    || ''
+  ).trim()
+}
+
+async function getProductoByIdProducto(idProducto, conn = pool) {
+  const id = Number(idProducto)
+  if (!Number.isFinite(id) || id <= 0) return null
+
+  const [rows] = await conn.query(
+    `SELECT
+       id_producto,
+       codigo_barras,
+       nombre,
+       descripcion,
+       stock,
+       precio_final,
+       precio_mayorista,
+       imagen
+     FROM productos
+     WHERE id_producto = ?
+     LIMIT 1`,
+    [id]
+  )
+  return rows && rows.length ? rows[0] : null
+}
+
+async function getProductoByCodigoBarras(codigoBarras, conn = pool) {
+  const codigo = String(codigoBarras || '').trim()
+  if (!codigo) return null
+
+  const [rows] = await conn.query(
+    `SELECT
+       id_producto,
+       codigo_barras,
+       nombre,
+       descripcion,
+       stock,
+       precio_final,
+       precio_mayorista,
+       imagen
+     FROM productos
+     WHERE codigo_barras = ?
+     LIMIT 1`,
+    [codigo]
+  )
+  return rows && rows.length ? rows[0] : null
+}
+
+async function resolveMercadoLibreProductoForItem(item, conn = pool) {
+  const itemId = String(item?.id || '').trim()
+  if (itemId) {
+    const [mappedRows] = await conn.query(
+      `SELECT producto_id
+       FROM mercadolibre_publicaciones
+       WHERE item_id = ?
+         AND producto_id IS NOT NULL
+       LIMIT 1`,
+      [itemId]
+    )
+    if (mappedRows && mappedRows.length && mappedRows[0].producto_id) {
+      const mappedProducto = await getProductoByIdProducto(mappedRows[0].producto_id, conn)
+      if (mappedProducto) return mappedProducto
+    }
+  }
+
+  const candidateValues = [
+    extractMercadoLibreSellerSku(item),
+    extractMercadoLibreAttributeValue(item, ['GTIN', 'EAN'])
+  ].filter(Boolean)
+
+  for (const candidate of candidateValues) {
+    if (/^\d+$/.test(candidate)) {
+      const productoById = await getProductoByIdProducto(candidate, conn)
+      if (productoById) return productoById
+    }
+
+    const productoByBarcode = await getProductoByCodigoBarras(candidate, conn)
+    if (productoByBarcode) return productoByBarcode
+  }
+
+  return null
+}
+
+async function upsertMercadoLibrePublication(data, conn = pool) {
+  await conn.query(
+    `INSERT INTO mercadolibre_publicaciones (
+       meli_user_id,
+       item_id,
+       producto_id,
+       seller_sku,
+       title,
+       status,
+       price,
+       available_quantity,
+       permalink,
+       last_seen_at,
+       raw_json
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)
+     ON DUPLICATE KEY UPDATE
+       meli_user_id = VALUES(meli_user_id),
+       producto_id = VALUES(producto_id),
+       seller_sku = VALUES(seller_sku),
+       title = VALUES(title),
+       status = VALUES(status),
+       price = VALUES(price),
+       available_quantity = VALUES(available_quantity),
+       permalink = VALUES(permalink),
+       last_seen_at = NOW(),
+       raw_json = VALUES(raw_json)`,
+    [
+      String(data.meliUserId || '').trim(),
+      String(data.itemId || '').trim(),
+      data.productoId ? Number(data.productoId) : null,
+      String(data.sellerSku || '').trim() || null,
+      String(data.title || '').trim() || null,
+      String(data.status || '').trim() || null,
+      data.price === null || data.price === undefined ? null : normalizeVentaNumeric(data.price, 0),
+      data.availableQuantity === null || data.availableQuantity === undefined ? null : normalizeMercadoLibreInteger(data.availableQuantity, 0),
+      String(data.permalink || '').trim() || null,
+      toSafeJson(data.rawJson || null)
+    ]
+  )
+}
+
+async function fetchMercadoLibreItemDetailsByIds(accessToken, itemIds) {
+  const normalizedIds = [...new Set((Array.isArray(itemIds) ? itemIds : []).map((itemId) => String(itemId || '').trim()).filter(Boolean))]
+  if (normalizedIds.length === 0) return []
+
+  const items = []
+  for (const chunk of chunkArray(normalizedIds, 20)) {
+    const url = buildMercadoLibreApiUrl('/items', { ids: chunk.join(',') })
+    const response = await mercadolibreAuthenticatedRequest(accessToken, url, {
+      operation: 'items_batch'
+    })
+    const batchItems = Array.isArray(response) ? response : []
+    for (const entry of batchItems) {
+      if (Number(entry?.code) >= 200 && Number(entry?.code) < 300 && entry?.body) {
+        items.push(entry.body)
+      }
+    }
+  }
+  return items
+}
+
+async function syncMercadoLibrePublicationsFromRemote(options = {}, conn = pool) {
+  const limit = Math.max(1, Math.min(200, normalizeMercadoLibreInteger(options.limit, MERCADOLIBRE_DEFAULT_REMOTE_PAGE_SIZE)))
+  const { account, accessToken } = await getValidMercadoLibreAccessToken(conn)
+  const itemIds = []
+  let offset = 0
+
+  while (itemIds.length < limit) {
+    const remaining = Math.min(MERCADOLIBRE_DEFAULT_REMOTE_PAGE_SIZE, limit - itemIds.length)
+    const searchResponse = await mercadolibreAuthenticatedRequest(
+      accessToken,
+      buildMercadoLibreApiUrl(`/users/${account.meli_user_id}/items/search`, {
+        limit: remaining,
+        offset
+      }),
+      { operation: 'items_search' }
+    )
+
+    const results = Array.isArray(searchResponse?.results) ? searchResponse.results : []
+    if (results.length === 0) break
+    itemIds.push(...results.map((value) => String(value || '').trim()).filter(Boolean))
+
+    const pagingTotal = normalizeMercadoLibreInteger(searchResponse?.paging?.total, 0)
+    offset += results.length
+    if (results.length < remaining || (pagingTotal > 0 && offset >= pagingTotal)) {
+      break
+    }
+  }
+
+  const items = await fetchMercadoLibreItemDetailsByIds(accessToken, itemIds.slice(0, limit))
+  for (const item of items) {
+    const producto = await resolveMercadoLibreProductoForItem(item, conn)
+    await upsertMercadoLibrePublication({
+      meliUserId: account.meli_user_id,
+      itemId: item.id,
+      productoId: producto?.id_producto || null,
+      sellerSku: extractMercadoLibreSellerSku(item),
+      title: item.title,
+      status: item.status,
+      price: item.price,
+      availableQuantity: item.available_quantity,
+      permalink: item.permalink,
+      rawJson: item
+    }, conn)
+  }
+
+  return getMercadoLibrePublicationMappings({
+    meliUserId: account.meli_user_id,
+    limit
+  }, conn)
+}
+
+async function getMercadoLibrePublicationMappings(filters = {}, conn = pool) {
+  const limit = Math.max(1, Math.min(500, normalizeMercadoLibreInteger(filters.limit, 100)))
+  const whereParts = ['1 = 1']
+  const params = []
+
+  if (filters.meliUserId) {
+    whereParts.push('mp.meli_user_id = ?')
+    params.push(String(filters.meliUserId))
+  }
+
+  if (filters.onlyMapped === true) {
+    whereParts.push('mp.producto_id IS NOT NULL')
+  }
+
+  if (Array.isArray(filters.itemIds) && filters.itemIds.length > 0) {
+    const itemIds = filters.itemIds.map((itemId) => String(itemId || '').trim()).filter(Boolean)
+    if (itemIds.length > 0) {
+      whereParts.push(`mp.item_id IN (${itemIds.map(() => '?').join(', ')})`)
+      params.push(...itemIds)
+    }
+  }
+
+  const [rows] = await conn.query(
+    `SELECT
+       mp.id,
+       mp.meli_user_id,
+       mp.item_id,
+       mp.producto_id,
+       mp.seller_sku,
+       mp.title,
+       mp.status,
+       mp.price,
+       mp.available_quantity,
+       mp.permalink,
+       mp.last_seen_at,
+       mp.last_stock_sync_at,
+       mp.last_stock_sync_status,
+       mp.last_stock_sync_message,
+       p.id_producto AS producto_db_id,
+       p.codigo_barras,
+       p.nombre AS producto_nombre,
+       p.stock AS producto_stock,
+       p.precio_final AS producto_precio_final
+     FROM mercadolibre_publicaciones mp
+     LEFT JOIN productos p ON p.id_producto = mp.producto_id
+     WHERE ${whereParts.join(' AND ')}
+     ORDER BY mp.updated_at DESC
+     LIMIT ?`,
+    [...params, limit]
+  )
+
+  return rows || []
+}
+
+async function ensureMercadoLibrePublicationMapping(itemId, conn = pool) {
+  const normalizedItemId = String(itemId || '').trim()
+  if (!normalizedItemId) return null
+
+  const [existingRows] = await conn.query(
+    `SELECT *
+     FROM mercadolibre_publicaciones
+     WHERE item_id = ?
+     LIMIT 1`,
+    [normalizedItemId]
+  )
+  if (existingRows && existingRows.length) {
+    return existingRows[0]
+  }
+
+  const { account, accessToken } = await getValidMercadoLibreAccessToken(conn)
+  const items = await fetchMercadoLibreItemDetailsByIds(accessToken, [normalizedItemId])
+  if (!items.length) return null
+
+  const item = items[0]
+  const producto = await resolveMercadoLibreProductoForItem(item, conn)
+  await upsertMercadoLibrePublication({
+    meliUserId: account.meli_user_id,
+    itemId: item.id,
+    productoId: producto?.id_producto || null,
+    sellerSku: extractMercadoLibreSellerSku(item),
+    title: item.title,
+    status: item.status,
+    price: item.price,
+    availableQuantity: item.available_quantity,
+    permalink: item.permalink,
+    rawJson: item
+  }, conn)
+
+  const [rows] = await conn.query(
+    `SELECT *
+     FROM mercadolibre_publicaciones
+     WHERE item_id = ?
+     LIMIT 1`,
+    [normalizedItemId]
+  )
+  return rows && rows.length ? rows[0] : null
+}
+
+async function upsertMercadoLibreOrderSnapshot(order, account, conn = pool) {
+  await conn.query(
+    `INSERT INTO mercadolibre_ordenes (
+       order_id,
+       meli_user_id,
+       status,
+       status_detail,
+       date_created,
+       date_closed,
+       date_last_updated,
+       paid_at,
+       total_amount,
+       currency_id,
+       buyer_nickname,
+       buyer_first_name,
+       buyer_last_name,
+       processing_status,
+       raw_json
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE
+       meli_user_id = VALUES(meli_user_id),
+       status = VALUES(status),
+       status_detail = VALUES(status_detail),
+       date_created = VALUES(date_created),
+       date_closed = VALUES(date_closed),
+       date_last_updated = VALUES(date_last_updated),
+       paid_at = VALUES(paid_at),
+       total_amount = VALUES(total_amount),
+       currency_id = VALUES(currency_id),
+       buyer_nickname = VALUES(buyer_nickname),
+       buyer_first_name = VALUES(buyer_first_name),
+       buyer_last_name = VALUES(buyer_last_name),
+       raw_json = VALUES(raw_json)`,
+    [
+      Number(order?.id),
+      String(account?.meli_user_id || '').trim(),
+      String(order?.status || '').trim() || null,
+      String(order?.status_detail || '').trim() || null,
+      normalizeMercadoLibreDateTime(order?.date_created),
+      normalizeMercadoLibreDateTime(order?.date_closed),
+      normalizeMercadoLibreDateTime(order?.date_last_updated || order?.last_updated),
+      normalizeMercadoLibreDateTime(order?.paid_at),
+      order?.total_amount === null || order?.total_amount === undefined ? null : normalizeVentaNumeric(order.total_amount, 0),
+      String(order?.currency_id || '').trim() || null,
+      String(order?.buyer?.nickname || '').trim() || null,
+      String(order?.buyer?.first_name || '').trim() || null,
+      String(order?.buyer?.last_name || '').trim() || null,
+      'pending',
+      toSafeJson(order)
+    ]
+  )
+}
+
+async function getMercadoLibreOrderRowForUpdate(orderId, conn) {
+  const [rows] = await conn.query(
+    `SELECT *
+     FROM mercadolibre_ordenes
+     WHERE order_id = ?
+     LIMIT 1
+     FOR UPDATE`,
+    [Number(orderId)]
+  )
+  return rows && rows.length ? rows[0] : null
+}
+
+async function updateMercadoLibreOrderProcessing(orderId, data, conn = pool) {
+  await conn.query(
+    `UPDATE mercadolibre_ordenes
+     SET
+       venta_id = ?,
+       processing_status = ?,
+       processing_message = ?,
+       last_processed_at = ?,
+       status = ?,
+       status_detail = ?,
+       paid_at = ?,
+       date_closed = ?,
+       date_last_updated = ?,
+       raw_json = ?
+     WHERE order_id = ?`,
+    [
+      data.ventaId ? Number(data.ventaId) : null,
+      String(data.processingStatus || 'pending').trim() || 'pending',
+      String(data.processingMessage || '').trim() || null,
+      data.lastProcessedAt || null,
+      String(data.status || '').trim() || null,
+      String(data.statusDetail || '').trim() || null,
+      data.paidAt || null,
+      data.dateClosed || null,
+      data.dateLastUpdated || null,
+      data.rawJson === undefined ? null : toSafeJson(data.rawJson),
+      Number(orderId)
+    ]
+  )
+}
+
+async function fetchMercadoLibreOrders(accessToken, sellerId, options = {}) {
+  const limit = Math.max(1, Math.min(50, normalizeMercadoLibreInteger(options.limit, MERCADOLIBRE_DEFAULT_SYNC_LIMIT)))
+  const offset = Math.max(0, normalizeMercadoLibreInteger(options.offset, 0))
+  const response = await mercadolibreAuthenticatedRequest(
+    accessToken,
+    buildMercadoLibreApiUrl('/orders/search', {
+      seller: sellerId,
+      sort: 'date_desc',
+      limit,
+      offset
+    }),
+    { operation: 'orders_search' }
+  )
+
+  return {
+    results: Array.isArray(response?.results) ? response.results : [],
+    paging: response?.paging || {}
+  }
+}
+
+async function getMercadoLibreOrderDetail(accessToken, orderId) {
+  return mercadolibreAuthenticatedRequest(
+    accessToken,
+    `/orders/${Number(orderId)}`,
+    { operation: 'order_detail' }
+  )
+}
+
+function isMercadoLibreOrderProcessable(order) {
+  const status = String(order?.status || '').trim().toLowerCase()
+  if (MERCADOLIBRE_ORDER_PROCESSABLE_STATUSES.has(status)) {
+    return { processable: true, reason: 'paid', processingStatus: 'ready' }
+  }
+
+  const approvedPayments = (Array.isArray(order?.payments) ? order.payments : []).filter((payment) => {
+    return String(payment?.status || '').trim().toLowerCase() === 'approved'
+  })
+
+  if (approvedPayments.length > 0 && status !== 'cancelled') {
+    return { processable: true, reason: 'approved_payment', processingStatus: 'ready' }
+  }
+
+  if (status === 'cancelled') {
+    return { processable: false, reason: 'cancelled', processingStatus: 'skipped' }
+  }
+
+  return { processable: false, reason: status || 'pending', processingStatus: 'pending' }
+}
+
+async function getMercadoLibreIntegrationUserId(conn = pool) {
+  const [adminRows] = await conn.query(
+    `SELECT id_usuario
+     FROM usuarios
+     WHERE COALESCE(activo, 1) = 1
+       AND LOWER(COALESCE(rol, '')) = 'admin'
+     ORDER BY id_usuario ASC
+     LIMIT 1`
+  )
+  if (adminRows && adminRows.length) {
+    return Number(adminRows[0].id_usuario)
+  }
+
+  const [activeRows] = await conn.query(
+    `SELECT id_usuario
+     FROM usuarios
+     WHERE COALESCE(activo, 1) = 1
+     ORDER BY id_usuario ASC
+     LIMIT 1`
+  )
+  if (activeRows && activeRows.length) {
+    return Number(activeRows[0].id_usuario)
+  }
+
+  throw new Error('No existe un usuario activo en ALUMAS para registrar ventas importadas de Mercado Libre.')
+}
+
+async function resolveMercadoLibreClienteId(order, conn = pool) {
+  const buyerName = String(
+    `${order?.buyer?.first_name || ''} ${order?.buyer?.last_name || ''}`
+  ).replace(/\s+/g, ' ').trim()
+  const buyerNickname = String(order?.buyer?.nickname || '').trim()
+
+  const candidateNames = [buyerName, buyerNickname].filter(Boolean)
+  for (const candidateName of candidateNames) {
+    const [rows] = await conn.query(
+      `SELECT id_cliente
+       FROM clientes
+       WHERE TRIM(COALESCE(nombre, '')) = ?
+       LIMIT 1`,
+      [candidateName]
+    )
+    if (rows && rows.length) {
+      return Number(rows[0].id_cliente)
+    }
+  }
+
+  const [fallbackRows] = await conn.query(
+    `SELECT id_cliente, nombre
+     FROM clientes
+     WHERE TRIM(COALESCE(nombre, '')) IN ('CONSUMIDOR FINAL', 'FERRETERIA GENERAL')
+     ORDER BY CASE
+       WHEN TRIM(COALESCE(nombre, '')) = 'CONSUMIDOR FINAL' THEN 0
+       WHEN TRIM(COALESCE(nombre, '')) = 'FERRETERIA GENERAL' THEN 1
+       ELSE 2
+     END
+     LIMIT 1`
+  )
+  if (fallbackRows && fallbackRows.length) {
+    return Number(fallbackRows[0].id_cliente)
+  }
+
+  throw new Error('No se encontró un cliente reutilizable para registrar ventas importadas de Mercado Libre.')
+}
+
+async function buildMercadoLibreVentaBodyFromOrder(order, conn = pool) {
+  const orderItems = Array.isArray(order?.order_items) ? order.order_items : []
+  if (orderItems.length === 0) {
+    throw new Error(`La orden ${order?.id} no contiene items para registrar en ALUMAS.`)
+  }
+
+  const ventaItems = []
+  for (const orderItem of orderItems) {
+    const itemId = String(orderItem?.item?.id || '').trim()
+    if (!itemId) {
+      throw new Error(`La orden ${order?.id} contiene un item sin item_id de Mercado Libre.`)
+    }
+
+    const publication = await ensureMercadoLibrePublicationMapping(itemId, conn)
+    const productoId = Number(publication?.producto_id || 0)
+    if (!productoId) {
+      throw new Error(`La publicación ${itemId} de Mercado Libre no está vinculada a un producto de ALUMAS.`)
+    }
+
+    const producto = await getProductoByIdProducto(productoId, conn)
+    if (!producto) {
+      throw new Error(`El producto ${productoId} vinculado a la publicación ${itemId} ya no existe en ALUMAS.`)
+    }
+
+    const cantidad = normalizeVentaNumeric(orderItem?.quantity, 0)
+    if (!cantidad || cantidad <= 0) {
+      throw new Error(`La orden ${order?.id} contiene una cantidad inválida para el item ${itemId}.`)
+    }
+
+    const precioUnitario = normalizeVentaNumeric(
+      orderItem?.unit_price ?? orderItem?.full_unit_price ?? producto.precio_final,
+      0
+    )
+    const subtotal = Number((cantidad * precioUnitario).toFixed(2))
+
+    ventaItems.push({
+      id_producto: Number(producto.id_producto),
+      producto_id: Number(producto.id_producto),
+      descripcion: String(producto.nombre || orderItem?.item?.title || '').trim() || `Producto ${producto.id_producto}`,
+      cantidad,
+      precio_unitario: precioUnitario,
+      valor_unitario: precioUnitario,
+      subtotal,
+      valor_total: subtotal
+    })
+  }
+
+  const total = normalizeVentaNumeric(order?.total_amount, ventaItems.reduce((acc, item) => acc + normalizeVentaNumeric(item.valor_total, 0), 0))
+  const usuarioId = await getMercadoLibreIntegrationUserId(conn)
+  const clienteId = await resolveMercadoLibreClienteId(order, conn)
+
+  return {
+    usuario_id: usuarioId,
+    cliente_id: clienteId,
+    total,
+    tipo_pago: 'CONTADO',
+    forma_pago: 'MERCADO_LIBRE',
+    punto_venta: 'mercadolibre',
+    observation: `Venta importada desde Mercado Libre. Orden ${order.id}.`,
+    factura_electronica: false,
+    items: ventaItems,
+    payment_details: [
+      {
+        payment_form: 'contado',
+        payment_method_code: 'mercado_libre',
+        amount: total,
+        reference_code: `ML-${order.id}`
+      }
+    ]
+  }
+}
+
+async function getMercadoLibreOrderRowsByIds(orderIds, conn = pool) {
+  const normalizedOrderIds = [...new Set((Array.isArray(orderIds) ? orderIds : [])
+    .map((orderId) => Number(orderId))
+    .filter((orderId) => Number.isFinite(orderId) && orderId > 0))]
+
+  if (normalizedOrderIds.length === 0) return []
+
+  const [rows] = await conn.query(
+    `SELECT *
+     FROM mercadolibre_ordenes
+     WHERE order_id IN (${normalizedOrderIds.map(() => '?').join(', ')})`,
+    normalizedOrderIds
+  )
+  return rows || []
+}
+
+async function processMercadoLibreOrderImport(order, account) {
+  const orderId = Number(order?.id)
+  if (!Number.isFinite(orderId) || orderId <= 0) {
+    throw new Error('Orden de Mercado Libre inválida.')
+  }
+
+  await upsertMercadoLibreOrderSnapshot(order, account)
+
+  const processability = isMercadoLibreOrderProcessable(order)
+  if (!processability.processable) {
+    await updateMercadoLibreOrderProcessing(orderId, {
+      processingStatus: processability.processingStatus,
+      processingMessage: `La orden ${orderId} todavía no está lista para importarse (${processability.reason}).`,
+      lastProcessedAt: new Date(),
+      status: order?.status,
+      statusDetail: order?.status_detail,
+      paidAt: normalizeMercadoLibreDateTime(order?.paid_at),
+      dateClosed: normalizeMercadoLibreDateTime(order?.date_closed),
+      dateLastUpdated: normalizeMercadoLibreDateTime(order?.date_last_updated || order?.last_updated),
+      rawJson: order
+    })
+    return {
+      order_id: orderId,
+      status: processability.processingStatus,
+      reason: processability.reason
+    }
+  }
+
+  const ventaBody = await buildMercadoLibreVentaBodyFromOrder(order)
+  const conn = await pool.getConnection()
+
+  try {
+    await conn.beginTransaction()
+
+    const lockedOrder = await getMercadoLibreOrderRowForUpdate(orderId, conn)
+    if (lockedOrder?.venta_id) {
+      await conn.commit()
+      return {
+        order_id: orderId,
+        status: 'already_processed',
+        venta_id: Number(lockedOrder.venta_id)
+      }
+    }
+
+    const ventaResult = await processVentaWithExistingLogic(conn, ventaBody, {
+      allowFacturaElectronica: false
+    })
+
+    await updateMercadoLibreOrderProcessing(orderId, {
+      ventaId: ventaResult.resolvedConsecutivo,
+      processingStatus: 'processed',
+      processingMessage: `Orden ${orderId} importada correctamente a la venta ${ventaResult.resolvedConsecutivo}.`,
+      lastProcessedAt: new Date(),
+      status: order?.status,
+      statusDetail: order?.status_detail,
+      paidAt: normalizeMercadoLibreDateTime(order?.paid_at),
+      dateClosed: normalizeMercadoLibreDateTime(order?.date_closed),
+      dateLastUpdated: normalizeMercadoLibreDateTime(order?.date_last_updated || order?.last_updated),
+      rawJson: order
+    }, conn)
+
+    await conn.commit()
+
+    return {
+      order_id: orderId,
+      status: 'processed',
+      venta_id: Number(ventaResult.resolvedConsecutivo)
+    }
+  } catch (err) {
+    try { await conn.rollback() } catch {}
+    await updateMercadoLibreOrderProcessing(orderId, {
+      processingStatus: 'error',
+      processingMessage: err?.message || 'No se pudo importar la orden de Mercado Libre.',
+      lastProcessedAt: new Date(),
+      status: order?.status,
+      statusDetail: order?.status_detail,
+      paidAt: normalizeMercadoLibreDateTime(order?.paid_at),
+      dateClosed: normalizeMercadoLibreDateTime(order?.date_closed),
+      dateLastUpdated: normalizeMercadoLibreDateTime(order?.date_last_updated || order?.last_updated),
+      rawJson: order
+    })
+    throw err
+  } finally {
+    conn.release()
+  }
+}
+
+async function syncMercadoLibreStock(mappings, accessToken, conn = pool) {
+  const results = []
+  for (const mapping of mappings) {
+    const itemId = String(mapping?.item_id || '').trim()
+    const productoId = Number(mapping?.producto_id || 0)
+
+    if (!itemId || !productoId) {
+      results.push({
+        item_id: itemId || null,
+        producto_id: productoId || null,
+        status: 'skipped',
+        message: 'La publicación no tiene un producto de ALUMAS vinculado.'
+      })
+      continue
+    }
+
+    const [rows] = await conn.query(
+      `SELECT id_producto, stock
+       FROM productos
+       WHERE id_producto = ?
+       LIMIT 1`,
+      [productoId]
+    )
+    const producto = rows && rows.length ? rows[0] : null
+    if (!producto) {
+      await conn.query(
+        `UPDATE mercadolibre_publicaciones
+         SET
+           last_stock_sync_at = NOW(),
+           last_stock_sync_status = ?,
+           last_stock_sync_message = ?
+         WHERE item_id = ?`,
+        ['error', 'El producto vinculado ya no existe en ALUMAS.', itemId]
+      )
+      results.push({
+        item_id: itemId,
+        producto_id: productoId,
+        status: 'error',
+        message: 'El producto vinculado ya no existe en ALUMAS.'
+      })
+      continue
+    }
+
+    const availableQuantity = normalizeMercadoLibreInteger(producto.stock, 0)
+    try {
+      await mercadolibreAuthenticatedRequest(accessToken, `/items/${itemId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          available_quantity: availableQuantity
+        }),
+        operation: `item_stock_${itemId}`
+      })
+
+      await conn.query(
+        `UPDATE mercadolibre_publicaciones
+         SET
+           available_quantity = ?,
+           last_stock_sync_at = NOW(),
+           last_stock_sync_status = ?,
+           last_stock_sync_message = ?
+         WHERE item_id = ?`,
+        [availableQuantity, 'synced', `Stock sincronizado desde ALUMAS: ${availableQuantity}`, itemId]
+      )
+
+      results.push({
+        item_id: itemId,
+        producto_id: productoId,
+        stock: availableQuantity,
+        status: 'synced'
+      })
+    } catch (err) {
+      await conn.query(
+        `UPDATE mercadolibre_publicaciones
+         SET
+           last_stock_sync_at = NOW(),
+           last_stock_sync_status = ?,
+           last_stock_sync_message = ?
+         WHERE item_id = ?`,
+        ['error', String(err?.message || 'No se pudo sincronizar el stock.').slice(0, 255), itemId]
+      )
+      results.push({
+        item_id: itemId,
+        producto_id: productoId,
+        stock: availableQuantity,
+        status: 'error',
+        message: err?.message || 'No se pudo sincronizar el stock.'
+      })
+    }
+  }
+
+  return results
+}
+
+function normalizeMercadoLibreLimitQuery(value, fallback) {
+  return Math.max(1, Math.min(200, normalizeMercadoLibreInteger(value, fallback)))
 }
 
 function getFactusEnvironmentName() {
@@ -2037,6 +3081,159 @@ async function resolveVentaConsecutivo(conn, requestedId) {
   return normalizeConsecutivoValue(nextId)
 }
 
+async function processVentaWithExistingLogic(conn, body, options = {}) {
+  const {
+    allowFacturaElectronica = true
+  } = options
+
+  const {
+    id_consecutivo,
+    usuario_id,
+    cliente_id,
+    total,
+    tipo_pago,
+    forma_pago,
+    punto_venta
+  } = body || {}
+
+  const requestedConsecutivo = id_consecutivo
+  const esFacturaElectronica = allowFacturaElectronica && body?.factura_electronica === true
+  const items = normalizeVentaDetalleItems(body)
+  const paymentDetails = normalizeVentaPaymentDetails(body)
+  let factusPayload = null
+  let factusResult = null
+  let factusReferenceCode = null
+  let resolvedConsecutivo = normalizeConsecutivoValue(requestedConsecutivo)
+
+  if (!usuario_id || !cliente_id) {
+    const error = new Error('faltan_campos')
+    error.statusCode = 400
+    throw error
+  }
+
+  if ((esFacturaElectronica && !Array.isArray(items)) || (esFacturaElectronica && items.length === 0)) {
+    const error = new Error('La venta electrónica requiere items persistibles.')
+    error.statusCode = 400
+    error.payload = { error: 'items_factura_electronica_requeridos' }
+    throw error
+  }
+
+  if (esFacturaElectronica && (!Number.isFinite(Number(cliente_id)) || Number(cliente_id) <= 0)) {
+    const error = new Error('La venta electrónica requiere un cliente válido.')
+    error.statusCode = 400
+    error.payload = { error: 'cliente_invalido' }
+    throw error
+  }
+
+  resolvedConsecutivo = await resolveVentaConsecutivo(conn, requestedConsecutivo)
+
+  if (esFacturaElectronica) {
+    const clienteFactus = await getClienteForFactus(Number(cliente_id), conn)
+    const clienteFactusStatus = buildClienteFactusEmissionStatus(clienteFactus)
+    if (!clienteFactusStatus.ready) {
+      const error = new Error(clienteFactusStatus.message)
+      error.statusCode = 422
+      error.payload = {
+        error: 'cliente_factus_incompleto',
+        facturacion: clienteFactusStatus
+      }
+      throw error
+    }
+    const numberingRange = await getFactusActiveNumberingRange()
+    factusReferenceCode = buildFactusReferenceCode(body, resolvedConsecutivo)
+    factusPayload = buildFactusBillPayload({
+      body,
+      ventaId: resolvedConsecutivo,
+      cliente: clienteFactus,
+      items,
+      paymentDetails,
+      numberingRange,
+      referenceCode: factusReferenceCode
+    })
+    console.log('[Factus] Payload a enviar:', JSON.stringify({
+      venta_id: Number(resolvedConsecutivo),
+      reference_code: factusReferenceCode,
+      payload: factusPayload
+    }))
+  }
+
+  const ventaTotal = Number(total || 0)
+  await insertVentaCabecera(conn, {
+    id_consecutivo: resolvedConsecutivo,
+    usuario_id,
+    cliente_id,
+    total: ventaTotal,
+    tipo_pago,
+    forma_pago,
+    punto_venta,
+    subtotal: body?.subtotal ?? null,
+    total_discount: body?.total_discount ?? 0,
+    total_tax: body?.total_tax ?? 0,
+    observation: body?.observation || null,
+    factura_electronica: esFacturaElectronica,
+    electronic_status: esFacturaElectronica ? 'pending' : null,
+    factus_number: null
+  })
+
+  if (esFacturaElectronica) {
+    await persistVentaElectronicaData(conn, body, resolvedConsecutivo, items, paymentDetails, {
+      referenceCode: factusReferenceCode
+    })
+  }
+
+  for (const it of items) {
+    const cantidad = Number(it.cantidad || 0)
+    const descripcion = String(it.descripcion || '')
+    const idProducto = it.id_producto || it.producto_id ? Number(it.id_producto || it.producto_id) : null
+
+    if (!cantidad) continue
+
+    let updated = false
+
+    if (idProducto) {
+      const [res] = await conn.query(
+        'UPDATE productos SET stock = GREATEST(0, stock - ?) WHERE id_producto = ?',
+        [cantidad, idProducto]
+      )
+      if (res.affectedRows > 0) updated = true
+    }
+
+    if (!updated && descripcion) {
+      const [res] = await conn.query(
+        'UPDATE productos SET stock = GREATEST(0, stock - ?) WHERE nombre = ? LIMIT 1',
+        [cantidad, descripcion]
+      )
+      if (res.affectedRows > 0) updated = true
+    }
+
+    if (!updated && descripcion) {
+      await conn.query(
+        'UPDATE productos SET stock = GREATEST(0, stock - ?) WHERE nombre LIKE ? LIMIT 1',
+        [cantidad, `%${descripcion}%`]
+      )
+    }
+  }
+
+  if (esFacturaElectronica) {
+    const factusResponse = await factusApiRequest('/v2/bills/validate', {
+      method: 'POST',
+      body: factusPayload
+    })
+    console.log('[Factus] Respuesta recibida:', JSON.stringify({
+      venta_id: Number(resolvedConsecutivo),
+      reference_code: factusReferenceCode,
+      response: factusResponse
+    }))
+    factusResult = await updateFactusPersistedData(conn, resolvedConsecutivo, factusReferenceCode, factusPayload, factusResponse)
+  }
+
+  return {
+    resolvedConsecutivo,
+    facturaElectronica: esFacturaElectronica,
+    factusResult
+  }
+}
+
 function buildClienteFacturacionStatus(cliente) {
   const displayName = String(
     cliente?.company ||
@@ -2733,6 +3930,265 @@ app.get('/api/mercadolibre/callback', async (req, res) => {
   }
 })
 
+app.get('/api/mercadolibre/status', async (req, res) => {
+  try {
+    if (!requireMercadoLibreAdminAuthorization(req, res)) {
+      return
+    }
+
+    const account = await getMercadoLibrePrimaryAccount()
+    if (!account) {
+      return res.json({
+        ok: true,
+        connected: false,
+        account: null
+      })
+    }
+
+    const [[publicacionesStats]] = await pool.query(
+      `SELECT
+         COUNT(*) AS total_publicaciones,
+         SUM(CASE WHEN producto_id IS NOT NULL THEN 1 ELSE 0 END) AS publicaciones_mapeadas
+       FROM mercadolibre_publicaciones
+       WHERE meli_user_id = ?`,
+      [String(account.meli_user_id)]
+    )
+
+    const [[ordenesStats]] = await pool.query(
+      `SELECT
+         COUNT(*) AS total_ordenes,
+         SUM(CASE WHEN processing_status = 'processed' THEN 1 ELSE 0 END) AS ordenes_procesadas
+       FROM mercadolibre_ordenes
+       WHERE meli_user_id = ?`,
+      [String(account.meli_user_id)]
+    )
+
+    return res.json({
+      ok: true,
+      connected: true,
+      meli_user_id: String(account.meli_user_id),
+      nickname: account.nickname || null,
+      site_id: account.site_id || null,
+      scope: account.scope || null,
+      token_expires_at: account.token_expires_at || null,
+      status: account.status || 'connected',
+      publicaciones: {
+        total: Number(publicacionesStats?.total_publicaciones || 0),
+        mapeadas: Number(publicacionesStats?.publicaciones_mapeadas || 0)
+      },
+      ordenes: {
+        total: Number(ordenesStats?.total_ordenes || 0),
+        procesadas: Number(ordenesStats?.ordenes_procesadas || 0)
+      }
+    })
+  } catch (err) {
+    return res.status(Number(err?.statusCode || 500)).json({
+      ok: false,
+      error: err?.message || 'No se pudo consultar el estado de Mercado Libre.'
+    })
+  }
+})
+
+app.get('/api/mercadolibre/publicaciones', async (req, res) => {
+  try {
+    if (!requireMercadoLibreAdminAuthorization(req, res)) {
+      return
+    }
+
+    const limit = normalizeMercadoLibreLimitQuery(req.query.limit, MERCADOLIBRE_DEFAULT_REMOTE_PAGE_SIZE)
+    const shouldRefresh = String(req.query.refresh || '1').trim() !== '0'
+    const account = await getMercadoLibrePrimaryAccount()
+    if (!account) {
+      return res.status(404).json({
+        ok: false,
+        error: 'No hay una cuenta de Mercado Libre conectada en ALUMAS.'
+      })
+    }
+
+    const publicaciones = shouldRefresh
+      ? await syncMercadoLibrePublicationsFromRemote({ limit })
+      : await getMercadoLibrePublicationMappings({ meliUserId: account.meli_user_id, limit })
+
+    return res.json({
+      ok: true,
+      refreshed: shouldRefresh,
+      count: publicaciones.length,
+      publicaciones
+    })
+  } catch (err) {
+    return res.status(Number(err?.statusCode || 500)).json({
+      ok: false,
+      error: err?.message || 'No se pudieron consultar las publicaciones de Mercado Libre.'
+    })
+  }
+})
+
+app.post('/api/mercadolibre/sync-stock', async (req, res) => {
+  try {
+    if (!requireMercadoLibreAdminAuthorization(req, res)) {
+      return
+    }
+
+    const refreshPublications = parseBooleanLike(req.body?.refresh_publicaciones ?? true)
+    const { account, accessToken } = await getValidMercadoLibreAccessToken()
+
+    if (refreshPublications) {
+      await syncMercadoLibrePublicationsFromRemote({
+        limit: normalizeMercadoLibreLimitQuery(req.body?.limit, 200)
+      })
+    }
+
+    let mappings = await getMercadoLibrePublicationMappings({
+      meliUserId: account.meli_user_id,
+      limit: 500,
+      onlyMapped: true
+    })
+
+    const bodyItemIds = Array.isArray(req.body?.item_ids) ? req.body.item_ids.map((itemId) => String(itemId || '').trim()).filter(Boolean) : []
+    const bodyProductoIds = Array.isArray(req.body?.producto_ids) ? req.body.producto_ids.map((value) => Number(value)).filter((value) => Number.isFinite(value) && value > 0) : []
+
+    if (bodyItemIds.length > 0) {
+      const itemIdSet = new Set(bodyItemIds)
+      mappings = mappings.filter((mapping) => itemIdSet.has(String(mapping.item_id)))
+    }
+
+    if (bodyProductoIds.length > 0) {
+      const productoIdSet = new Set(bodyProductoIds)
+      mappings = mappings.filter((mapping) => productoIdSet.has(Number(mapping.producto_id)))
+    }
+
+    const results = await syncMercadoLibreStock(mappings, accessToken)
+    return res.json({
+      ok: true,
+      requested: mappings.length,
+      synced: results.filter((result) => result.status === 'synced').length,
+      errors: results.filter((result) => result.status === 'error').length,
+      skipped: results.filter((result) => result.status === 'skipped').length,
+      results
+    })
+  } catch (err) {
+    return res.status(Number(err?.statusCode || 500)).json({
+      ok: false,
+      error: err?.message || 'No se pudo sincronizar el stock de Mercado Libre.'
+    })
+  }
+})
+
+app.get('/api/mercadolibre/ordenes', async (req, res) => {
+  try {
+    if (!requireMercadoLibreAdminAuthorization(req, res)) {
+      return
+    }
+
+    const limit = Math.max(1, Math.min(50, normalizeMercadoLibreInteger(req.query.limit, MERCADOLIBRE_DEFAULT_SYNC_LIMIT)))
+    const offset = Math.max(0, normalizeMercadoLibreInteger(req.query.offset, 0))
+    const { account, accessToken } = await getValidMercadoLibreAccessToken()
+    const remote = await fetchMercadoLibreOrders(accessToken, account.meli_user_id, { limit, offset })
+
+    for (const order of remote.results) {
+      await upsertMercadoLibreOrderSnapshot(order, account)
+    }
+
+    const localRows = await getMercadoLibreOrderRowsByIds(remote.results.map((order) => order.id))
+    const localByOrderId = new Map(localRows.map((row) => [String(row.order_id), row]))
+
+    const ordenes = remote.results.map((order) => {
+      const local = localByOrderId.get(String(order.id))
+      const processability = isMercadoLibreOrderProcessable(order)
+      return {
+        order_id: Number(order.id),
+        status: order.status || null,
+        status_detail: order.status_detail || null,
+        total_amount: order.total_amount ?? null,
+        currency_id: order.currency_id || null,
+        date_created: order.date_created || null,
+        date_closed: order.date_closed || null,
+        buyer: {
+          nickname: order?.buyer?.nickname || null,
+          first_name: order?.buyer?.first_name || null,
+          last_name: order?.buyer?.last_name || null
+        },
+        import_ready: processability.processable,
+        import_reason: processability.reason,
+        local: local ? {
+          venta_id: local.venta_id ? Number(local.venta_id) : null,
+          processing_status: local.processing_status || null,
+          processing_message: local.processing_message || null,
+          last_processed_at: local.last_processed_at || null
+        } : null
+      }
+    })
+
+    return res.json({
+      ok: true,
+      count: ordenes.length,
+      paging: remote.paging || {},
+      ordenes
+    })
+  } catch (err) {
+    return res.status(Number(err?.statusCode || 500)).json({
+      ok: false,
+      error: err?.message || 'No se pudieron consultar las órdenes de Mercado Libre.'
+    })
+  }
+})
+
+app.post('/api/mercadolibre/sync', async (req, res) => {
+  try {
+    if (!requireMercadoLibreAdminAuthorization(req, res)) {
+      return
+    }
+
+    const { account, accessToken } = await getValidMercadoLibreAccessToken()
+    const requestedOrderIds = Array.isArray(req.body?.order_ids)
+      ? [...new Set(req.body.order_ids.map((value) => Number(value)).filter((value) => Number.isFinite(value) && value > 0))]
+      : []
+
+    const limit = Math.max(1, Math.min(50, normalizeMercadoLibreInteger(req.body?.limit, MERCADOLIBRE_DEFAULT_SYNC_LIMIT)))
+    const ordersToProcess = []
+
+    if (requestedOrderIds.length > 0) {
+      for (const orderId of requestedOrderIds) {
+        ordersToProcess.push(await getMercadoLibreOrderDetail(accessToken, orderId))
+      }
+    } else {
+      const remote = await fetchMercadoLibreOrders(accessToken, account.meli_user_id, { limit })
+      for (const order of remote.results) {
+        ordersToProcess.push(await getMercadoLibreOrderDetail(accessToken, order.id))
+      }
+    }
+
+    const results = []
+    for (const order of ordersToProcess) {
+      try {
+        results.push(await processMercadoLibreOrderImport(order, account))
+      } catch (err) {
+        results.push({
+          order_id: Number(order?.id || 0) || null,
+          status: 'error',
+          message: err?.message || 'No se pudo importar la orden.'
+        })
+      }
+    }
+
+    return res.json({
+      ok: true,
+      requested: ordersToProcess.length,
+      processed: results.filter((result) => result.status === 'processed').length,
+      already_processed: results.filter((result) => result.status === 'already_processed').length,
+      pending: results.filter((result) => result.status === 'pending').length,
+      skipped: results.filter((result) => result.status === 'skipped').length,
+      errors: results.filter((result) => result.status === 'error').length,
+      results
+    })
+  } catch (err) {
+    return res.status(Number(err?.statusCode || 500)).json({
+      ok: false,
+      error: err?.message || 'No se pudieron sincronizar las órdenes de Mercado Libre.'
+    })
+  }
+})
+
 app.get('/api/productos', async (req, res) => {
   try {
     const q = String(req.query.q || '').trim()
@@ -3160,157 +4616,25 @@ app.post('/api/venta', async (req, res) => {
   const conn = await pool.getConnection()
   let resolvedConsecutivo = normalizeConsecutivoValue(req.body?.id_consecutivo)
   try {
-    const {
-      id_consecutivo,
-      usuario_id,
-      cliente_id,
-      total,
-      tipo_pago, // 'CREDITO' | 'CONTADO'
-      forma_pago, // 'EFECTIVO' | 'QR' | 'TARJETA' | etc
-      punto_venta, // 'ferreteria' | 'bodega'
-    } = req.body || {}
-    const requestedConsecutivo = id_consecutivo
-    const esFacturaElectronica = req.body?.factura_electronica === true
-    const items = normalizeVentaDetalleItems(req.body)
-    const paymentDetails = normalizeVentaPaymentDetails(req.body)
-    let factusPayload = null
-    let factusResult = null
-    let factusReferenceCode = null
-    resolvedConsecutivo = normalizeConsecutivoValue(requestedConsecutivo)
-
-    if (!usuario_id || !cliente_id) {
-      return res.status(400).json({ ok: false, error: 'faltan_campos' })
-    }
-
-    if (esFacturaElectronica && !Array.isArray(items) || (esFacturaElectronica && items.length === 0)) {
-      return res.status(400).json({
-        ok: false,
-        error: 'items_factura_electronica_requeridos',
-        message: 'La venta electrónica requiere items persistibles.'
-      })
-    }
-
-    if (esFacturaElectronica && (!Number.isFinite(Number(cliente_id)) || Number(cliente_id) <= 0)) {
-      return res.status(400).json({
-        ok: false,
-        error: 'cliente_invalido',
-        message: 'La venta electrónica requiere un cliente válido.'
-      })
-    }
-
     await conn.beginTransaction()
-    resolvedConsecutivo = await resolveVentaConsecutivo(conn, requestedConsecutivo)
-
-    if (esFacturaElectronica) {
-      const clienteFactus = await getClienteForFactus(Number(cliente_id), conn)
-      const clienteFactusStatus = buildClienteFactusEmissionStatus(clienteFactus)
-      if (!clienteFactusStatus.ready) {
-        await conn.rollback()
-        return res.status(422).json({
-          ok: false,
-          error: 'cliente_factus_incompleto',
-          message: clienteFactusStatus.message,
-          facturacion: clienteFactusStatus
-        })
-      }
-      const numberingRange = await getFactusActiveNumberingRange()
-      factusReferenceCode = buildFactusReferenceCode(req.body, resolvedConsecutivo)
-      factusPayload = buildFactusBillPayload({
-        body: req.body,
-        ventaId: resolvedConsecutivo,
-        cliente: clienteFactus,
-        items,
-        paymentDetails,
-        numberingRange,
-        referenceCode: factusReferenceCode
-      })
-      console.log('[Factus] Payload a enviar:', JSON.stringify({
-        venta_id: Number(resolvedConsecutivo),
-        reference_code: factusReferenceCode,
-        payload: factusPayload
-      }))
-    }
-
-    const t = Number(total || 0)
-    await insertVentaCabecera(conn, {
-      id_consecutivo: resolvedConsecutivo,
-      usuario_id,
-      cliente_id,
-      total: t,
-      tipo_pago,
-      forma_pago,
-      punto_venta,
-      subtotal: req.body?.subtotal ?? null,
-      total_discount: req.body?.total_discount ?? 0,
-      total_tax: req.body?.total_tax ?? 0,
-      observation: req.body?.observation || null,
-      factura_electronica: esFacturaElectronica,
-      electronic_status: esFacturaElectronica ? 'pending' : null,
-      factus_number: null
-    })
-
-    if (esFacturaElectronica) {
-      await persistVentaElectronicaData(conn, req.body, resolvedConsecutivo, items, paymentDetails, {
-        referenceCode: factusReferenceCode
-      })
-    }
-
-    // Descontar stock
-    for (const it of items) {
-      const cantidad = Number(it.cantidad || 0)
-      const descripcion = String(it.descripcion || '')
-      const idProducto = it.id_producto || it.producto_id ? Number(it.id_producto || it.producto_id) : null
-      
-      if (!cantidad) continue
-
-      let updated = false;
-
-      // 1. Try by ID if available
-      if (idProducto) {
-         const [res] = await conn.query('UPDATE productos SET stock = GREATEST(0, stock - ?) WHERE id_producto = ?', [cantidad, idProducto])
-         if (res.affectedRows > 0) updated = true;
-      }
-
-      // 2. Try by exact name
-      if (!updated && descripcion) {
-          const [res] = await conn.query('UPDATE productos SET stock = GREATEST(0, stock - ?) WHERE nombre = ? LIMIT 1', [cantidad, descripcion])
-          if (res.affectedRows > 0) updated = true;
-      }
-
-      // 3. Try by LIKE name
-      if (!updated && descripcion) {
-          await conn.query('UPDATE productos SET stock = GREATEST(0, stock - ?) WHERE nombre LIKE ? LIMIT 1', [cantidad, `%${descripcion}%`])
-      }
-    }
-
-    if (esFacturaElectronica) {
-      const factusResponse = await factusApiRequest('/v2/bills/validate', {
-        method: 'POST',
-        body: factusPayload
-      })
-      console.log('[Factus] Respuesta recibida:', JSON.stringify({
-        venta_id: Number(resolvedConsecutivo),
-        reference_code: factusReferenceCode,
-        response: factusResponse
-      }))
-      factusResult = await updateFactusPersistedData(conn, resolvedConsecutivo, factusReferenceCode, factusPayload, factusResponse)
-    }
+    const result = await processVentaWithExistingLogic(conn, req.body)
+    resolvedConsecutivo = result.resolvedConsecutivo
 
     await conn.commit()
     res.json({
       ok: true,
       id_consecutivo: Number(resolvedConsecutivo),
       venta_id: Number(resolvedConsecutivo),
-      factura_electronica: esFacturaElectronica,
-      factus_number: factusResult?.number || null,
-      prefix: factusResult?.prefix || null,
-      number: factusResult?.number || null,
-      cufe: factusResult?.cufe || null,
-      status: factusResult?.status || null,
-      is_validated: typeof factusResult?.is_validated === 'boolean' ? factusResult.is_validated : null,
-      document_url: factusResult?.document_url || null,
-      urls: factusResult?.urls || null,
-      factus: factusResult
+      factura_electronica: result.facturaElectronica,
+      factus_number: result.factusResult?.number || null,
+      prefix: result.factusResult?.prefix || null,
+      number: result.factusResult?.number || null,
+      cufe: result.factusResult?.cufe || null,
+      status: result.factusResult?.status || null,
+      is_validated: typeof result.factusResult?.is_validated === 'boolean' ? result.factusResult.is_validated : null,
+      document_url: result.factusResult?.document_url || null,
+      urls: result.factusResult?.urls || null,
+      factus: result.factusResult
     })
   } catch (err) {
     try { await conn.rollback() } catch {}
@@ -3323,6 +4647,14 @@ app.post('/api/venta', async (req, res) => {
       stack: err?.stack || null
     }))
     const statusCode = Number(err?.statusCode || 0)
+    if (statusCode === 422 && err?.payload?.error === 'cliente_factus_incompleto') {
+      return res.status(422).json({
+        ok: false,
+        error: 'cliente_factus_incompleto',
+        message: err?.message || 'El cliente no está listo para facturación electrónica.',
+        facturacion: err?.payload?.facturacion || null
+      })
+    }
     if (statusCode === 422) {
       return res.status(422).json({
         ok: false,
