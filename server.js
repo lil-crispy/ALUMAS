@@ -2154,6 +2154,230 @@ function normalizeMercadoLibreLimitQuery(value, fallback) {
   return Math.max(1, Math.min(200, normalizeMercadoLibreInteger(value, fallback)))
 }
 
+function normalizeMercadoLibreStringValue(value, maxLength = 0) {
+  const normalized = String(value || '').trim()
+  if (!normalized) return ''
+  if (maxLength > 0) {
+    return normalized.slice(0, maxLength)
+  }
+  return normalized
+}
+
+function buildMercadoLibreProductoImageUrl(producto, req = null) {
+  const imagen = String(producto?.imagen || '').trim()
+  if (!imagen) return ''
+  if (/^https?:\/\//i.test(imagen)) return imagen
+  const nombreArchivo = path.basename(imagen.replace(/\\/g, '/')).trim()
+  if (!nombreArchivo) return ''
+  return `${getServerPublicBaseUrl(req)}/img/productos/${encodeURIComponent(nombreArchivo)}`
+}
+
+function buildMercadoLibreDefaultAttributes(producto) {
+  const attributes = []
+  const codigoBarras = String(producto?.codigo_barras || '').trim()
+  if (isValidMercadoLibreGtin(codigoBarras)) {
+    attributes.push({
+      id: 'GTIN',
+      value_name: codigoBarras
+    })
+  }
+  return attributes
+}
+
+function normalizeMercadoLibrePublicationAttributes(attributes) {
+  if (!Array.isArray(attributes)) return []
+  const normalized = []
+  for (const attribute of attributes) {
+    const id = normalizeMercadoLibreStringValue(attribute?.id, 80).toUpperCase()
+    if (!id) continue
+    const valueId = normalizeMercadoLibreStringValue(attribute?.value_id, 120)
+    const valueName = normalizeMercadoLibreStringValue(attribute?.value_name, 255)
+    const entry = { id }
+    if (valueId) entry.value_id = valueId
+    if (valueName) entry.value_name = valueName
+    if (!entry.value_id && !entry.value_name) continue
+    normalized.push(entry)
+  }
+  return normalized
+}
+
+async function getMercadoLibreListingTypes(siteId, accessToken) {
+  const listingTypes = await mercadolibreAuthenticatedRequest(
+    accessToken,
+    buildMercadoLibreApiUrl(`/sites/${siteId}/listing_types`),
+    { operation: 'listing_types' }
+  )
+  return Array.isArray(listingTypes) ? listingTypes : []
+}
+
+async function suggestMercadoLibreCategory(siteId, query, accessToken) {
+  const normalizedQuery = normalizeMercadoLibreStringValue(query, 120)
+  if (!normalizedQuery) return []
+  const predictions = await mercadolibreAuthenticatedRequest(
+    accessToken,
+    buildMercadoLibreApiUrl(`/sites/${siteId}/domain_discovery/search`, {
+      q: normalizedQuery,
+      limit: 3
+    }),
+    { operation: 'category_predictor' }
+  )
+  return Array.isArray(predictions) ? predictions : []
+}
+
+async function getMercadoLibreCategoryAttributes(categoryId, accessToken) {
+  const normalizedCategoryId = normalizeMercadoLibreStringValue(categoryId, 64)
+  if (!normalizedCategoryId) return []
+  const attributes = await mercadolibreAuthenticatedRequest(
+    accessToken,
+    buildMercadoLibreApiUrl(`/categories/${normalizedCategoryId}/attributes`),
+    { operation: 'category_attributes' }
+  )
+  return Array.isArray(attributes) ? attributes : []
+}
+
+async function getMercadoLibreCategoryDetail(categoryId, accessToken) {
+  const normalizedCategoryId = normalizeMercadoLibreStringValue(categoryId, 64)
+  if (!normalizedCategoryId) return null
+  return mercadolibreAuthenticatedRequest(
+    accessToken,
+    buildMercadoLibreApiUrl(`/categories/${normalizedCategoryId}`),
+    { operation: 'category_detail' }
+  )
+}
+
+async function getMercadoLibreProductForPublishing(idProducto, conn = pool) {
+  const producto = await getProductoByIdProducto(idProducto, conn)
+  if (!producto) {
+    const error = new Error('Producto no encontrado en ALUMAS.')
+    error.statusCode = 404
+    throw error
+  }
+  return producto
+}
+
+async function buildMercadoLibrePublicationDraft(producto, options = {}, req = null) {
+  const categoryId = normalizeMercadoLibreStringValue(options.categoryId, 64)
+  const title = normalizeMercadoLibreStringValue(
+    options.title || producto.nombre || '',
+    60
+  )
+  const description = normalizeMercadoLibreStringValue(
+    options.description || producto.descripcion || producto.nombre || '',
+    50000
+  )
+  const price = normalizeVentaNumeric(
+    options.price ?? producto.precio_final,
+    0
+  )
+  const stockValue = options.availableQuantity ?? producto.stock
+  const availableQuantity = Math.max(0, normalizeMercadoLibreInteger(stockValue, 0))
+  const listingTypeId = normalizeMercadoLibreStringValue(options.listingTypeId, 64) || 'gold_special'
+  const condition = normalizeMercadoLibreStringValue(options.condition, 16) || 'new'
+  const pictures = []
+  const imageUrl = normalizeMercadoLibreStringValue(options.imageUrl || buildMercadoLibreProductoImageUrl(producto, req), 500)
+  if (imageUrl) {
+    pictures.push({ source: imageUrl })
+  }
+
+  const attributes = normalizeMercadoLibrePublicationAttributes([
+    ...buildMercadoLibreDefaultAttributes(producto),
+    ...(Array.isArray(options.attributes) ? options.attributes : [])
+  ])
+
+  const missing = []
+  if (!categoryId) missing.push('category_id')
+  if (!title) missing.push('title')
+  if (!(price > 0)) missing.push('price')
+  if (availableQuantity < 0) missing.push('available_quantity')
+  if (!listingTypeId) missing.push('listing_type_id')
+  if (!condition) missing.push('condition')
+  if (pictures.length === 0) missing.push('pictures')
+
+  return {
+    producto,
+    draft: {
+      title,
+      category_id: categoryId,
+      price,
+      currency_id: 'COP',
+      available_quantity: availableQuantity,
+      buying_mode: 'buy_it_now',
+      listing_type_id: listingTypeId,
+      condition,
+      seller_custom_field: String(producto.id_producto),
+      channels: ['marketplace'],
+      pictures,
+      attributes
+    },
+    description,
+    missing
+  }
+}
+
+async function publishMercadoLibreItem(producto, publicationDraft, description, account, accessToken, conn = pool) {
+  const createdItem = await mercadolibreAuthenticatedRequest(accessToken, '/items', {
+    method: 'POST',
+    operation: 'items_create',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(publicationDraft)
+  })
+
+  const itemId = String(createdItem?.id || '').trim()
+  if (!itemId) {
+    const error = new Error('Mercado Libre no devolvio un item_id al crear la publicacion.')
+    error.statusCode = 502
+    throw error
+  }
+
+  const normalizedDescription = normalizeMercadoLibreStringValue(description, 50000)
+  if (normalizedDescription) {
+    try {
+      await mercadolibreAuthenticatedRequest(accessToken, `/items/${itemId}/description`, {
+        method: 'POST',
+        operation: 'item_description_create',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          plain_text: normalizedDescription
+        })
+      })
+    } catch (err) {
+      console.warn('[MercadoLibre][Publicacion] No se pudo guardar la descripcion inicial:', JSON.stringify({
+        item_id: itemId,
+        status: err?.statusCode,
+        error: err?.message || 'description_create_failed',
+        payload: err?.payload || undefined
+      }))
+    }
+  }
+
+  const productoRelacionado = await resolveMercadoLibreProductoForItem({
+    ...createdItem,
+    seller_custom_field: publicationDraft.seller_custom_field
+  }, conn)
+
+  await upsertMercadoLibrePublication({
+    meliUserId: account.meli_user_id,
+    itemId,
+    productoId: productoRelacionado?.id_producto || producto.id_producto,
+    sellerSku: extractMercadoLibreSellerSku({
+      ...createdItem,
+      seller_custom_field: publicationDraft.seller_custom_field
+    }),
+    title: createdItem.title || publicationDraft.title,
+    status: createdItem.status || null,
+    price: createdItem.price ?? publicationDraft.price,
+    availableQuantity: createdItem.available_quantity ?? publicationDraft.available_quantity,
+    permalink: createdItem.permalink || null,
+    rawJson: createdItem
+  }, conn)
+
+  return createdItem
+}
+
 function getFactusEnvironmentName() {
   const raw = String(process.env.FACTUS_ENVIRONMENT || process.env.FACTUS_API_ENVIRONMENT || 'sandbox').trim().toLowerCase()
   return raw === 'production' ? 'production' : 'sandbox'
@@ -4029,6 +4253,174 @@ app.get('/api/mercadolibre/publicaciones', async (req, res) => {
     return res.status(Number(err?.statusCode || 500)).json({
       ok: false,
       error: err?.message || 'No se pudieron consultar las publicaciones de Mercado Libre.'
+    })
+  }
+})
+
+app.get('/api/mercadolibre/producto/:id/preparar-publicacion', async (req, res) => {
+  try {
+    if (!requireMercadoLibreAdminAuthorization(req, res)) {
+      return
+    }
+
+    const producto = await getMercadoLibreProductForPublishing(req.params.id)
+    const { account, accessToken } = await getValidMercadoLibreAccessToken()
+    const siteId = normalizeMercadoLibreStringValue(req.query.site_id || account?.site_id || 'MCO', 8) || 'MCO'
+    const suggestedCategories = await suggestMercadoLibreCategory(siteId, producto.nombre || producto.descripcion || '', accessToken)
+    const suggestedCategoryId = normalizeMercadoLibreStringValue(
+      req.query.category_id || suggestedCategories?.[0]?.category_id || '',
+      64
+    )
+    const categoryAttributes = suggestedCategoryId
+      ? await getMercadoLibreCategoryAttributes(suggestedCategoryId, accessToken)
+      : []
+    const categoryDetail = suggestedCategoryId
+      ? await getMercadoLibreCategoryDetail(suggestedCategoryId, accessToken)
+      : null
+    const listingTypes = await getMercadoLibreListingTypes(siteId, accessToken)
+    const draftInfo = await buildMercadoLibrePublicationDraft(producto, {
+      categoryId: suggestedCategoryId
+    }, req)
+
+    return res.json({
+      ok: true,
+      site_id: siteId,
+      producto,
+      sugerencias_categoria: suggestedCategories,
+      categoria_seleccionada: categoryDetail,
+      atributos_requeridos: categoryAttributes.filter((attribute) => String(attribute?.tags?.required || '').toLowerCase() === 'true' || attribute?.tags?.required === true),
+      listing_types: listingTypes,
+      borrador: draftInfo.draft,
+      faltantes: draftInfo.missing
+    })
+  } catch (err) {
+    return res.status(Number(err?.statusCode || 500)).json({
+      ok: false,
+      error: err?.message || 'No se pudo preparar la publicacion de Mercado Libre.'
+    })
+  }
+})
+
+app.get('/api/mercadolibre/categorias/sugerir', async (req, res) => {
+  try {
+    if (!requireMercadoLibreAdminAuthorization(req, res)) {
+      return
+    }
+
+    const { account, accessToken } = await getValidMercadoLibreAccessToken()
+    const q = normalizeMercadoLibreStringValue(req.query.q, 120)
+    if (!q) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Debes enviar el parametro q para sugerir una categoria.'
+      })
+    }
+
+    const siteId = normalizeMercadoLibreStringValue(req.query.site_id || account?.site_id || 'MCO', 8) || 'MCO'
+    const predictions = await suggestMercadoLibreCategory(siteId, q, accessToken)
+    return res.json({
+      ok: true,
+      site_id: siteId,
+      count: predictions.length,
+      sugerencias: predictions
+    })
+  } catch (err) {
+    return res.status(Number(err?.statusCode || 500)).json({
+      ok: false,
+      error: err?.message || 'No se pudo sugerir una categoria de Mercado Libre.'
+    })
+  }
+})
+
+app.get('/api/mercadolibre/categorias/:categoryId/atributos', async (req, res) => {
+  try {
+    if (!requireMercadoLibreAdminAuthorization(req, res)) {
+      return
+    }
+
+    const { accessToken } = await getValidMercadoLibreAccessToken()
+    const categoryId = normalizeMercadoLibreStringValue(req.params.categoryId, 64)
+    if (!categoryId) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Debes indicar una categoria valida.'
+      })
+    }
+
+    const category = await getMercadoLibreCategoryDetail(categoryId, accessToken)
+    const attributes = await getMercadoLibreCategoryAttributes(categoryId, accessToken)
+    return res.json({
+      ok: true,
+      category,
+      atributos: attributes,
+      atributos_requeridos: attributes.filter((attribute) => String(attribute?.tags?.required || '').toLowerCase() === 'true' || attribute?.tags?.required === true)
+    })
+  } catch (err) {
+    return res.status(Number(err?.statusCode || 500)).json({
+      ok: false,
+      error: err?.message || 'No se pudieron consultar los atributos de la categoria.'
+    })
+  }
+})
+
+app.post('/api/mercadolibre/publicar', async (req, res) => {
+  try {
+    if (!requireMercadoLibreAdminAuthorization(req, res)) {
+      return
+    }
+
+    const productoId = Number(req.body?.producto_id)
+    if (!Number.isFinite(productoId) || productoId <= 0) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Debes enviar producto_id valido para publicar en Mercado Libre.'
+      })
+    }
+
+    const producto = await getMercadoLibreProductForPublishing(productoId)
+    const { account, accessToken } = await getValidMercadoLibreAccessToken()
+    const draftInfo = await buildMercadoLibrePublicationDraft(producto, {
+      categoryId: req.body?.category_id,
+      title: req.body?.title,
+      description: req.body?.description,
+      price: req.body?.price,
+      availableQuantity: req.body?.available_quantity,
+      listingTypeId: req.body?.listing_type_id,
+      condition: req.body?.condition,
+      imageUrl: req.body?.image_url,
+      attributes: req.body?.attributes
+    }, req)
+
+    if (draftInfo.missing.length > 0) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Faltan datos obligatorios para publicar el producto en Mercado Libre.',
+        faltantes: draftInfo.missing,
+        borrador: draftInfo.draft
+      })
+    }
+
+    const createdItem = await publishMercadoLibreItem(
+      producto,
+      draftInfo.draft,
+      draftInfo.description,
+      account,
+      accessToken
+    )
+
+    return res.status(201).json({
+      ok: true,
+      producto_id: producto.id_producto,
+      item_id: createdItem.id || null,
+      status: createdItem.status || null,
+      permalink: createdItem.permalink || null,
+      title: createdItem.title || null
+    })
+  } catch (err) {
+    return res.status(Number(err?.statusCode || 500)).json({
+      ok: false,
+      error: err?.message || 'No se pudo publicar el producto en Mercado Libre.',
+      details: err?.payload || undefined
     })
   }
 })
