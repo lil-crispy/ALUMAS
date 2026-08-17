@@ -1383,20 +1383,57 @@ function isValidMercadoLibreGtin(value) {
   return /^\d{8,14}$/.test(normalized)
 }
 
+async function buildMercadoLibreProductoSelectFields(conn = pool) {
+  const columns = await getTableColumns('productos', conn)
+  const columnSet = new Set((columns || []).map((column) => String(column || '').toLowerCase()))
+  const baseFields = [
+    'id_producto',
+    'codigo_barras',
+    'nombre',
+    'descripcion',
+    'stock',
+    'precio_final',
+    'precio_mayorista',
+    'imagen',
+    'categoria_id'
+  ]
+  const mlFields = [
+    'ml_enabled',
+    'ml_brand',
+    'ml_model',
+    'ml_marketplace_description',
+    'ml_gtin',
+    'ml_weight_kg',
+    'ml_package_length_cm',
+    'ml_package_width_cm',
+    'ml_package_height_cm',
+    'ml_category_id',
+    'ml_category_hint',
+    'ml_listing_type',
+    'ml_condition',
+    'ml_published'
+  ]
+
+  const selectFields = [...baseFields.map((field) => `\`${field}\``)]
+  for (const field of mlFields) {
+    if (columnSet.has(field.toLowerCase())) {
+      selectFields.push(`\`${field}\``)
+    } else {
+      selectFields.push(`NULL AS \`${field}\``)
+    }
+  }
+
+  return selectFields.join(',\n       ')
+}
+
 async function getProductoByIdProducto(idProducto, conn = pool) {
   const id = Number(idProducto)
   if (!Number.isFinite(id) || id <= 0) return null
 
+  const selectFields = await buildMercadoLibreProductoSelectFields(conn)
   const [rows] = await conn.query(
     `SELECT
-       id_producto,
-       codigo_barras,
-       nombre,
-       descripcion,
-       stock,
-       precio_final,
-       precio_mayorista,
-       imagen
+       ${selectFields}
      FROM productos
      WHERE id_producto = ?
      LIMIT 1`,
@@ -1409,16 +1446,10 @@ async function getProductoByCodigoBarras(codigoBarras, conn = pool) {
   const codigo = String(codigoBarras || '').trim()
   if (!codigo) return null
 
+  const selectFields = await buildMercadoLibreProductoSelectFields(conn)
   const [rows] = await conn.query(
     `SELECT
-       id_producto,
-       codigo_barras,
-       nombre,
-       descripcion,
-       stock,
-       precio_final,
-       precio_mayorista,
-       imagen
+       ${selectFields}
      FROM productos
      WHERE codigo_barras = ?
      LIMIT 1`,
@@ -2174,11 +2205,28 @@ function buildMercadoLibreProductoImageUrl(producto, req = null) {
 
 function buildMercadoLibreDefaultAttributes(producto) {
   const attributes = []
-  const codigoBarras = String(producto?.codigo_barras || '').trim()
-  if (isValidMercadoLibreGtin(codigoBarras)) {
+  const brand = normalizeMercadoLibreStringValue(producto?.ml_brand, 255)
+  const model = normalizeMercadoLibreStringValue(producto?.ml_model, 255)
+  const gtin = normalizeMercadoLibreStringValue(producto?.ml_gtin || producto?.codigo_barras, 32)
+
+  if (brand) {
+    attributes.push({
+      id: 'BRAND',
+      value_name: brand
+    })
+  }
+
+  if (model) {
+    attributes.push({
+      id: 'MODEL',
+      value_name: model
+    })
+  }
+
+  if (isValidMercadoLibreGtin(gtin)) {
     attributes.push({
       id: 'GTIN',
-      value_name: codigoBarras
+      value_name: gtin
     })
   }
   return attributes
@@ -2199,6 +2247,25 @@ function normalizeMercadoLibrePublicationAttributes(attributes) {
     normalized.push(entry)
   }
   return normalized
+}
+
+function getMercadoLibreAttributeMap(attributes) {
+  const attributeMap = new Map()
+  for (const attribute of normalizeMercadoLibrePublicationAttributes(attributes)) {
+    attributeMap.set(String(attribute.id || '').trim().toUpperCase(), attribute)
+  }
+  return attributeMap
+}
+
+function getMercadoLibreRequiredAttributesMissing(categoryAttributes, draftAttributes) {
+  const draftAttributeMap = getMercadoLibreAttributeMap(draftAttributes)
+  return (Array.isArray(categoryAttributes) ? categoryAttributes : [])
+    .filter((attribute) => attribute?.tags?.required === true || String(attribute?.tags?.required || '').toLowerCase() === 'true')
+    .filter((attribute) => !draftAttributeMap.has(String(attribute?.id || '').trim().toUpperCase()))
+    .map((attribute) => ({
+      id: String(attribute?.id || '').trim(),
+      name: String(attribute?.name || attribute?.id || '').trim() || null
+    }))
 }
 
 async function getMercadoLibreListingTypes(siteId, accessToken) {
@@ -2256,13 +2323,14 @@ async function getMercadoLibreProductForPublishing(idProducto, conn = pool) {
 }
 
 async function buildMercadoLibrePublicationDraft(producto, options = {}, req = null) {
-  const categoryId = normalizeMercadoLibreStringValue(options.categoryId, 64)
+  const mlEnabled = parseBooleanLike(options.mlEnabled ?? producto.ml_enabled ?? false)
+  const categoryId = normalizeMercadoLibreStringValue(options.categoryId || producto.ml_category_id, 64)
   const title = normalizeMercadoLibreStringValue(
     options.title || producto.nombre || '',
     60
   )
   const description = normalizeMercadoLibreStringValue(
-    options.description || producto.descripcion || producto.nombre || '',
+    options.description || producto.ml_marketplace_description || producto.descripcion || producto.nombre || '',
     50000
   )
   const price = normalizeVentaNumeric(
@@ -2271,8 +2339,8 @@ async function buildMercadoLibrePublicationDraft(producto, options = {}, req = n
   )
   const stockValue = options.availableQuantity ?? producto.stock
   const availableQuantity = Math.max(0, normalizeMercadoLibreInteger(stockValue, 0))
-  const listingTypeId = normalizeMercadoLibreStringValue(options.listingTypeId, 64) || 'gold_special'
-  const condition = normalizeMercadoLibreStringValue(options.condition, 16) || 'new'
+  const listingTypeId = normalizeMercadoLibreStringValue(options.listingTypeId || producto.ml_listing_type, 64) || 'gold_special'
+  const condition = normalizeMercadoLibreStringValue(options.condition || producto.ml_condition, 16) || 'new'
   const pictures = []
   const imageUrl = normalizeMercadoLibreStringValue(options.imageUrl || buildMercadoLibreProductoImageUrl(producto, req), 500)
   if (imageUrl) {
@@ -2285,6 +2353,7 @@ async function buildMercadoLibrePublicationDraft(producto, options = {}, req = n
   ])
 
   const missing = []
+  if (!mlEnabled) missing.push('ml_enabled')
   if (!categoryId) missing.push('category_id')
   if (!title) missing.push('title')
   if (!(price > 0)) missing.push('price')
@@ -2310,6 +2379,13 @@ async function buildMercadoLibrePublicationDraft(producto, options = {}, req = n
       attributes
     },
     description,
+    metadata: {
+      ml_enabled: mlEnabled,
+      image_url: imageUrl || null,
+      gtin: normalizeMercadoLibreStringValue(producto?.ml_gtin || producto?.codigo_barras, 32) || null,
+      brand: normalizeMercadoLibreStringValue(producto?.ml_brand, 255) || null,
+      model: normalizeMercadoLibreStringValue(producto?.ml_model, 255) || null
+    },
     missing
   }
 }
@@ -4266,9 +4342,13 @@ app.get('/api/mercadolibre/producto/:id/preparar-publicacion', async (req, res) 
     const producto = await getMercadoLibreProductForPublishing(req.params.id)
     const { account, accessToken } = await getValidMercadoLibreAccessToken()
     const siteId = normalizeMercadoLibreStringValue(req.query.site_id || account?.site_id || 'MCO', 8) || 'MCO'
-    const suggestedCategories = await suggestMercadoLibreCategory(siteId, producto.nombre || producto.descripcion || '', accessToken)
+    const categoryQuery = normalizeMercadoLibreStringValue(
+      req.query.q || producto.ml_category_hint || producto.nombre || producto.descripcion || '',
+      120
+    )
+    const suggestedCategories = await suggestMercadoLibreCategory(siteId, categoryQuery, accessToken)
     const suggestedCategoryId = normalizeMercadoLibreStringValue(
-      req.query.category_id || suggestedCategories?.[0]?.category_id || '',
+      req.query.category_id || producto.ml_category_id || suggestedCategories?.[0]?.category_id || '',
       64
     )
     const categoryAttributes = suggestedCategoryId
@@ -4281,17 +4361,26 @@ app.get('/api/mercadolibre/producto/:id/preparar-publicacion', async (req, res) 
     const draftInfo = await buildMercadoLibrePublicationDraft(producto, {
       categoryId: suggestedCategoryId
     }, req)
+    const requiredAttributesMissing = getMercadoLibreRequiredAttributesMissing(categoryAttributes, draftInfo.draft.attributes)
+    const completeMissing = [...draftInfo.missing]
+    if (requiredAttributesMissing.length > 0) {
+      completeMissing.push(...requiredAttributesMissing.map((attribute) => `attribute:${attribute.id}`))
+    }
 
     return res.json({
       ok: true,
       site_id: siteId,
       producto,
+      category_query: categoryQuery,
       sugerencias_categoria: suggestedCategories,
       categoria_seleccionada: categoryDetail,
       atributos_requeridos: categoryAttributes.filter((attribute) => String(attribute?.tags?.required || '').toLowerCase() === 'true' || attribute?.tags?.required === true),
+      atributos_borrador: draftInfo.draft.attributes,
+      atributos_obligatorios_faltantes: requiredAttributesMissing,
       listing_types: listingTypes,
       borrador: draftInfo.draft,
-      faltantes: draftInfo.missing
+      metadata: draftInfo.metadata,
+      faltantes: completeMissing
     })
   } catch (err) {
     return res.status(Number(err?.statusCode || 500)).json({
@@ -4390,13 +4479,23 @@ app.post('/api/mercadolibre/publicar', async (req, res) => {
       imageUrl: req.body?.image_url,
       attributes: req.body?.attributes
     }, req)
+    const categoryAttributes = draftInfo.draft.category_id
+      ? await getMercadoLibreCategoryAttributes(draftInfo.draft.category_id, accessToken)
+      : []
+    const requiredAttributesMissing = getMercadoLibreRequiredAttributesMissing(categoryAttributes, draftInfo.draft.attributes)
+    const completeMissing = [...draftInfo.missing]
+    if (requiredAttributesMissing.length > 0) {
+      completeMissing.push(...requiredAttributesMissing.map((attribute) => `attribute:${attribute.id}`))
+    }
 
-    if (draftInfo.missing.length > 0) {
+    if (completeMissing.length > 0) {
       return res.status(400).json({
         ok: false,
         error: 'Faltan datos obligatorios para publicar el producto en Mercado Libre.',
-        faltantes: draftInfo.missing,
-        borrador: draftInfo.draft
+        faltantes: completeMissing,
+        atributos_obligatorios_faltantes: requiredAttributesMissing,
+        borrador: draftInfo.draft,
+        metadata: draftInfo.metadata
       })
     }
 
