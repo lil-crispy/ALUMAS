@@ -2741,8 +2741,8 @@ async function buildMercadoLibrePublicationDraft(producto, options = {}, req = n
     60
   )
   const familyName = normalizeMercadoLibreStringValue(
-    options.familyName || effectiveTitleSource || title || '',
-    120
+    options.familyName || title || effectiveTitleSource || '',
+    60
   )
   const description = normalizeMercadoLibreStringValue(
     options.description || producto.ml_marketplace_description || producto.descripcion || producto.nombre || '',
