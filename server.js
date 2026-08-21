@@ -2719,6 +2719,10 @@ async function buildMercadoLibrePublicationDraft(producto, options = {}, req = n
     options.title || producto.nombre || '',
     60
   )
+  const familyName = normalizeMercadoLibreStringValue(
+    options.familyName || producto.nombre || title || '',
+    120
+  )
   const description = normalizeMercadoLibreStringValue(
     options.description || producto.ml_marketplace_description || producto.descripcion || producto.nombre || '',
     50000
@@ -2754,6 +2758,7 @@ async function buildMercadoLibrePublicationDraft(producto, options = {}, req = n
   if (!mlEnabled) missing.push('ml_enabled')
   if (!categoryId) missing.push('category_id')
   if (!title) missing.push('title')
+  if (!familyName) missing.push('family_name')
   if (!(price > 0)) missing.push('price')
   if (availableQuantity < 0) missing.push('available_quantity')
   if (!listingTypeId) missing.push('listing_type_id')
@@ -2768,6 +2773,7 @@ async function buildMercadoLibrePublicationDraft(producto, options = {}, req = n
     producto,
     draft: {
       title,
+      family_name: familyName,
       category_id: categoryId,
       price,
       currency_id: 'COP',
@@ -2785,6 +2791,7 @@ async function buildMercadoLibrePublicationDraft(producto, options = {}, req = n
     metadata: {
       ml_enabled: mlEnabled,
       image_url: imageUrl || null,
+      family_name: familyName || null,
       gtin: normalizeMercadoLibreStringValue(producto?.ml_gtin || producto?.codigo_barras, 32) || null,
       brand: normalizeMercadoLibreStringValue(producto?.ml_brand, 255) || null,
       model: normalizeMercadoLibreStringValue(producto?.ml_model, 255) || null,
