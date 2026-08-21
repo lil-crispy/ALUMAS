@@ -1629,6 +1629,8 @@ async function buildMercadoLibreProductoSelectFields(conn = pool) {
     'ml_brand',
     'ml_model',
     'ml_marketplace_description',
+    'ml_publication_title',
+    'ml_publication_price',
     'ml_gtin',
     'ml_weight_kg',
     'ml_package_length_cm',
@@ -2722,12 +2724,24 @@ async function buildMercadoLibrePublicationDraft(producto, options = {}, req = n
   const mlEnabled = parseBooleanLike(options.mlEnabled ?? producto.ml_enabled ?? false)
   const isUserProductSeller = parseBooleanLike(options.isUserProductSeller ?? false)
   const categoryId = normalizeMercadoLibreStringValue(options.categoryId || producto.ml_category_id, 64)
+  const requestTitle = normalizeMercadoLibreStringValue(options.title, 255)
+  const storedPublicationTitle = normalizeMercadoLibreStringValue(producto?.ml_publication_title, 255)
+  const baseProductTitle = normalizeMercadoLibreStringValue(producto?.nombre, 255)
+  const effectiveTitleSource = requestTitle || storedPublicationTitle || baseProductTitle || ''
+  const normalizedRequestPrice = normalizeVentaNumeric(options.price, 0)
+  const normalizedStoredPublicationPrice = normalizeVentaNumeric(producto?.ml_publication_price, 0)
+  const normalizedBaseProductPrice = normalizeVentaNumeric(producto?.precio_final, 0)
+  const effectivePriceSource = normalizedRequestPrice > 0
+    ? normalizedRequestPrice
+    : normalizedStoredPublicationPrice > 0
+      ? normalizedStoredPublicationPrice
+      : normalizedBaseProductPrice
   const title = normalizeMercadoLibreStringValue(
-    options.title || producto.nombre || '',
+    effectiveTitleSource,
     60
   )
   const familyName = normalizeMercadoLibreStringValue(
-    options.familyName || producto.nombre || title || '',
+    options.familyName || effectiveTitleSource || title || '',
     120
   )
   const description = normalizeMercadoLibreStringValue(
@@ -2735,7 +2749,7 @@ async function buildMercadoLibrePublicationDraft(producto, options = {}, req = n
     50000
   )
   const price = normalizeVentaNumeric(
-    options.price ?? producto.precio_final,
+    effectivePriceSource,
     0
   )
   const stockValue = options.availableQuantity ?? producto.stock
@@ -2804,6 +2818,18 @@ async function buildMercadoLibrePublicationDraft(producto, options = {}, req = n
       user_product_seller: isUserProductSeller,
       payload_model: isUserProductSeller ? 'user_products' : 'legacy_item',
       title_sent: !isUserProductSeller,
+      effective_title: title || familyName || null,
+      effective_price: price > 0 ? price : null,
+      effective_title_source: requestTitle
+        ? 'request'
+        : storedPublicationTitle
+          ? 'ml_publication_title'
+          : 'nombre',
+      effective_price_source: normalizedRequestPrice > 0
+        ? 'request'
+        : normalizedStoredPublicationPrice > 0
+          ? 'ml_publication_price'
+          : 'precio_final',
       ml_enabled: mlEnabled,
       image_url: imageUrl || null,
       family_name: familyName || null,
