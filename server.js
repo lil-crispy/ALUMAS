@@ -2550,6 +2550,109 @@ function buildMercadoLibreProductoImageUrl(producto, req = null) {
   return `${getServerPublicBaseUrl(req)}/img/productos/${encodeURIComponent(nombreArchivo)}`
 }
 
+function getMercadoLibrePictureUploadFilename(sourceUrl, contentType = '') {
+  const defaultExtension = String(contentType || '').toLowerCase().includes('png') ? '.png' : '.jpg'
+  try {
+    const parsedUrl = new URL(String(sourceUrl || ''))
+    const baseName = path.basename(parsedUrl.pathname || '').trim()
+    if (baseName) return baseName
+  } catch {}
+  return `mercadolibre-producto${defaultExtension}`
+}
+
+async function uploadMercadoLibrePictureFromUrl(accessToken, sourceUrl) {
+  const normalizedUrl = normalizeMercadoLibreStringValue(sourceUrl, 1000)
+  if (!normalizedUrl) {
+    const error = new Error('La imagen del producto no tiene una URL valida para subir a Mercado Libre.')
+    error.statusCode = 400
+    throw error
+  }
+
+  const imageResponse = await fetch(normalizedUrl, {
+    method: 'GET',
+    headers: {
+      Accept: 'image/*'
+    }
+  })
+  if (!imageResponse.ok) {
+    const error = new Error('No se pudo descargar la imagen del producto para subirla a Mercado Libre.')
+    error.statusCode = 502
+    error.payload = {
+      source_url: normalizedUrl,
+      status: imageResponse.status
+    }
+    throw error
+  }
+
+  const contentType = String(imageResponse.headers.get('content-type') || 'image/jpeg').trim() || 'image/jpeg'
+  const imageBuffer = Buffer.from(await imageResponse.arrayBuffer())
+  if (!imageBuffer.length) {
+    const error = new Error('La imagen del producto esta vacia y no se puede subir a Mercado Libre.')
+    error.statusCode = 400
+    error.payload = {
+      source_url: normalizedUrl
+    }
+    throw error
+  }
+
+  const form = new FormData()
+  form.append(
+    'file',
+    new Blob([imageBuffer], { type: contentType }),
+    getMercadoLibrePictureUploadFilename(normalizedUrl, contentType)
+  )
+
+  const uploadedPicture = await mercadolibreAuthenticatedRequest(accessToken, '/pictures/items/upload', {
+    method: 'POST',
+    operation: 'picture_upload',
+    body: form
+  })
+
+  const pictureId = normalizeMercadoLibreStringValue(uploadedPicture?.id, 120)
+  if (!pictureId) {
+    const error = new Error('Mercado Libre no devolvio un picture_id al subir la imagen.')
+    error.statusCode = 502
+    error.payload = sanitizeMercadoLibreError(uploadedPicture)
+    throw error
+  }
+
+  return {
+    id: pictureId,
+    source_url: normalizedUrl,
+    secure_url: uploadedPicture?.variations?.[0]?.secure_url || uploadedPicture?.secure_url || null,
+    raw: uploadedPicture
+  }
+}
+
+async function prepareMercadoLibrePicturesForPayload(payload, accessToken) {
+  const draftPictures = Array.isArray(payload?.pictures) ? payload.pictures : []
+  if (draftPictures.length === 0) return { payload, uploadedPictures: [] }
+
+  const preparedPictures = []
+  const uploadedPictures = []
+  for (const picture of draftPictures) {
+    const existingId = normalizeMercadoLibreStringValue(picture?.id, 120)
+    if (existingId) {
+      preparedPictures.push({ id: existingId })
+      continue
+    }
+
+    const sourceUrl = normalizeMercadoLibreStringValue(picture?.source || picture?.url, 1000)
+    if (!sourceUrl) continue
+    const uploadedPicture = await uploadMercadoLibrePictureFromUrl(accessToken, sourceUrl)
+    preparedPictures.push({ id: uploadedPicture.id })
+    uploadedPictures.push(uploadedPicture)
+  }
+
+  return {
+    payload: {
+      ...payload,
+      pictures: preparedPictures
+    },
+    uploadedPictures
+  }
+}
+
 function formatMercadoLibrePlainNumberString(value, maxDecimals = 2) {
   const numericValue = Number(value)
   if (!Number.isFinite(numericValue) || numericValue <= 0) return ''
@@ -2877,9 +2980,10 @@ function buildMercadoLibrePublicationPayload(publicationDraft, options = {}) {
 }
 
 async function publishMercadoLibreItem(producto, publicationDraft, description, account, accessToken, conn = pool) {
-  const payload = buildMercadoLibrePublicationPayload(publicationDraft, {
+  const basePayload = buildMercadoLibrePublicationPayload(publicationDraft, {
     userProductSeller: !Object.prototype.hasOwnProperty.call(publicationDraft || {}, 'title')
   })
+  const { payload, uploadedPictures } = await prepareMercadoLibrePicturesForPayload(basePayload, accessToken)
   let createdItem
   try {
     createdItem = await mercadolibreAuthenticatedRequest(accessToken, '/items', {
@@ -2892,6 +2996,7 @@ async function publishMercadoLibreItem(producto, publicationDraft, description, 
     })
   } catch (err) {
     err.publicationPayload = payload
+    err.uploadedPictures = uploadedPictures
     throw err
   }
 
@@ -2947,6 +3052,14 @@ async function publishMercadoLibreItem(producto, publicationDraft, description, 
     rawJson: createdItem
   }, conn)
   await updateMercadoLibreProductPublishedState(productoRelacionado?.id_producto || producto.id_producto, true, conn)
+
+  if (uploadedPictures.length > 0) {
+    createdItem.uploaded_pictures = uploadedPictures.map((picture) => ({
+      id: picture.id,
+      source_url: picture.source_url,
+      secure_url: picture.secure_url || null
+    }))
+  }
 
   return createdItem
 }
@@ -5055,7 +5168,14 @@ app.post('/api/mercadolibre/publicar', async (req, res) => {
       ok: false,
       error: err?.message || 'No se pudo publicar el producto en Mercado Libre.',
       details: err?.payload || undefined,
-      payload_final: err?.publicationPayload || undefined
+      payload_final: err?.publicationPayload || undefined,
+      uploaded_pictures: Array.isArray(err?.uploadedPictures)
+        ? err.uploadedPictures.map((picture) => ({
+          id: picture?.id || null,
+          source_url: picture?.source_url || null,
+          secure_url: picture?.secure_url || null
+        }))
+        : undefined
     })
   }
 })
