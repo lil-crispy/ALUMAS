@@ -2822,15 +2822,35 @@ async function buildMercadoLibrePublicationDraft(producto, options = {}, req = n
   }
 }
 
-async function publishMercadoLibreItem(producto, publicationDraft, description, account, accessToken, conn = pool) {
-  const createdItem = await mercadolibreAuthenticatedRequest(accessToken, '/items', {
-    method: 'POST',
-    operation: 'items_create',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(publicationDraft)
+function buildMercadoLibrePublicationPayload(publicationDraft, options = {}) {
+  const payload = removeEmptyObjectFields({
+    ...(publicationDraft && typeof publicationDraft === 'object' ? publicationDraft : {})
   })
+  const isUserProductSeller = parseBooleanLike(options.userProductSeller ?? false)
+  if (isUserProductSeller) {
+    delete payload.title
+  }
+  return payload
+}
+
+async function publishMercadoLibreItem(producto, publicationDraft, description, account, accessToken, conn = pool) {
+  const payload = buildMercadoLibrePublicationPayload(publicationDraft, {
+    userProductSeller: !Object.prototype.hasOwnProperty.call(publicationDraft || {}, 'title')
+  })
+  let createdItem
+  try {
+    createdItem = await mercadolibreAuthenticatedRequest(accessToken, '/items', {
+      method: 'POST',
+      operation: 'items_create',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    })
+  } catch (err) {
+    err.publicationPayload = payload
+    throw err
+  }
 
   const itemId = String(createdItem?.id || '').trim()
   if (!itemId) {
@@ -2873,13 +2893,13 @@ async function publishMercadoLibreItem(producto, publicationDraft, description, 
     productoId: productoRelacionado?.id_producto || producto.id_producto,
     sellerSku: extractMercadoLibreSellerSku({
       ...createdItem,
-      seller_custom_field: publicationDraft.seller_custom_field
+      seller_custom_field: payload.seller_custom_field
     }),
-    categoryId: createdItem.category_id || publicationDraft.category_id || null,
-    title: createdItem.title || publicationDraft.title,
+    categoryId: createdItem.category_id || payload.category_id || null,
+    title: createdItem.title || payload.title || payload.family_name || null,
     status: createdItem.status || null,
-    price: createdItem.price ?? publicationDraft.price,
-    availableQuantity: createdItem.available_quantity ?? publicationDraft.available_quantity,
+    price: createdItem.price ?? payload.price,
+    availableQuantity: createdItem.available_quantity ?? payload.available_quantity,
     permalink: createdItem.permalink || null,
     rawJson: createdItem
   }, conn)
@@ -4931,6 +4951,7 @@ app.post('/api/mercadolibre/publicar', async (req, res) => {
 
     const { account, accessToken } = await getValidMercadoLibreAccessToken()
     const sellerProfile = await getMercadoLibreAuthenticatedUser(accessToken)
+    const isUserProductSeller = isMercadoLibreUserProductSeller(sellerProfile)
     const draftInfo = await buildMercadoLibrePublicationDraft(producto, {
       categoryId: req.body?.category_id,
       title: req.body?.title,
@@ -4941,8 +4962,11 @@ app.post('/api/mercadolibre/publicar', async (req, res) => {
       condition: req.body?.condition,
       imageUrl: req.body?.image_url,
       attributes: req.body?.attributes,
-      isUserProductSeller: isMercadoLibreUserProductSeller(sellerProfile)
+      isUserProductSeller
     }, req)
+    const finalPayload = buildMercadoLibrePublicationPayload(draftInfo.draft, {
+      userProductSeller: isUserProductSeller
+    })
     const categoryAttributes = draftInfo.draft.category_id
       ? await getMercadoLibreCategoryAttributes(draftInfo.draft.category_id, accessToken)
       : []
@@ -4959,13 +4983,14 @@ app.post('/api/mercadolibre/publicar', async (req, res) => {
         faltantes: completeMissing,
         atributos_obligatorios_faltantes: requiredAttributesMissing,
         borrador: draftInfo.draft,
-        metadata: draftInfo.metadata
+        metadata: draftInfo.metadata,
+        payload_final: finalPayload
       })
     }
 
     const createdItem = await publishMercadoLibreItem(
       producto,
-      draftInfo.draft,
+      finalPayload,
       draftInfo.description,
       account,
       accessToken
@@ -4986,7 +5011,8 @@ app.post('/api/mercadolibre/publicar', async (req, res) => {
     return res.status(Number(err?.statusCode || 500)).json({
       ok: false,
       error: err?.message || 'No se pudo publicar el producto en Mercado Libre.',
-      details: err?.payload || undefined
+      details: err?.payload || undefined,
+      payload_final: err?.publicationPayload || undefined
     })
   }
 })
