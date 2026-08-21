@@ -2557,6 +2557,25 @@ function formatMercadoLibrePlainNumberString(value, maxDecimals = 2) {
   return fixed.replace(/\.?0+$/, '')
 }
 
+function formatMercadoLibreAttributeUnitValue(attributeId, rawValue) {
+  const id = normalizeMercadoLibreStringValue(attributeId, 80).toUpperCase()
+  const normalizedRawValue = normalizeMercadoLibreStringValue(rawValue, 255)
+  const numericValue = Number(normalizedRawValue)
+  if (!Number.isFinite(numericValue) || numericValue <= 0) {
+    return normalizedRawValue
+  }
+
+  if (['SELLER_PACKAGE_HEIGHT', 'SELLER_PACKAGE_WIDTH', 'SELLER_PACKAGE_LENGTH'].includes(id)) {
+    return `${formatMercadoLibrePlainNumberString(numericValue, 2)} cm`
+  }
+
+  if (id === 'SELLER_PACKAGE_WEIGHT') {
+    return `${formatMercadoLibrePlainNumberString(numericValue, 0)} g`
+  }
+
+  return normalizedRawValue
+}
+
 function getMercadoLibrePackageMetrics(producto) {
   const heightCm = Number(producto?.ml_package_height_cm)
   const widthCm = Number(producto?.ml_package_width_cm)
@@ -2604,10 +2623,10 @@ function buildMercadoLibreDefaultAttributes(producto) {
 
   const packageMetrics = getMercadoLibrePackageMetrics(producto)
   const packageAttributeMap = [
-    ['SELLER_PACKAGE_HEIGHT', formatMercadoLibrePlainNumberString(packageMetrics.heightCm, 2)],
-    ['SELLER_PACKAGE_WIDTH', formatMercadoLibrePlainNumberString(packageMetrics.widthCm, 2)],
-    ['SELLER_PACKAGE_LENGTH', formatMercadoLibrePlainNumberString(packageMetrics.lengthCm, 2)],
-    ['SELLER_PACKAGE_WEIGHT', packageMetrics.weightGrams > 0 ? String(packageMetrics.weightGrams) : '']
+    ['SELLER_PACKAGE_HEIGHT', packageMetrics.heightCm > 0 ? `${formatMercadoLibrePlainNumberString(packageMetrics.heightCm, 2)} cm` : ''],
+    ['SELLER_PACKAGE_WIDTH', packageMetrics.widthCm > 0 ? `${formatMercadoLibrePlainNumberString(packageMetrics.widthCm, 2)} cm` : ''],
+    ['SELLER_PACKAGE_LENGTH', packageMetrics.lengthCm > 0 ? `${formatMercadoLibrePlainNumberString(packageMetrics.lengthCm, 2)} cm` : ''],
+    ['SELLER_PACKAGE_WEIGHT', packageMetrics.weightGrams > 0 ? `${packageMetrics.weightGrams} g` : '']
   ]
 
   for (const [attributeId, valueName] of packageAttributeMap) {
@@ -2632,7 +2651,7 @@ function normalizeMercadoLibrePublicationAttributes(attributes) {
     const id = normalizeMercadoLibreStringValue(attribute?.id, 80).toUpperCase()
     if (!id) continue
     const valueId = normalizeMercadoLibreStringValue(attribute?.value_id, 120)
-    const valueName = normalizeMercadoLibreStringValue(attribute?.value_name, 255)
+    const valueName = formatMercadoLibreAttributeUnitValue(id, attribute?.value_name)
     const entry = { id }
     if (valueId) entry.value_id = valueId
     if (valueName) entry.value_name = valueName
@@ -2768,12 +2787,7 @@ async function buildMercadoLibrePublicationDraft(producto, options = {}, req = n
     ...buildMercadoLibreStoredAttributes(producto),
     ...(Array.isArray(options.attributes) ? options.attributes : [])
   ])
-  const saleTerms = [
-    {
-      id: 'MANUFACTURING_TIME',
-      value_name: '0'
-    }
-  ]
+  const saleTerms = Array.isArray(options.saleTerms) ? options.saleTerms : []
 
   const missing = []
   if (!mlEnabled) missing.push('ml_enabled')
@@ -2802,8 +2816,11 @@ async function buildMercadoLibrePublicationDraft(producto, options = {}, req = n
     seller_custom_field: String(producto.id_producto),
     channels: ['marketplace'],
     pictures,
-    attributes,
-    sale_terms: saleTerms
+    attributes
+  }
+
+  if (saleTerms.length > 0) {
+    draft.sale_terms = saleTerms
   }
 
   if (!isUserProductSeller) {
