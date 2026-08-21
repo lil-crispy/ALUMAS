@@ -168,6 +168,7 @@ async function ensureSchema() {
       item_id VARCHAR(32) NOT NULL,
       producto_id INT NULL,
       seller_sku VARCHAR(120) NULL,
+      category_id VARCHAR(64) NULL,
       title VARCHAR(255) NULL,
       status VARCHAR(32) NULL,
       price DECIMAL(14,2) NULL,
@@ -300,6 +301,21 @@ async function ensureSchema() {
 
   for (const column of missingFactusColumns) {
     if (!factusColumnSet.has(column.name.toLowerCase())) {
+      await pool.query(column.sql)
+    }
+  }
+
+  const mercadolibrePublicacionesColumns = await getTableColumns('mercadolibre_publicaciones')
+  const mercadolibrePublicacionesColumnSet = new Set(mercadolibrePublicacionesColumns.map((column) => String(column || '').toLowerCase()))
+  const missingMercadoLibrePublicacionesColumns = [
+    {
+      name: 'category_id',
+      sql: 'ALTER TABLE mercadolibre_publicaciones ADD COLUMN category_id VARCHAR(64) NULL DEFAULT NULL AFTER seller_sku'
+    }
+  ]
+
+  for (const column of missingMercadoLibrePublicacionesColumns) {
+    if (!mercadolibrePublicacionesColumnSet.has(column.name.toLowerCase())) {
       await pool.query(column.sql)
     }
   }
@@ -509,6 +525,11 @@ const MERCADOLIBRE_TOKEN_REFRESH_BUFFER_MS = 5 * 60 * 1000
 const MERCADOLIBRE_DEFAULT_REMOTE_PAGE_SIZE = 50
 const MERCADOLIBRE_DEFAULT_SYNC_LIMIT = 20
 const MERCADOLIBRE_ORDER_PROCESSABLE_STATUSES = new Set(['paid'])
+const MERCADOLIBRE_EXISTING_PUBLICATION_STATUSES = new Set(['active', 'paused', 'under_review', 'inactive'])
+const MERCADOLIBRE_INTERNAL_AUTH_MAX_AGE_MS = 5 * 60 * 1000
+const MERCADOLIBRE_INTERNAL_AUTH_CLIENT_HEADER = 'x-alumas-client-id'
+const MERCADOLIBRE_INTERNAL_AUTH_TIMESTAMP_HEADER = 'x-alumas-timestamp'
+const MERCADOLIBRE_INTERNAL_AUTH_SIGNATURE_HEADER = 'x-alumas-signature'
 
 let mercadolibreEncryptionKeyCache = null
 const mercadolibreAuthRateLimitStore = new Map()
@@ -523,7 +544,9 @@ function getMercadoLibreConfig() {
     encryptionSecret: String(process.env.MERCADOLIBRE_TOKEN_ENCRYPTION_KEY || '').trim(),
     adminAuthUser: String(process.env.MERCADOLIBRE_ADMIN_AUTH_USER || '').trim(),
     adminAuthPassword: String(process.env.MERCADOLIBRE_ADMIN_AUTH_PASSWORD || '').trim(),
-    allowedUserId: String(process.env.MERCADOLIBRE_ALLOWED_USER_ID || '').trim()
+    allowedUserId: String(process.env.MERCADOLIBRE_ALLOWED_USER_ID || '').trim(),
+    internalClientId: String(process.env.MERCADOLIBRE_INTERNAL_CLIENT_ID || '').trim(),
+    internalSharedSecret: String(process.env.MERCADOLIBRE_INTERNAL_SHARED_SECRET || '').trim()
   }
 }
 
@@ -568,6 +591,20 @@ function ensureMercadoLibreAdminConfigured() {
   return {
     adminAuthUser,
     adminAuthPassword
+  }
+}
+
+function ensureMercadoLibreInternalAuthConfigured() {
+  const { internalClientId, internalSharedSecret } = getMercadoLibreConfig()
+  const missing = []
+  if (!internalClientId) missing.push('MERCADOLIBRE_INTERNAL_CLIENT_ID')
+  if (!internalSharedSecret) missing.push('MERCADOLIBRE_INTERNAL_SHARED_SECRET')
+  if (missing.length > 0) {
+    throw new Error(`Mercado Libre internal auth no está configurado. Faltan variables: ${missing.join(', ')}`)
+  }
+  return {
+    internalClientId,
+    internalSharedSecret
   }
 }
 
@@ -829,8 +866,165 @@ function parseBasicAuthCredentials(req) {
   }
 }
 
+function validateMercadoLibreBasicAuthorization(req) {
+  let config
+  try {
+    config = ensureMercadoLibreAdminConfigured()
+  } catch (err) {
+    return {
+      ok: false,
+      reason: 'config_missing',
+      message: err?.message || 'meli_admin_auth_missing'
+    }
+  }
+
+  const credentials = parseBasicAuthCredentials(req)
+  if (!credentials) {
+    return {
+      ok: false,
+      reason: 'missing_credentials'
+    }
+  }
+
+  const userBuffer = Buffer.from(String(credentials.user || ''), 'utf8')
+  const expectedUserBuffer = Buffer.from(config.adminAuthUser, 'utf8')
+  const passwordBuffer = Buffer.from(String(credentials.password || ''), 'utf8')
+  const expectedPasswordBuffer = Buffer.from(config.adminAuthPassword, 'utf8')
+
+  const userMatches = userBuffer.length === expectedUserBuffer.length
+    && crypto.timingSafeEqual(userBuffer, expectedUserBuffer)
+  const passwordMatches = passwordBuffer.length === expectedPasswordBuffer.length
+    && crypto.timingSafeEqual(passwordBuffer, expectedPasswordBuffer)
+
+  if (!userMatches || !passwordMatches) {
+    return {
+      ok: false,
+      reason: 'invalid_credentials'
+    }
+  }
+
+  return {
+    ok: true,
+    mode: 'basic'
+  }
+}
+
 function getMercadoLibreRequestIp(req) {
   return String(req.ip || req.socket?.remoteAddress || 'unknown').trim() || 'unknown'
+}
+
+function hasMercadoLibreInternalAuthHeaders(req) {
+  return Boolean(
+    req.get(MERCADOLIBRE_INTERNAL_AUTH_CLIENT_HEADER)
+    || req.get(MERCADOLIBRE_INTERNAL_AUTH_TIMESTAMP_HEADER)
+    || req.get(MERCADOLIBRE_INTERNAL_AUTH_SIGNATURE_HEADER)
+  )
+}
+
+function buildMercadoLibreInternalSignature({ clientId, timestamp, method, pathname }, secret) {
+  const payload = [
+    String(clientId || '').trim(),
+    String(timestamp || '').trim(),
+    String(method || '').trim().toUpperCase(),
+    String(pathname || '').trim()
+  ].join('\n')
+
+  return crypto
+    .createHmac('sha256', secret)
+    .update(payload, 'utf8')
+    .digest('base64url')
+}
+
+function validateMercadoLibreInternalAuthorization(req) {
+  if (!hasMercadoLibreInternalAuthHeaders(req)) {
+    return {
+      ok: false,
+      reason: 'not_present'
+    }
+  }
+
+  let config
+  try {
+    config = ensureMercadoLibreInternalAuthConfigured()
+  } catch (err) {
+    return {
+      ok: false,
+      reason: 'config_missing',
+      message: err?.message || 'meli_internal_auth_missing'
+    }
+  }
+
+  const clientId = String(req.get(MERCADOLIBRE_INTERNAL_AUTH_CLIENT_HEADER) || '').trim()
+  const timestampText = String(req.get(MERCADOLIBRE_INTERNAL_AUTH_TIMESTAMP_HEADER) || '').trim()
+  const signature = String(req.get(MERCADOLIBRE_INTERNAL_AUTH_SIGNATURE_HEADER) || '').trim()
+
+  if (!clientId || !timestampText || !signature) {
+    return {
+      ok: false,
+      reason: 'missing_headers'
+    }
+  }
+
+  const timestamp = Number(timestampText)
+  if (!Number.isFinite(timestamp)) {
+    return {
+      ok: false,
+      reason: 'invalid_timestamp'
+    }
+  }
+
+  if (Math.abs(Date.now() - timestamp) > MERCADOLIBRE_INTERNAL_AUTH_MAX_AGE_MS) {
+    return {
+      ok: false,
+      reason: 'expired'
+    }
+  }
+
+  const receivedClientId = Buffer.from(clientId, 'utf8')
+  const expectedClientId = Buffer.from(config.internalClientId, 'utf8')
+  const clientMatches = receivedClientId.length === expectedClientId.length
+    && crypto.timingSafeEqual(receivedClientId, expectedClientId)
+
+  if (!clientMatches) {
+    return {
+      ok: false,
+      reason: 'invalid_client'
+    }
+  }
+
+  const pathname = String(req.originalUrl || req.path || '').split('?')[0]
+  const expectedSignature = buildMercadoLibreInternalSignature({
+    clientId,
+    timestamp: timestampText,
+    method: req.method,
+    pathname
+  }, config.internalSharedSecret)
+
+  const receivedSignature = Buffer.from(signature, 'utf8')
+  const expectedSignatureBuffer = Buffer.from(expectedSignature, 'utf8')
+  const signatureMatches = receivedSignature.length === expectedSignatureBuffer.length
+    && crypto.timingSafeEqual(receivedSignature, expectedSignatureBuffer)
+
+  if (!signatureMatches) {
+    return {
+      ok: false,
+      reason: 'invalid_signature'
+    }
+  }
+
+  return {
+    ok: true,
+    mode: 'internal',
+    clientId
+  }
+}
+
+function sendMercadoLibreApiAuthError(res, statusCode, message, extra = {}) {
+  return res.status(statusCode).json({
+    ok: false,
+    error: message,
+    ...extra
+  })
 }
 
 function cleanupMercadoLibreAuthRateLimitStore(now = Date.now()) {
@@ -897,13 +1091,16 @@ function checkMercadoLibreAuthRateLimit(req) {
 
 function requireMercadoLibreAdminAuthorization(req, res) {
   const realm = 'ALUMAS Mercado Libre OAuth'
+  const validation = validateMercadoLibreBasicAuthorization(req)
 
-  let config
-  try {
-    config = ensureMercadoLibreAdminConfigured()
-  } catch (err) {
+  if (validation.ok) {
+    req.mercadolibreAuthContext = validation
+    return true
+  }
+
+  if (validation.reason === 'config_missing') {
     console.error('[MercadoLibre][OAuth] Proteccion admin no configurada:', JSON.stringify({
-      error: err?.message || 'meli_admin_auth_missing'
+      error: validation.message || 'meli_admin_auth_missing'
     }))
     sendMercadoLibreOAuthPage(res, 503, {
       title: 'Proteccion administrativa no configurada',
@@ -912,8 +1109,7 @@ function requireMercadoLibreAdminAuthorization(req, res) {
     return false
   }
 
-  const credentials = parseBasicAuthCredentials(req)
-  if (!credentials) {
+  if (validation.reason === 'missing_credentials') {
     res.setHeader('WWW-Authenticate', `Basic realm="${realm}", charset="UTF-8"`)
     sendMercadoLibreOAuthPage(res, 401, {
       title: 'Autorizacion requerida',
@@ -922,30 +1118,47 @@ function requireMercadoLibreAdminAuthorization(req, res) {
     return false
   }
 
-  const userBuffer = Buffer.from(String(credentials.user || ''), 'utf8')
-  const expectedUserBuffer = Buffer.from(config.adminAuthUser, 'utf8')
-  const passwordBuffer = Buffer.from(String(credentials.password || ''), 'utf8')
-  const expectedPasswordBuffer = Buffer.from(config.adminAuthPassword, 'utf8')
+  console.warn('[MercadoLibre][OAuth] Intento de acceso admin rechazado:', JSON.stringify({
+    ip: getMercadoLibreRequestIp(req),
+    user_agent: req.get('user-agent') || ''
+  }))
+  res.setHeader('WWW-Authenticate', `Basic realm="${realm}", charset="UTF-8"`)
+  sendMercadoLibreOAuthPage(res, 401, {
+    title: 'Autorizacion invalida',
+    message: 'La autorizacion administrativa para iniciar OAuth de Mercado Libre es inválida.'
+  })
+  return false
+}
 
-  const userMatches = userBuffer.length === expectedUserBuffer.length
-    && crypto.timingSafeEqual(userBuffer, expectedUserBuffer)
-  const passwordMatches = passwordBuffer.length === expectedPasswordBuffer.length
-    && crypto.timingSafeEqual(passwordBuffer, expectedPasswordBuffer)
-
-  if (!userMatches || !passwordMatches) {
-    console.warn('[MercadoLibre][OAuth] Intento de acceso admin rechazado:', JSON.stringify({
-      ip: getMercadoLibreRequestIp(req),
-      user_agent: req.get('user-agent') || ''
-    }))
-    res.setHeader('WWW-Authenticate', `Basic realm="${realm}", charset="UTF-8"`)
-    sendMercadoLibreOAuthPage(res, 401, {
-      title: 'Autorizacion invalida',
-      message: 'La autorizacion administrativa para iniciar OAuth de Mercado Libre es inválida.'
-    })
-    return false
+function requireMercadoLibreApiAuthorization(req, res) {
+  const internalValidation = validateMercadoLibreInternalAuthorization(req)
+  if (internalValidation.ok) {
+    req.mercadolibreAuthContext = internalValidation
+    return true
   }
 
-  return true
+  if (hasMercadoLibreInternalAuthHeaders(req)) {
+    console.warn('[MercadoLibre][API] Solicitud interna rechazada:', JSON.stringify({
+      ip: getMercadoLibreRequestIp(req),
+      reason: internalValidation.reason || 'invalid_internal_auth'
+    }))
+    return sendMercadoLibreApiAuthError(res, 401, 'La autorizacion interna de Mercado Libre es invalida o expiro.')
+  }
+
+  const basicValidation = validateMercadoLibreBasicAuthorization(req)
+  if (basicValidation.ok) {
+    req.mercadolibreAuthContext = basicValidation
+    return true
+  }
+
+  if (basicValidation.reason === 'config_missing') {
+    console.error('[MercadoLibre][API] Proteccion admin no configurada:', JSON.stringify({
+      error: basicValidation.message || 'meli_admin_auth_missing'
+    }))
+    return sendMercadoLibreApiAuthError(res, 503, 'La autorizacion administrativa de Mercado Libre no esta configurada en el servidor.')
+  }
+
+  return sendMercadoLibreApiAuthError(res, 401, 'Debes autenticarte para usar esta operacion de Mercado Libre.')
 }
 
 async function createMercadoLibreOauthStateRecord(state, conn = pool) {
@@ -1426,6 +1639,64 @@ async function buildMercadoLibreProductoSelectFields(conn = pool) {
   return selectFields.join(',\n       ')
 }
 
+async function getMercadoLibreStoredProductAttributes(idProducto, categoryId = null, conn = pool) {
+  let columns = []
+  try {
+    columns = await getTableColumns('productos_mercadolibre_atributos', conn)
+  } catch {
+    return []
+  }
+
+  if (!Array.isArray(columns) || columns.length === 0) {
+    return []
+  }
+
+  const productColumn = pickFirstExistingColumn(columns, ['producto_id', 'id_producto'])
+  const attributeIdColumn = pickFirstExistingColumn(columns, ['attribute_id'])
+  const valueIdColumn = pickFirstExistingColumn(columns, ['value_id'])
+  const valueNameColumn = pickFirstExistingColumn(columns, ['value_name'])
+  const categoryColumn = pickFirstExistingColumn(columns, ['category_id', 'ml_category_id'])
+  const confirmedColumn = pickFirstExistingColumn(columns, ['is_confirmed'])
+
+  if (!productColumn || !attributeIdColumn || (!valueIdColumn && !valueNameColumn)) {
+    return []
+  }
+
+  const selectParts = [
+    `\`${attributeIdColumn}\` AS attribute_id`
+  ]
+  if (valueIdColumn) selectParts.push(`\`${valueIdColumn}\` AS value_id`)
+  if (valueNameColumn) selectParts.push(`\`${valueNameColumn}\` AS value_name`)
+  if (categoryColumn) selectParts.push(`\`${categoryColumn}\` AS category_id`)
+  if (confirmedColumn) selectParts.push(`\`${confirmedColumn}\` AS is_confirmed`)
+
+  const [rows] = await conn.query(
+    `SELECT
+       ${selectParts.join(',\n       ')}
+     FROM productos_mercadolibre_atributos
+     WHERE \`${productColumn}\` = ?`,
+    [Number(idProducto)]
+  )
+
+  const normalizedCategoryId = normalizeMercadoLibreStringValue(categoryId, 64)
+  return (Array.isArray(rows) ? rows : [])
+    .filter((row) => {
+      if (!confirmedColumn) return true
+      return parseBooleanLike(row?.is_confirmed ?? false)
+    })
+    .filter((row) => {
+      if (!categoryColumn) return true
+      const rowCategoryId = normalizeMercadoLibreStringValue(row?.category_id, 64)
+      return !normalizedCategoryId || !rowCategoryId || rowCategoryId === normalizedCategoryId
+    })
+    .map((row) => ({
+      id: normalizeMercadoLibreStringValue(row?.attribute_id, 80).toUpperCase(),
+      value_id: normalizeMercadoLibreStringValue(row?.value_id, 120) || undefined,
+      value_name: normalizeMercadoLibreStringValue(row?.value_name, 255) || undefined
+    }))
+    .filter((attribute) => attribute.id && (attribute.value_id || attribute.value_name))
+}
+
 async function getProductoByIdProducto(idProducto, conn = pool) {
   const id = Number(idProducto)
   if (!Number.isFinite(id) || id <= 0) return null
@@ -1497,6 +1768,7 @@ async function upsertMercadoLibrePublication(data, conn = pool) {
        item_id,
        producto_id,
        seller_sku,
+       category_id,
        title,
        status,
        price,
@@ -1504,11 +1776,12 @@ async function upsertMercadoLibrePublication(data, conn = pool) {
        permalink,
        last_seen_at,
        raw_json
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)
      ON DUPLICATE KEY UPDATE
        meli_user_id = VALUES(meli_user_id),
        producto_id = VALUES(producto_id),
        seller_sku = VALUES(seller_sku),
+       category_id = VALUES(category_id),
        title = VALUES(title),
        status = VALUES(status),
        price = VALUES(price),
@@ -1521,6 +1794,7 @@ async function upsertMercadoLibrePublication(data, conn = pool) {
       String(data.itemId || '').trim(),
       data.productoId ? Number(data.productoId) : null,
       String(data.sellerSku || '').trim() || null,
+      String(data.categoryId || '').trim() || null,
       String(data.title || '').trim() || null,
       String(data.status || '').trim() || null,
       data.price === null || data.price === undefined ? null : normalizeVentaNumeric(data.price, 0),
@@ -1529,6 +1803,60 @@ async function upsertMercadoLibrePublication(data, conn = pool) {
       toSafeJson(data.rawJson || null)
     ]
   )
+}
+
+async function getMercadoLibreExistingPublicationForProduct(productoId, conn = pool) {
+  const normalizedProductoId = Number(productoId)
+  if (!Number.isFinite(normalizedProductoId) || normalizedProductoId <= 0) {
+    return null
+  }
+
+  const [rows] = await conn.query(
+    `SELECT
+       id,
+       item_id,
+       producto_id,
+       seller_sku,
+       category_id,
+       title,
+       status,
+       price,
+       available_quantity,
+       permalink,
+       created_at,
+       updated_at
+     FROM mercadolibre_publicaciones
+     WHERE producto_id = ?
+       AND item_id IS NOT NULL
+       AND item_id <> ''
+     ORDER BY updated_at DESC, id DESC
+     LIMIT 1`,
+    [normalizedProductoId]
+  )
+
+  return rows && rows.length ? rows[0] : null
+}
+
+function isMercadoLibrePublicationAlreadyActive(publicacion) {
+  const itemId = String(publicacion?.item_id || '').trim()
+  const status = String(publicacion?.status || '').trim().toLowerCase()
+  if (!itemId) return false
+  if (!status) return true
+  return MERCADOLIBRE_EXISTING_PUBLICATION_STATUSES.has(status)
+}
+
+async function updateMercadoLibreProductPublishedState(productoId, isPublished, conn = pool) {
+  const columns = await getTableColumns('productos', conn)
+  const columnSet = new Set((columns || []).map((column) => String(column || '').toLowerCase()))
+  if (!columnSet.has('ml_published')) {
+    return false
+  }
+
+  await conn.query(
+    'UPDATE productos SET ml_published = ? WHERE id_producto = ? LIMIT 1',
+    [isPublished ? 1 : 0, Number(productoId)]
+  )
+  return true
 }
 
 async function fetchMercadoLibreItemDetailsByIds(accessToken, itemIds) {
@@ -1587,6 +1915,7 @@ async function syncMercadoLibrePublicationsFromRemote(options = {}, conn = pool)
       itemId: item.id,
       productoId: producto?.id_producto || null,
       sellerSku: extractMercadoLibreSellerSku(item),
+      categoryId: item.category_id || null,
       title: item.title,
       status: item.status,
       price: item.price,
@@ -1631,6 +1960,7 @@ async function getMercadoLibrePublicationMappings(filters = {}, conn = pool) {
        mp.item_id,
        mp.producto_id,
        mp.seller_sku,
+       mp.category_id,
        mp.title,
        mp.status,
        mp.price,
@@ -1682,6 +2012,7 @@ async function ensureMercadoLibrePublicationMapping(itemId, conn = pool) {
     itemId: item.id,
     productoId: producto?.id_producto || null,
     sellerSku: extractMercadoLibreSellerSku(item),
+    categoryId: item.category_id || null,
     title: item.title,
     status: item.status,
     price: item.price,
@@ -2232,9 +2563,13 @@ function buildMercadoLibreDefaultAttributes(producto) {
   return attributes
 }
 
+function buildMercadoLibreStoredAttributes(producto) {
+  return normalizeMercadoLibrePublicationAttributes(producto?._ml_stored_attributes || [])
+}
+
 function normalizeMercadoLibrePublicationAttributes(attributes) {
   if (!Array.isArray(attributes)) return []
-  const normalized = []
+  const normalizedMap = new Map()
   for (const attribute of attributes) {
     const id = normalizeMercadoLibreStringValue(attribute?.id, 80).toUpperCase()
     if (!id) continue
@@ -2244,9 +2579,9 @@ function normalizeMercadoLibrePublicationAttributes(attributes) {
     if (valueId) entry.value_id = valueId
     if (valueName) entry.value_name = valueName
     if (!entry.value_id && !entry.value_name) continue
-    normalized.push(entry)
+    normalizedMap.set(id, entry)
   }
-  return normalized
+  return [...normalizedMap.values()]
 }
 
 function getMercadoLibreAttributeMap(attributes) {
@@ -2319,6 +2654,11 @@ async function getMercadoLibreProductForPublishing(idProducto, conn = pool) {
     error.statusCode = 404
     throw error
   }
+  producto._ml_stored_attributes = await getMercadoLibreStoredProductAttributes(
+    producto.id_producto,
+    producto.ml_category_id,
+    conn
+  )
   return producto
 }
 
@@ -2349,6 +2689,7 @@ async function buildMercadoLibrePublicationDraft(producto, options = {}, req = n
 
   const attributes = normalizeMercadoLibrePublicationAttributes([
     ...buildMercadoLibreDefaultAttributes(producto),
+    ...buildMercadoLibreStoredAttributes(producto),
     ...(Array.isArray(options.attributes) ? options.attributes : [])
   ])
 
@@ -2384,7 +2725,8 @@ async function buildMercadoLibrePublicationDraft(producto, options = {}, req = n
       image_url: imageUrl || null,
       gtin: normalizeMercadoLibreStringValue(producto?.ml_gtin || producto?.codigo_barras, 32) || null,
       brand: normalizeMercadoLibreStringValue(producto?.ml_brand, 255) || null,
-      model: normalizeMercadoLibreStringValue(producto?.ml_model, 255) || null
+      model: normalizeMercadoLibreStringValue(producto?.ml_model, 255) || null,
+      stored_attributes_count: Array.isArray(producto?._ml_stored_attributes) ? producto._ml_stored_attributes.length : 0
     },
     missing
   }
@@ -2443,6 +2785,7 @@ async function publishMercadoLibreItem(producto, publicationDraft, description, 
       ...createdItem,
       seller_custom_field: publicationDraft.seller_custom_field
     }),
+    categoryId: createdItem.category_id || publicationDraft.category_id || null,
     title: createdItem.title || publicationDraft.title,
     status: createdItem.status || null,
     price: createdItem.price ?? publicationDraft.price,
@@ -2450,6 +2793,7 @@ async function publishMercadoLibreItem(producto, publicationDraft, description, 
     permalink: createdItem.permalink || null,
     rawJson: createdItem
   }, conn)
+  await updateMercadoLibreProductPublishedState(productoRelacionado?.id_producto || producto.id_producto, true, conn)
 
   return createdItem
 }
@@ -4242,7 +4586,7 @@ app.get('/api/mercadolibre/callback', async (req, res) => {
 
 app.get('/api/mercadolibre/status', async (req, res) => {
   try {
-    if (!requireMercadoLibreAdminAuthorization(req, res)) {
+    if (!requireMercadoLibreApiAuthorization(req, res)) {
       return
     }
 
@@ -4301,7 +4645,7 @@ app.get('/api/mercadolibre/status', async (req, res) => {
 
 app.get('/api/mercadolibre/publicaciones', async (req, res) => {
   try {
-    if (!requireMercadoLibreAdminAuthorization(req, res)) {
+    if (!requireMercadoLibreApiAuthorization(req, res)) {
       return
     }
 
@@ -4335,11 +4679,12 @@ app.get('/api/mercadolibre/publicaciones', async (req, res) => {
 
 app.get('/api/mercadolibre/producto/:id/preparar-publicacion', async (req, res) => {
   try {
-    if (!requireMercadoLibreAdminAuthorization(req, res)) {
+    if (!requireMercadoLibreApiAuthorization(req, res)) {
       return
     }
 
     const producto = await getMercadoLibreProductForPublishing(req.params.id)
+    const existingPublication = await getMercadoLibreExistingPublicationForProduct(producto.id_producto)
     const { account, accessToken } = await getValidMercadoLibreAccessToken()
     const siteId = normalizeMercadoLibreStringValue(req.query.site_id || account?.site_id || 'MCO', 8) || 'MCO'
     const categoryQuery = normalizeMercadoLibreStringValue(
@@ -4371,6 +4716,14 @@ app.get('/api/mercadolibre/producto/:id/preparar-publicacion', async (req, res) 
       ok: true,
       site_id: siteId,
       producto,
+      ya_publicado: isMercadoLibrePublicationAlreadyActive(existingPublication),
+      publicacion_existente: existingPublication ? {
+        item_id: String(existingPublication.item_id || '').trim() || null,
+        status: existingPublication.status || null,
+        permalink: existingPublication.permalink || null,
+        title: existingPublication.title || null,
+        category_id: existingPublication.category_id || null
+      } : null,
       category_query: categoryQuery,
       sugerencias_categoria: suggestedCategories,
       categoria_seleccionada: categoryDetail,
@@ -4392,7 +4745,7 @@ app.get('/api/mercadolibre/producto/:id/preparar-publicacion', async (req, res) 
 
 app.get('/api/mercadolibre/categorias/sugerir', async (req, res) => {
   try {
-    if (!requireMercadoLibreAdminAuthorization(req, res)) {
+    if (!requireMercadoLibreApiAuthorization(req, res)) {
       return
     }
 
@@ -4423,7 +4776,7 @@ app.get('/api/mercadolibre/categorias/sugerir', async (req, res) => {
 
 app.get('/api/mercadolibre/categorias/:categoryId/atributos', async (req, res) => {
   try {
-    if (!requireMercadoLibreAdminAuthorization(req, res)) {
+    if (!requireMercadoLibreApiAuthorization(req, res)) {
       return
     }
 
@@ -4454,7 +4807,7 @@ app.get('/api/mercadolibre/categorias/:categoryId/atributos', async (req, res) =
 
 app.post('/api/mercadolibre/publicar', async (req, res) => {
   try {
-    if (!requireMercadoLibreAdminAuthorization(req, res)) {
+    if (!requireMercadoLibreApiAuthorization(req, res)) {
       return
     }
 
@@ -4467,6 +4820,22 @@ app.post('/api/mercadolibre/publicar', async (req, res) => {
     }
 
     const producto = await getMercadoLibreProductForPublishing(productoId)
+    const existingPublication = await getMercadoLibreExistingPublicationForProduct(producto.id_producto)
+    if (isMercadoLibrePublicationAlreadyActive(existingPublication)) {
+      await updateMercadoLibreProductPublishedState(producto.id_producto, true)
+      return res.json({
+        ok: true,
+        already_published: true,
+        message: 'Este producto ya está publicado en Mercado Libre.',
+        producto_id: producto.id_producto,
+        item_id: String(existingPublication.item_id || '').trim() || null,
+        status: existingPublication.status || null,
+        permalink: existingPublication.permalink || null,
+        title: existingPublication.title || null,
+        category_id: existingPublication.category_id || producto.ml_category_id || null
+      })
+    }
+
     const { account, accessToken } = await getValidMercadoLibreAccessToken()
     const draftInfo = await buildMercadoLibrePublicationDraft(producto, {
       categoryId: req.body?.category_id,
@@ -4509,11 +4878,14 @@ app.post('/api/mercadolibre/publicar', async (req, res) => {
 
     return res.status(201).json({
       ok: true,
+      already_published: false,
+      message: 'Producto publicado correctamente en Mercado Libre.',
       producto_id: producto.id_producto,
       item_id: createdItem.id || null,
       status: createdItem.status || null,
       permalink: createdItem.permalink || null,
-      title: createdItem.title || null
+      title: createdItem.title || null,
+      category_id: createdItem.category_id || draftInfo.draft.category_id || null
     })
   } catch (err) {
     return res.status(Number(err?.statusCode || 500)).json({
@@ -4526,7 +4898,7 @@ app.post('/api/mercadolibre/publicar', async (req, res) => {
 
 app.post('/api/mercadolibre/sync-stock', async (req, res) => {
   try {
-    if (!requireMercadoLibreAdminAuthorization(req, res)) {
+    if (!requireMercadoLibreApiAuthorization(req, res)) {
       return
     }
 
@@ -4577,7 +4949,7 @@ app.post('/api/mercadolibre/sync-stock', async (req, res) => {
 
 app.get('/api/mercadolibre/ordenes', async (req, res) => {
   try {
-    if (!requireMercadoLibreAdminAuthorization(req, res)) {
+    if (!requireMercadoLibreApiAuthorization(req, res)) {
       return
     }
 
@@ -4636,7 +5008,7 @@ app.get('/api/mercadolibre/ordenes', async (req, res) => {
 
 app.post('/api/mercadolibre/sync', async (req, res) => {
   try {
-    if (!requireMercadoLibreAdminAuthorization(req, res)) {
+    if (!requireMercadoLibreApiAuthorization(req, res)) {
       return
     }
 

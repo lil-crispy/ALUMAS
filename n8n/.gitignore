@@ -1,0 +1,16 @@
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+credentials*
+database.sqlite
+*.sqlite
+*.sqlite-*
+*.db
+logs/
+.n8n/
+*.log
+tmp/
