@@ -789,7 +789,8 @@ function sanitizeMercadoLibreUser(data) {
     id: data?.id,
     nickname: data?.nickname,
     site_id: data?.site_id,
-    status: data?.status
+    status: data?.status,
+    tags: Array.isArray(data?.tags) ? data.tags.slice(0, 20) : undefined
   })
 }
 
@@ -1333,6 +1334,11 @@ async function getMercadoLibreAuthenticatedUser(accessToken) {
   }
 
   return data
+}
+
+function isMercadoLibreUserProductSeller(userData) {
+  const tags = Array.isArray(userData?.tags) ? userData.tags : []
+  return tags.some((tag) => String(tag || '').trim().toLowerCase() === 'user_product_seller')
 }
 
 async function getMercadoLibreAccountByUserId(meliUserId, conn = pool) {
@@ -2525,7 +2531,7 @@ function normalizeMercadoLibreLimitQuery(value, fallback) {
 }
 
 function normalizeMercadoLibreStringValue(value, maxLength = 0) {
-  const normalized = String(value || '').trim()
+  const normalized = String(value || '').replace(/\s+/g, ' ').trim()
   if (!normalized) return ''
   if (maxLength > 0) {
     return normalized.slice(0, maxLength)
@@ -2714,6 +2720,7 @@ async function getMercadoLibreProductForPublishing(idProducto, conn = pool) {
 
 async function buildMercadoLibrePublicationDraft(producto, options = {}, req = null) {
   const mlEnabled = parseBooleanLike(options.mlEnabled ?? producto.ml_enabled ?? false)
+  const isUserProductSeller = parseBooleanLike(options.isUserProductSeller ?? false)
   const categoryId = normalizeMercadoLibreStringValue(options.categoryId || producto.ml_category_id, 64)
   const title = normalizeMercadoLibreStringValue(
     options.title || producto.nombre || '',
@@ -2757,7 +2764,7 @@ async function buildMercadoLibrePublicationDraft(producto, options = {}, req = n
   const missing = []
   if (!mlEnabled) missing.push('ml_enabled')
   if (!categoryId) missing.push('category_id')
-  if (!title) missing.push('title')
+  if (!isUserProductSeller && !title) missing.push('title')
   if (!familyName) missing.push('family_name')
   if (!(price > 0)) missing.push('price')
   if (availableQuantity < 0) missing.push('available_quantity')
@@ -2769,29 +2776,38 @@ async function buildMercadoLibrePublicationDraft(producto, options = {}, req = n
   if (!(packageMetrics.widthCm > 0)) missing.push('ml_package_width_cm')
   if (!(packageMetrics.heightCm > 0)) missing.push('ml_package_height_cm')
 
+  const draft = {
+    family_name: familyName,
+    category_id: categoryId,
+    price,
+    currency_id: 'COP',
+    available_quantity: availableQuantity,
+    buying_mode: 'buy_it_now',
+    listing_type_id: listingTypeId,
+    condition,
+    seller_custom_field: String(producto.id_producto),
+    channels: ['marketplace'],
+    pictures,
+    attributes,
+    sale_terms: saleTerms
+  }
+
+  if (!isUserProductSeller) {
+    draft.title = title
+  }
+
   return {
     producto,
-    draft: {
-      title,
-      family_name: familyName,
-      category_id: categoryId,
-      price,
-      currency_id: 'COP',
-      available_quantity: availableQuantity,
-      buying_mode: 'buy_it_now',
-      listing_type_id: listingTypeId,
-      condition,
-      seller_custom_field: String(producto.id_producto),
-      channels: ['marketplace'],
-      pictures,
-      attributes,
-      sale_terms: saleTerms
-    },
+    draft,
     description,
     metadata: {
+      user_product_seller: isUserProductSeller,
+      payload_model: isUserProductSeller ? 'user_products' : 'legacy_item',
+      title_sent: !isUserProductSeller,
       ml_enabled: mlEnabled,
       image_url: imageUrl || null,
       family_name: familyName || null,
+      title: title || null,
       gtin: normalizeMercadoLibreStringValue(producto?.ml_gtin || producto?.codigo_barras, 32) || null,
       brand: normalizeMercadoLibreStringValue(producto?.ml_brand, 255) || null,
       model: normalizeMercadoLibreStringValue(producto?.ml_model, 255) || null,
@@ -4760,6 +4776,7 @@ app.get('/api/mercadolibre/producto/:id/preparar-publicacion', async (req, res) 
     const producto = await getMercadoLibreProductForPublishing(req.params.id)
     const existingPublication = await getMercadoLibreExistingPublicationForProduct(producto.id_producto)
     const { account, accessToken } = await getValidMercadoLibreAccessToken()
+    const sellerProfile = await getMercadoLibreAuthenticatedUser(accessToken)
     const siteId = normalizeMercadoLibreStringValue(req.query.site_id || account?.site_id || 'MCO', 8) || 'MCO'
     const categoryQuery = normalizeMercadoLibreStringValue(
       req.query.q || producto.ml_category_hint || producto.nombre || producto.descripcion || '',
@@ -4778,7 +4795,8 @@ app.get('/api/mercadolibre/producto/:id/preparar-publicacion', async (req, res) 
       : null
     const listingTypes = await getMercadoLibreListingTypes(siteId, accessToken)
     const draftInfo = await buildMercadoLibrePublicationDraft(producto, {
-      categoryId: suggestedCategoryId
+      categoryId: suggestedCategoryId,
+      isUserProductSeller: isMercadoLibreUserProductSeller(sellerProfile)
     }, req)
     const requiredAttributesMissing = getMercadoLibreRequiredAttributesMissing(categoryAttributes, draftInfo.draft.attributes)
     const completeMissing = [...draftInfo.missing]
@@ -4807,6 +4825,7 @@ app.get('/api/mercadolibre/producto/:id/preparar-publicacion', async (req, res) 
       listing_types: listingTypes,
       borrador: draftInfo.draft,
       metadata: draftInfo.metadata,
+      seller_profile: sanitizeMercadoLibreUser(sellerProfile),
       faltantes: completeMissing
     })
   } catch (err) {
@@ -4911,6 +4930,7 @@ app.post('/api/mercadolibre/publicar', async (req, res) => {
     }
 
     const { account, accessToken } = await getValidMercadoLibreAccessToken()
+    const sellerProfile = await getMercadoLibreAuthenticatedUser(accessToken)
     const draftInfo = await buildMercadoLibrePublicationDraft(producto, {
       categoryId: req.body?.category_id,
       title: req.body?.title,
@@ -4920,7 +4940,8 @@ app.post('/api/mercadolibre/publicar', async (req, res) => {
       listingTypeId: req.body?.listing_type_id,
       condition: req.body?.condition,
       imageUrl: req.body?.image_url,
-      attributes: req.body?.attributes
+      attributes: req.body?.attributes,
+      isUserProductSeller: isMercadoLibreUserProductSeller(sellerProfile)
     }, req)
     const categoryAttributes = draftInfo.draft.category_id
       ? await getMercadoLibreCategoryAttributes(draftInfo.draft.category_id, accessToken)
