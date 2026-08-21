@@ -772,7 +772,15 @@ function sanitizeMercadoLibreError(data) {
     message: data?.message,
     error: data?.error,
     status: data?.status,
-    cause: Array.isArray(data?.cause) ? data.cause.length : undefined
+    cause: Array.isArray(data?.cause)
+      ? data.cause.slice(0, 10).map((item) => removeEmptyObjectFields({
+        code: item?.code,
+        type: item?.type,
+        department: item?.department,
+        references: item?.references,
+        message: item?.message
+      }))
+      : undefined
   })
 }
 
@@ -2534,6 +2542,31 @@ function buildMercadoLibreProductoImageUrl(producto, req = null) {
   return `${getServerPublicBaseUrl(req)}/img/productos/${encodeURIComponent(nombreArchivo)}`
 }
 
+function formatMercadoLibrePlainNumberString(value, maxDecimals = 2) {
+  const numericValue = Number(value)
+  if (!Number.isFinite(numericValue) || numericValue <= 0) return ''
+  const fixed = numericValue.toFixed(Math.max(0, maxDecimals))
+  return fixed.replace(/\.?0+$/, '')
+}
+
+function getMercadoLibrePackageMetrics(producto) {
+  const heightCm = Number(producto?.ml_package_height_cm)
+  const widthCm = Number(producto?.ml_package_width_cm)
+  const lengthCm = Number(producto?.ml_package_length_cm)
+  const weightKg = Number(producto?.ml_weight_kg)
+  const weightGrams = Number.isFinite(weightKg) && weightKg > 0
+    ? Math.round(weightKg * 1000)
+    : 0
+
+  return {
+    heightCm: Number.isFinite(heightCm) && heightCm > 0 ? heightCm : 0,
+    widthCm: Number.isFinite(widthCm) && widthCm > 0 ? widthCm : 0,
+    lengthCm: Number.isFinite(lengthCm) && lengthCm > 0 ? lengthCm : 0,
+    weightKg: Number.isFinite(weightKg) && weightKg > 0 ? weightKg : 0,
+    weightGrams: weightGrams > 0 ? weightGrams : 0
+  }
+}
+
 function buildMercadoLibreDefaultAttributes(producto) {
   const attributes = []
   const brand = normalizeMercadoLibreStringValue(producto?.ml_brand, 255)
@@ -2560,6 +2593,23 @@ function buildMercadoLibreDefaultAttributes(producto) {
       value_name: gtin
     })
   }
+
+  const packageMetrics = getMercadoLibrePackageMetrics(producto)
+  const packageAttributeMap = [
+    ['SELLER_PACKAGE_HEIGHT', formatMercadoLibrePlainNumberString(packageMetrics.heightCm, 2)],
+    ['SELLER_PACKAGE_WIDTH', formatMercadoLibrePlainNumberString(packageMetrics.widthCm, 2)],
+    ['SELLER_PACKAGE_LENGTH', formatMercadoLibrePlainNumberString(packageMetrics.lengthCm, 2)],
+    ['SELLER_PACKAGE_WEIGHT', packageMetrics.weightGrams > 0 ? String(packageMetrics.weightGrams) : '']
+  ]
+
+  for (const [attributeId, valueName] of packageAttributeMap) {
+    if (!valueName) continue
+    attributes.push({
+      id: attributeId,
+      value_name: valueName
+    })
+  }
+
   return attributes
 }
 
@@ -2687,11 +2737,18 @@ async function buildMercadoLibrePublicationDraft(producto, options = {}, req = n
     pictures.push({ source: imageUrl })
   }
 
+  const packageMetrics = getMercadoLibrePackageMetrics(producto)
   const attributes = normalizeMercadoLibrePublicationAttributes([
     ...buildMercadoLibreDefaultAttributes(producto),
     ...buildMercadoLibreStoredAttributes(producto),
     ...(Array.isArray(options.attributes) ? options.attributes : [])
   ])
+  const saleTerms = [
+    {
+      id: 'MANUFACTURING_TIME',
+      value_name: '0'
+    }
+  ]
 
   const missing = []
   if (!mlEnabled) missing.push('ml_enabled')
@@ -2702,6 +2759,10 @@ async function buildMercadoLibrePublicationDraft(producto, options = {}, req = n
   if (!listingTypeId) missing.push('listing_type_id')
   if (!condition) missing.push('condition')
   if (pictures.length === 0) missing.push('pictures')
+  if (!(packageMetrics.weightGrams > 0)) missing.push('ml_weight_kg')
+  if (!(packageMetrics.lengthCm > 0)) missing.push('ml_package_length_cm')
+  if (!(packageMetrics.widthCm > 0)) missing.push('ml_package_width_cm')
+  if (!(packageMetrics.heightCm > 0)) missing.push('ml_package_height_cm')
 
   return {
     producto,
@@ -2717,7 +2778,8 @@ async function buildMercadoLibrePublicationDraft(producto, options = {}, req = n
       seller_custom_field: String(producto.id_producto),
       channels: ['marketplace'],
       pictures,
-      attributes
+      attributes,
+      sale_terms: saleTerms
     },
     description,
     metadata: {
@@ -2726,6 +2788,11 @@ async function buildMercadoLibrePublicationDraft(producto, options = {}, req = n
       gtin: normalizeMercadoLibreStringValue(producto?.ml_gtin || producto?.codigo_barras, 32) || null,
       brand: normalizeMercadoLibreStringValue(producto?.ml_brand, 255) || null,
       model: normalizeMercadoLibreStringValue(producto?.ml_model, 255) || null,
+      package_height_cm: packageMetrics.heightCm || null,
+      package_width_cm: packageMetrics.widthCm || null,
+      package_length_cm: packageMetrics.lengthCm || null,
+      weight_kg: packageMetrics.weightKg || null,
+      weight_grams: packageMetrics.weightGrams || null,
       stored_attributes_count: Array.isArray(producto?._ml_stored_attributes) ? producto._ml_stored_attributes.length : 0
     },
     missing
