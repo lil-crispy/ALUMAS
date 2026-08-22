@@ -49,6 +49,36 @@ Esta base resuelve correctamente:
 - la promocion vigente tomada desde `promociones_por_semana`
 - el lote de contactos del dia desde `mensajes_por_dia`
 
+## Generador interno de estados para WhatsApp
+
+Ahora tambien queda preparada una ruta Linux-only para generar estados de WhatsApp desde la BD sin depender de escritorio:
+
+- `../generar_estados_v3.py` sigue siendo la fuente de logica visual y de render
+- `status_generator_service/app.py` expone esa logica en modo headless por HTTP interno
+- `status_generator_service/Dockerfile` construye el servicio Python interno
+- `workflows/alumas_estados_diario_8am_evolution_template.json` define la automatizacion diaria a las `8:00 AM`
+
+Flujo previsto:
+
+1. `n8n` dispara el workflow a las `8:00 AM` en `America/Bogota`
+2. el workflow llama a `http://status_generator:8000/generate`
+3. el servicio consulta MySQL, toma `15` productos con imagen y stock mayor a `0`
+4. genera los PNG verticales `1080x1920` en `n8n/runtime/statuses/...`
+5. devuelve URLs internas para cada imagen generada
+6. `n8n` publica cada estado por Evolution con `sendStatus`
+
+Notas operativas:
+
+- el servicio usa la misma `.env` del repo para leer `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS` y `DB_NAME`
+- la URL de imagen por defecto sigue siendo `https://ferredistribucionesalumas.com/img/productos/`
+- la resolucion de imagen web se ajusta a la misma idea del catalogo: `basename + rawurlencode/quote`
+- si `logo_alumas.png` no existe en el repo montado, el render usa un fallback textual `ALUMAS`
+
+Limitacion importante:
+
+- Evolution expone `sendStatus`, pero en versiones recientes existen reportes de inestabilidad con estados, sobre todo de imagen
+- por eso esta automatizacion debe validarse con una prueba real controlada antes de confiarla como flujo definitivo de produccion
+
 Estado actual de esta opcion:
 
 - el workflow queda en modo borrador

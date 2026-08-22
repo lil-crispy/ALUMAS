@@ -14,6 +14,27 @@ services:
       - ./scripts:/data/alumas/n8n/scripts:ro
       - ./runtime:/data/alumas_runtime
 
+  status_generator:
+    build:
+      context: ./status_generator_service
+    container_name: status_generator
+    restart: unless-stopped
+    environment:
+      - ALUMAS_REPO_ROOT=/workspace/alumas
+      - ALUMAS_ESTADOS_LOG_PATH=/data/alumas_runtime/logs/status_generator_estados_debug.log
+      - DB_HOST=host.docker.internal
+      - STATUS_RUNTIME_DIR=/data/alumas_runtime/statuses
+      - STATUS_GENERATOR_PUBLIC_BASE_URL=http://status_generator:8000/generated
+      - STATUS_GENERATOR_DEFAULT_COUNT=15
+      - STATUS_GENERATOR_DEFAULT_ORDER=aleatorio
+      - STATUS_GENERATOR_LOGO_PATH=/workspace/alumas/img/LOGO3.png
+      - STATUS_RETENTION_DAYS=5
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ../:/workspace/alumas:ro
+      - ./runtime:/data/alumas_runtime
+
 volumes:
   n8n_n8n_data:
     external: true

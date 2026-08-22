@@ -12,6 +12,7 @@ import tkinter as tk
 import urllib.parse
 import urllib.request
 import uuid
+from decimal import Decimal
 from pathlib import Path
 from tkinter import ttk, messagebox, filedialog
 
@@ -82,12 +83,20 @@ def _base_dir():
 
 
 BASE_DIR = _base_dir()
-LOG_PATH = os.path.join(BASE_DIR, "estados_debug.log")
-logging.basicConfig(
-    filename=LOG_PATH, level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    encoding="utf-8", force=True,
-)
+LOG_PATH = os.environ.get("ALUMAS_ESTADOS_LOG_PATH", os.path.join(BASE_DIR, "estados_debug.log"))
+try:
+    logging.basicConfig(
+        filename=LOG_PATH, level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        encoding="utf-8", force=True,
+    )
+except OSError:
+    LOG_PATH = os.path.join(tempfile.gettempdir(), "alumas_estados_debug.log")
+    logging.basicConfig(
+        filename=LOG_PATH, level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        encoding="utf-8", force=True,
+    )
 
 
 # ---------------------------------------------------------------
@@ -105,6 +114,22 @@ PROMOS_DEFAULT = [
     "🥇 El mejor precio del mercado",
     "🎯 Ahorre hoy con nosotros",
 ]
+
+
+def _cargar_promos_guardadas_archivo():
+    p = os.path.join(BASE_DIR, "promos_estados.json")
+    if not os.path.isfile(p):
+        return list(PROMOS_DEFAULT)
+    try:
+        with open(p, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if isinstance(data, list):
+            items = [str(item).strip() for item in data if str(item).strip()]
+            if items:
+                return items
+    except Exception:
+        pass
+    return list(PROMOS_DEFAULT)
 
 
 def _leer_env():
@@ -152,11 +177,11 @@ def _guardar_clave_env(clave, valor):
 def _db_config():
     cfg_env = _leer_env()
     return {
-        "host": cfg_env.get("DB_HOST", "72.62.166.253"),
-        "port": int(cfg_env.get("DB_PORT", "3306")),
-        "user": cfg_env.get("DB_USER", "sistema_user"),
-        "password": cfg_env.get("DB_PASS", "12345"),
-        "database": cfg_env.get("DB_NAME", "sistema_contable"),
+        "host": os.environ.get("DB_HOST") or cfg_env.get("DB_HOST", "72.62.166.253"),
+        "port": int(os.environ.get("DB_PORT") or cfg_env.get("DB_PORT", "3306")),
+        "user": os.environ.get("DB_USER") or cfg_env.get("DB_USER", "sistema_user"),
+        "password": os.environ.get("DB_PASS") or cfg_env.get("DB_PASS", "12345"),
+        "database": os.environ.get("DB_NAME") or cfg_env.get("DB_NAME", "sistema_contable"),
     }
 
 
@@ -165,6 +190,17 @@ def _product_images_default_url():
     if cfg.get("PRODUCT_IMAGES_URL"):
         return cfg["PRODUCT_IMAGES_URL"].rstrip("/") + "/"
     return "https://ferredistribucionesalumas.com/img/productos/"
+
+
+def _build_remote_image_url(nombre_archivo, url_base_opcional=""):
+    nombre_limpio = (nombre_archivo or "").strip()
+    if not nombre_limpio:
+        return None
+    nombre_archivo_web = os.path.basename(nombre_limpio.replace("\\", "/"))
+    if not nombre_archivo_web:
+        return None
+    base = (url_base_opcional or _product_images_default_url()).rstrip("/")
+    return base + "/" + urllib.parse.quote(nombre_archivo_web)
 
 
 def _product_images_default_folder():
@@ -376,12 +412,13 @@ def _cargar_imagen_producto(nombre_archivo, url_base_opcional="", carpeta_extra=
             return res
 
     # 5) URL base personalizada HTTP
-    if url_base_opcional and nombre_limpio:
-        url = url_base_opcional.rstrip("/") + "/" + urllib.parse.quote(nombre_limpio)
+    if nombre_limpio:
+        url = _build_remote_image_url(nombre_limpio, url_base_opcional)
         try:
-            img = _descargar_http(url)
-            if img:
-                return img
+            if url:
+                img = _descargar_http(url)
+                if img:
+                    return img
         except Exception:
             pass
 
@@ -419,6 +456,75 @@ def _placeholder_imagen_producto(nombre, ancho, alto):
     w, h = _medir_texto(draw, iniciales, font)
     draw.text((cx - w // 2, cy - h // 2 - 6), iniciales, fill=(255, 255, 255, 245), font=font)
     return grad
+
+
+def _nombre_archivo_estado(producto, indice):
+    safe = "".join([
+        c if c.isalnum() or c in " -_" else "_"
+        for c in (producto.get("nombre") or "p")
+    ]).strip()
+    safe = safe or "producto"
+    return f"{indice:02d}_{str(producto['id_producto'])}__{safe[:60]}.png"
+
+
+def _json_safe_value(value):
+    if isinstance(value, Decimal):
+        return float(value)
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    return value
+
+
+def generar_estados_lote(
+    cantidad=15,
+    orden="nuevos",
+    salida_dir=None,
+    url_imagenes="",
+    logo_path=None,
+    carpeta_imagenes="",
+    promos=None,
+):
+    rows = _traer_productos_bd(int(cantidad), orden)
+    if not rows:
+        raise RuntimeError("No hay productos con imagen y stock > 0 para generar estados.")
+
+    output_dir = salida_dir or tempfile.mkdtemp(prefix="ALUMAS_estados_")
+    os.makedirs(output_dir, exist_ok=True)
+
+    promos_pool = [str(item).strip() for item in (promos or _cargar_promos_guardadas_archivo()) if str(item).strip()]
+    if not promos_pool:
+        promos_pool = list(PROMOS_DEFAULT)
+    random.shuffle(promos_pool)
+
+    generated_files = []
+    for idx, prod in enumerate(rows, start=1):
+        promo = promos_pool[(idx - 1) % len(promos_pool)]
+        img = render_estado(prod, url_imagenes, promo, logo_path if logo_path else None, carpeta_imagenes)
+        fname = _nombre_archivo_estado(prod, idx)
+        fpath = os.path.join(output_dir, fname)
+        img.save(fpath, "PNG", optimize=True)
+        generated_files.append({
+            "index": idx,
+            "file_name": fname,
+            "file_path": fpath,
+            "promo": promo,
+            "product": {
+                "id_producto": prod.get("id_producto"),
+                "nombre": prod.get("nombre"),
+                "precio_final": _json_safe_value(prod.get("precio_final")),
+                "precio_mayorista": _json_safe_value(prod.get("precio_mayorista")),
+                "stock": _json_safe_value(prod.get("stock")),
+                "imagen": _json_safe_value(prod.get("imagen")),
+                "fecha_actualizacion": _json_safe_value(prod.get("fecha_actualizacion")),
+            },
+        })
+
+    return {
+        "output_dir": output_dir,
+        "count": len(generated_files),
+        "order": orden,
+        "generated_files": generated_files,
+    }
 
 
 # ---------------------------------------------------------------
@@ -735,7 +841,7 @@ class GeneradorEstadosApp:
         # Logo
         tk.Label(cfg_frm, text="Logo ALUMAS (PNG):", bg=COLOR_PANEL,
                  fg=COLOR_TEXTO_SUAVE, font=("Segoe UI", 9)).pack(anchor=tk.W)
-        logo_defecto = os.path.join(BASE_DIR, "logo_alumas.png")
+        logo_defecto = os.path.join(BASE_DIR, "img", "LOGO3.png")
         self.var_logo = tk.StringVar(value=logo_defecto if os.path.isfile(logo_defecto) else "")
         frm_logo = tk.Frame(cfg_frm, bg=COLOR_PANEL)
         frm_logo.pack(fill=tk.X, pady=(4, 12))
@@ -1128,16 +1234,7 @@ class GeneradorEstadosApp:
 
     # -------------------- Lógica: promos --------------------
     def _cargar_promos_guardadas(self):
-        p = os.path.join(BASE_DIR, "promos_estados.json")
-        if not os.path.isfile(p):
-            return
-        try:
-            with open(p, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            if isinstance(data, list) and data:
-                self.promos_usuario = list(data)
-        except Exception:
-            pass
+        self.promos_usuario = _cargar_promos_guardadas_archivo()
 
     def _guardar_promos(self):
         items = list(self.lst_promos.get(0, tk.END))

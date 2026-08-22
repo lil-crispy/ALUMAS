@@ -1,0 +1,231 @@
+{
+  "name": "ALUMAS - Estados diarios 8AM Evolution",
+  "active": false,
+  "settings": {
+    "timezone": "America/Bogota",
+    "executionOrder": "v1"
+  },
+  "nodes": [
+    {
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger 8AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        220,
+        320
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "generate-status-images",
+      "name": "Generar 15 estados",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        520,
+        220
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://status_generator:8000/generate",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"count\": 15,\n  \"order\": \"aleatorio\"\n}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "neverError": false,
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "prepare-status-items",
+      "name": "Preparar publicaciones",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        860,
+        320
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const source = $input.first().json;\nconst generatedFiles = Array.isArray(source.generated_files) ? source.generated_files : [];\n\nif (!generatedFiles.length) {\n  return [{ json: { should_publish: false, status: 'no_generated_files', generated_count: 0 } }];\n}\n\nreturn generatedFiles.map((file, index) => ({\n  json: {\n    should_publish: true,\n    status: 'ready_to_publish',\n    generated_count: generatedFiles.length,\n    publish_index: index + 1,\n    content: file.public_url,\n    caption: '',\n    relative_path: file.relative_path,\n    file_name: file.file_name,\n    product_name: file.product?.nombre || '',\n  }\n}));"
+      }
+    },
+    {
+      "id": "should-publish",
+      "name": "¿Hay estados para publicar?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1140,
+        320
+      ],
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.should_publish }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "publish-status",
+      "name": "Publicar estado en Evolution",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1420,
+        220
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://evolution_api:8080/message/sendStatus/alumas",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "type",
+              "value": "image"
+            },
+            {
+              "name": "content",
+              "value": "={{ $json.content }}"
+            },
+            {
+              "name": "caption",
+              "value": "={{ $json.caption }}"
+            },
+            {
+              "name": "allContacts",
+              "value": "={{ true }}"
+            }
+          ]
+        },
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 3000
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "__EVOLUTION_HTTP_HEADER_AUTH_ID__",
+          "name": "ALUMAS Evolution API Header"
+        }
+      }
+    },
+    {
+      "id": "no-statuses",
+      "name": "Sin estados generados",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1420,
+        420
+      ],
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"status\": $json.status,\n  \"generated_count\": $json.generated_count\n}"
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger 8AM": {
+      "main": [
+        [
+          {
+            "node": "Generar 15 estados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generar 15 estados": {
+      "main": [
+        [
+          {
+            "node": "Preparar publicaciones",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar publicaciones": {
+      "main": [
+        [
+          {
+            "node": "¿Hay estados para publicar?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Hay estados para publicar?": {
+      "main": [
+        [
+          {
+            "node": "Publicar estado en Evolution",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Sin estados generados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
