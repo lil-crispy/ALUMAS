@@ -215,6 +215,27 @@ async function ensureSchema() {
       KEY idx_mercadolibre_ordenes_meli_user_id (meli_user_id)
     ) ENGINE=InnoDB;
   `
+  const createMercadoLibreN8nEventos = `
+    CREATE TABLE IF NOT EXISTS mercadolibre_n8n_eventos (
+      id BIGINT AUTO_INCREMENT PRIMARY KEY,
+      event_key CHAR(64) NOT NULL,
+      event_type VARCHAR(64) NOT NULL,
+      order_id BIGINT NOT NULL,
+      payload_json LONGTEXT NULL,
+      delivery_status VARCHAR(32) NOT NULL DEFAULT 'pending',
+      http_status INT NULL DEFAULT NULL,
+      response_body TEXT NULL,
+      first_seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      last_attempt_at DATETIME NULL DEFAULT NULL,
+      dispatched_at DATETIME NULL DEFAULT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uq_mercadolibre_n8n_eventos_event_key (event_key),
+      KEY idx_mercadolibre_n8n_eventos_order_id (order_id),
+      KEY idx_mercadolibre_n8n_eventos_event_type (event_type),
+      KEY idx_mercadolibre_n8n_eventos_delivery_status (delivery_status)
+    ) ENGINE=InnoDB;
+  `
   await pool.query(createVentas)
   await pool.query(createItems)
   await pool.query(createProgramados)
@@ -226,6 +247,7 @@ async function ensureSchema() {
   await pool.query(createMercadoLibreOauthStates)
   await pool.query(createMercadoLibrePublicaciones)
   await pool.query(createMercadoLibreOrdenes)
+  await pool.query(createMercadoLibreN8nEventos)
 
   const ventasColumns = await getTableColumns('ventas')
   const ventasColumnSet = new Set(ventasColumns.map((column) => String(column || '').toLowerCase()))
@@ -923,6 +945,10 @@ const MERCADOLIBRE_INTERNAL_AUTH_MAX_AGE_MS = 5 * 60 * 1000
 const MERCADOLIBRE_INTERNAL_AUTH_CLIENT_HEADER = 'x-alumas-client-id'
 const MERCADOLIBRE_INTERNAL_AUTH_TIMESTAMP_HEADER = 'x-alumas-timestamp'
 const MERCADOLIBRE_INTERNAL_AUTH_SIGNATURE_HEADER = 'x-alumas-signature'
+const MERCADOLIBRE_N8N_WEBHOOK_TIMEOUT_MS = 10000
+const MERCADOLIBRE_APPROVED_PAYMENT_STATUSES = new Set(['approved'])
+const MERCADOLIBRE_TERMINAL_SHIPMENT_STATUSES = new Set(['delivered', 'cancelled', 'not_delivered'])
+const MERCADOLIBRE_TERMINAL_ORDER_STATUSES = new Set(['cancelled'])
 
 let mercadolibreEncryptionKeyCache = null
 const mercadolibreAuthRateLimitStore = new Map()
@@ -1544,7 +1570,8 @@ function requireMercadoLibreApiAuthorization(req, res) {
       ip: getMercadoLibreRequestIp(req),
       reason: internalValidation.reason || 'invalid_internal_auth'
     }))
-    return sendMercadoLibreApiAuthError(res, 401, 'La autorizacion interna de Mercado Libre es invalida o expiro.')
+    sendMercadoLibreApiAuthError(res, 401, 'La autorizacion interna de Mercado Libre es invalida o expiro.')
+    return false
   }
 
   const basicValidation = validateMercadoLibreBasicAuthorization(req)
@@ -1557,10 +1584,28 @@ function requireMercadoLibreApiAuthorization(req, res) {
     console.error('[MercadoLibre][API] Proteccion admin no configurada:', JSON.stringify({
       error: basicValidation.message || 'meli_admin_auth_missing'
     }))
-    return sendMercadoLibreApiAuthError(res, 503, 'La autorizacion administrativa de Mercado Libre no esta configurada en el servidor.')
+    sendMercadoLibreApiAuthError(res, 503, 'La autorizacion administrativa de Mercado Libre no esta configurada en el servidor.')
+    return false
   }
 
-  return sendMercadoLibreApiAuthError(res, 401, 'Debes autenticarte para usar esta operacion de Mercado Libre.')
+  sendMercadoLibreApiAuthError(res, 401, 'Debes autenticarte para usar esta operacion de Mercado Libre.')
+  return false
+}
+
+function requireMercadoLibreInternalApiAuthorization(req, res) {
+  const validation = validateMercadoLibreInternalAuthorization(req)
+  if (validation.ok) {
+    req.mercadolibreAuthContext = validation
+    return true
+  }
+
+  if (validation.reason === 'config_missing') {
+    sendMercadoLibreApiAuthError(res, 503, 'La autenticacion interna de Mercado Libre no esta configurada en el servidor.')
+    return false
+  }
+
+  sendMercadoLibreApiAuthError(res, 401, 'Debes autenticarte con las credenciales internas de Mercado Libre para usar esta operacion.')
+  return false
 }
 
 async function createMercadoLibreOauthStateRecord(state, conn = pool) {
@@ -2948,6 +2993,533 @@ async function processMercadoLibreOrderImport(order, account) {
     throw err
   } finally {
     conn.release()
+  }
+}
+
+function getMercadoLibreN8nConfig() {
+  return {
+    webhookUrl: String(process.env.MERCADOLIBRE_N8N_WEBHOOK_URL || '').trim(),
+    webhookTimeoutMs: Math.max(1000, normalizeMercadoLibreInteger(process.env.MERCADOLIBRE_N8N_WEBHOOK_TIMEOUT_MS, MERCADOLIBRE_N8N_WEBHOOK_TIMEOUT_MS)),
+    whatsappTargetNumber: String(process.env.MERCADOLIBRE_WHATSAPP_TARGET_NUMBER || '3197245235').trim() || '3197245235'
+  }
+}
+
+function truncateMercadoLibreWebhookText(value, maxLength = 2000) {
+  const text = typeof value === 'string' ? value : toSafeJson(value)
+  return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text
+}
+
+function parseMercadoLibreStoredOrderRaw(row) {
+  const raw = String(row?.raw_json || '').trim()
+  if (!raw) return null
+  try {
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
+}
+
+function getMercadoLibreOrderBuyerName(order) {
+  const fullName = String(
+    `${order?.buyer?.first_name || ''} ${order?.buyer?.last_name || ''}`
+  ).replace(/\s+/g, ' ').trim()
+  return fullName || String(order?.buyer?.nickname || '').trim() || null
+}
+
+function getMercadoLibreOrderPaymentStatus(order) {
+  const payments = Array.isArray(order?.payments) ? order.payments : []
+  const approvedPayment = payments.find((payment) => MERCADOLIBRE_APPROVED_PAYMENT_STATUSES.has(String(payment?.status || '').trim().toLowerCase()))
+  if (approvedPayment) return 'approved'
+
+  const firstStatus = payments
+    .map((payment) => String(payment?.status || '').trim().toLowerCase())
+    .find(Boolean)
+  if (firstStatus) return firstStatus
+
+  const orderStatus = String(order?.status || '').trim().toLowerCase()
+  if (orderStatus === 'paid') return 'approved'
+  return null
+}
+
+function getMercadoLibreApprovedPaymentId(order) {
+  const approvedPayment = (Array.isArray(order?.payments) ? order.payments : []).find((payment) => {
+    return MERCADOLIBRE_APPROVED_PAYMENT_STATUSES.has(String(payment?.status || '').trim().toLowerCase())
+  })
+  return approvedPayment?.id ? String(approvedPayment.id).trim() : null
+}
+
+function getMercadoLibreOrderShipmentId(order) {
+  const shipmentId = order?.shipping?.id ?? order?.shipping_id ?? order?.shipment_id
+  const normalized = Number(shipmentId)
+  return Number.isFinite(normalized) && normalized > 0 ? normalized : null
+}
+
+async function getMercadoLibreShipmentDetail(accessToken, shipmentId) {
+  const normalizedShipmentId = Number(shipmentId)
+  if (!Number.isFinite(normalizedShipmentId) || normalizedShipmentId <= 0) {
+    return null
+  }
+
+  return mercadolibreAuthenticatedRequest(
+    accessToken,
+    `/shipments/${normalizedShipmentId}`,
+    { operation: `shipment_detail_${normalizedShipmentId}` }
+  )
+}
+
+function sanitizeMercadoLibreShipmentSummary(shipment) {
+  const receiverAddress = shipment?.receiver_address || shipment?.receiverAddress || {}
+  return removeEmptyObjectFields({
+    id: Number(shipment?.id || 0) || undefined,
+    status: String(shipment?.status || '').trim() || undefined,
+    substatus: String(shipment?.substatus || '').trim() || undefined,
+    logistic_type: String(shipment?.logistic_type || '').trim() || undefined,
+    shipping_mode: String(shipment?.shipping_mode || '').trim() || undefined,
+    tracking_number: String(shipment?.tracking_number || '').trim() || undefined,
+    receiver_name: String(shipment?.receiver_address?.receiver_name || '').trim() || undefined,
+    address: removeEmptyObjectFields({
+      address_line: String(receiverAddress?.address_line || '').trim() || undefined,
+      city: String(receiverAddress?.city?.name || receiverAddress?.city_name || '').trim() || undefined,
+      state: String(receiverAddress?.state?.name || receiverAddress?.state_name || '').trim() || undefined,
+      zip_code: String(receiverAddress?.zip_code || '').trim() || undefined,
+      comment: String(receiverAddress?.comment || '').trim() || undefined
+    })
+  })
+}
+
+function sanitizeMercadoLibrePaymentSummary(order) {
+  const payments = Array.isArray(order?.payments) ? order.payments : []
+  return payments.slice(0, 10).map((payment) => removeEmptyObjectFields({
+    id: payment?.id,
+    status: payment?.status,
+    status_detail: payment?.status_detail,
+    transaction_amount: payment?.transaction_amount,
+    currency_id: payment?.currency_id,
+    date_approved: payment?.date_approved,
+    payment_type: payment?.payment_type,
+    payment_method_id: payment?.payment_method_id
+  }))
+}
+
+async function buildMercadoLibreOrderItemSummary(orderItem, conn = pool) {
+  const itemId = String(orderItem?.item?.id || '').trim() || null
+  const publication = itemId ? await ensureMercadoLibrePublicationMapping(itemId, conn) : null
+  const productoId = Number(publication?.producto_id || 0) || null
+  const producto = productoId ? await getProductoByIdProducto(productoId, conn) : null
+  const quantity = normalizeVentaNumeric(orderItem?.quantity, 0)
+  const unitPrice = normalizeVentaNumeric(
+    orderItem?.unit_price ?? orderItem?.full_unit_price ?? producto?.precio_final,
+    0
+  )
+
+  return removeEmptyObjectFields({
+    item_id: itemId || undefined,
+    producto_id: productoId || undefined,
+    referencia: producto?.id_producto ? Number(producto.id_producto) : undefined,
+    nombre_producto: String(producto?.nombre || orderItem?.item?.title || '').trim() || undefined,
+    title: String(orderItem?.item?.title || producto?.nombre || '').trim() || undefined,
+    quantity,
+    cantidad: quantity,
+    unit_price: unitPrice,
+    precio_unitario: unitPrice,
+    permalink: String(publication?.permalink || '').trim() || undefined,
+    seller_sku: String(publication?.seller_sku || '').trim() || undefined
+  })
+}
+
+function isMercadoLibreOrderPendingAttention(orderView) {
+  const orderStatus = String(orderView?.status || orderView?.estado || '').trim().toLowerCase()
+  const paymentStatus = String(orderView?.payment_status || orderView?.estado_pago || '').trim().toLowerCase()
+  const shipmentStatus = String(orderView?.shipment?.status || orderView?.estado_envio || '').trim().toLowerCase()
+
+  if (MERCADOLIBRE_TERMINAL_ORDER_STATUSES.has(orderStatus)) return false
+  if (!paymentStatus || paymentStatus !== 'approved') return true
+  if (!shipmentStatus) return true
+  return !MERCADOLIBRE_TERMINAL_SHIPMENT_STATUSES.has(shipmentStatus)
+}
+
+function matchesMercadoLibreOrderFilters(orderView, filters = {}) {
+  const referenceFilter = Number(filters.referencia || filters.producto_id || 0) || null
+  const itemIdFilter = String(filters.item_id || '').trim()
+  const statusFilter = String(filters.status || '').trim().toLowerCase()
+  const paymentStatusFilter = String(filters.payment_status || '').trim().toLowerCase()
+  const shipmentStatusFilter = String(filters.shipment_status || filters.estado_envio || '').trim().toLowerCase()
+  const buyerFilter = String(filters.buyer || filters.comprador || '').trim().toLowerCase()
+  const pendingShipping = parseBooleanLike(filters.pending_shipping ?? filters.pendientes_envio ?? false)
+
+  if (referenceFilter && !orderView.items.some((item) => Number(item?.producto_id || item?.referencia || 0) === referenceFilter)) {
+    return false
+  }
+
+  if (itemIdFilter && !orderView.items.some((item) => String(item?.item_id || '').trim() === itemIdFilter)) {
+    return false
+  }
+
+  if (statusFilter && String(orderView.status || '').trim().toLowerCase() !== statusFilter) {
+    return false
+  }
+
+  if (paymentStatusFilter && String(orderView.payment_status || '').trim().toLowerCase() !== paymentStatusFilter) {
+    return false
+  }
+
+  if (shipmentStatusFilter && String(orderView.shipment?.status || '').trim().toLowerCase() !== shipmentStatusFilter) {
+    return false
+  }
+
+  if (buyerFilter) {
+    const haystack = [
+      String(orderView.buyer || '').trim().toLowerCase(),
+      ...orderView.items.map((item) => String(item?.nombre_producto || item?.title || '').trim().toLowerCase())
+    ].join(' ')
+    if (!haystack.includes(buyerFilter)) {
+      return false
+    }
+  }
+
+  if (pendingShipping) {
+    const paymentApproved = String(orderView.payment_status || '').trim().toLowerCase() === 'approved'
+    const shipmentStatus = String(orderView.shipment?.status || '').trim().toLowerCase()
+    if (!paymentApproved || !shipmentStatus || MERCADOLIBRE_TERMINAL_SHIPMENT_STATUSES.has(shipmentStatus)) {
+      return false
+    }
+  }
+
+  return true
+}
+
+async function buildMercadoLibreOrderView(order, options = {}) {
+  const { accessToken, conn = pool } = options
+  const items = []
+  const orderItems = Array.isArray(order?.order_items) ? order.order_items : []
+  for (const orderItem of orderItems) {
+    items.push(await buildMercadoLibreOrderItemSummary(orderItem, conn))
+  }
+
+  let shipmentDetail = null
+  const shipmentId = getMercadoLibreOrderShipmentId(order)
+  if (shipmentId && accessToken) {
+    try {
+      shipmentDetail = await getMercadoLibreShipmentDetail(accessToken, shipmentId)
+    } catch (err) {
+      shipmentDetail = order?.shipping || null
+    }
+  } else if (order?.shipping) {
+    shipmentDetail = order.shipping
+  }
+
+  const paymentStatus = getMercadoLibreOrderPaymentStatus(order)
+  const buyerName = getMercadoLibreOrderBuyerName(order)
+  const shipment = sanitizeMercadoLibreShipmentSummary(shipmentDetail || removeEmptyObjectFields({
+    id: shipmentId || undefined,
+    status: order?.shipping?.status || undefined
+  }))
+  const primaryItem = items[0] || {}
+
+  const view = removeEmptyObjectFields({
+    order_id: Number(order?.id || 0) || undefined,
+    fecha: order?.date_created || undefined,
+    status: String(order?.status || '').trim() || undefined,
+    estado: String(order?.status || '').trim() || undefined,
+    status_detail: String(order?.status_detail || '').trim() || undefined,
+    estado_pago: paymentStatus || undefined,
+    payment_status: paymentStatus || undefined,
+    buyer: buyerName || undefined,
+    buyer_detail: removeEmptyObjectFields({
+      nickname: String(order?.buyer?.nickname || '').trim() || undefined,
+      first_name: String(order?.buyer?.first_name || '').trim() || undefined,
+      last_name: String(order?.buyer?.last_name || '').trim() || undefined
+    }),
+    total: order?.total_amount ?? undefined,
+    moneda: String(order?.currency_id || '').trim() || undefined,
+    item_id: primaryItem.item_id || undefined,
+    producto_id: primaryItem.producto_id || undefined,
+    referencia: primaryItem.referencia || undefined,
+    nombre_producto: primaryItem.nombre_producto || undefined,
+    cantidad: primaryItem.cantidad || undefined,
+    precio_unitario: primaryItem.precio_unitario ?? undefined,
+    shipment_id: shipment.id || undefined,
+    estado_envio: shipment.status || undefined,
+    permalink: primaryItem.permalink || undefined,
+    items,
+    shipment,
+    payments: sanitizeMercadoLibrePaymentSummary(order),
+    tags: Array.isArray(order?.tags) ? order.tags.slice(0, 20) : undefined,
+    operation: removeEmptyObjectFields({
+      ready_for_whatsapp: true,
+      needs_attention: false
+    })
+  })
+
+  view.operation = {
+    ...view.operation,
+    needs_attention: isMercadoLibreOrderPendingAttention(view)
+  }
+
+  return view
+}
+
+async function getMercadoLibreOrderRowById(orderId, conn = pool) {
+  const normalizedOrderId = Number(orderId)
+  if (!Number.isFinite(normalizedOrderId) || normalizedOrderId <= 0) {
+    return null
+  }
+
+  const [rows] = await conn.query(
+    `SELECT *
+     FROM mercadolibre_ordenes
+     WHERE order_id = ?
+     LIMIT 1`,
+    [normalizedOrderId]
+  )
+
+  return rows && rows.length ? rows[0] : null
+}
+
+async function collectMercadoLibreOrderViews(options = {}, conn = pool) {
+  const requestedOrderIds = Array.isArray(options.orderIds)
+    ? [...new Set(options.orderIds.map((value) => Number(value)).filter((value) => Number.isFinite(value) && value > 0))]
+    : []
+  const limit = Math.max(1, Math.min(50, normalizeMercadoLibreInteger(options.limit, MERCADOLIBRE_DEFAULT_SYNC_LIMIT)))
+  const offset = Math.max(0, normalizeMercadoLibreInteger(options.offset, 0))
+  const onlyPending = options.onlyPending === true
+  const { account, accessToken } = await getValidMercadoLibreAccessToken(conn)
+
+  let baseOrders = []
+  if (requestedOrderIds.length > 0) {
+    baseOrders = requestedOrderIds.map((orderId) => ({ id: orderId }))
+  } else {
+    const remote = await fetchMercadoLibreOrders(accessToken, account.meli_user_id, { limit, offset })
+    baseOrders = Array.isArray(remote?.results) ? remote.results : []
+  }
+
+  const previousRows = await getMercadoLibreOrderRowsByIds(baseOrders.map((order) => order.id), conn)
+  const previousRowMap = new Map(previousRows.map((row) => [String(row.order_id), row]))
+  const views = []
+
+  for (const baseOrder of baseOrders) {
+    const detail = requestedOrderIds.length > 0 && Array.isArray(baseOrder?.order_items)
+      ? baseOrder
+      : await getMercadoLibreOrderDetail(accessToken, baseOrder.id)
+
+    const previousRow = previousRowMap.get(String(detail.id)) || null
+    await upsertMercadoLibreOrderSnapshot(detail, account, conn)
+    const view = await buildMercadoLibreOrderView(detail, { accessToken, conn })
+    if (onlyPending && !isMercadoLibreOrderPendingAttention(view)) {
+      continue
+    }
+    if (!matchesMercadoLibreOrderFilters(view, options.filters || {})) {
+      continue
+    }
+
+    views.push({
+      order: detail,
+      previousRow,
+      view
+    })
+  }
+
+  return {
+    account,
+    orders: views
+  }
+}
+
+function buildMercadoLibreOrderEventKey(eventPayload) {
+  const eventType = String(eventPayload?.event || '').trim()
+  const orderId = String(eventPayload?.order_id || '').trim()
+  const shipmentId = String(eventPayload?.shipment?.id || '').trim()
+  const shipmentStatus = String(eventPayload?.shipment?.status || '').trim().toLowerCase()
+  const paymentStatus = String(eventPayload?.payment_status || '').trim().toLowerCase()
+  const approvedPaymentId = String(eventPayload?.approved_payment_id || '').trim()
+
+  let fingerprint = `${eventType}|${orderId}`
+  if (eventType === 'shipment_status_changed') {
+    fingerprint = `${fingerprint}|${shipmentId}|${shipmentStatus}`
+  } else if (eventType === 'payment_approved') {
+    fingerprint = `${fingerprint}|${paymentStatus}|${approvedPaymentId}`
+  }
+
+  return crypto.createHash('sha256').update(fingerprint, 'utf8').digest('hex')
+}
+
+function buildMercadoLibreN8nEventPayload(eventType, orderView, order) {
+  const config = getMercadoLibreN8nConfig()
+  return removeEmptyObjectFields({
+    event: eventType,
+    order_id: orderView?.order_id,
+    fecha: orderView?.fecha,
+    status: orderView?.status,
+    payment_status: orderView?.payment_status,
+    approved_payment_id: getMercadoLibreApprovedPaymentId(order) || undefined,
+    buyer: orderView?.buyer,
+    total: orderView?.total,
+    currency: orderView?.moneda,
+    items: Array.isArray(orderView?.items)
+      ? orderView.items.map((item) => removeEmptyObjectFields({
+        producto_id: item?.producto_id,
+        item_id: item?.item_id,
+        title: item?.title || item?.nombre_producto,
+        quantity: item?.quantity ?? item?.cantidad,
+        unit_price: item?.unit_price ?? item?.precio_unitario,
+        referencia: item?.referencia
+      }))
+      : undefined,
+    shipment: removeEmptyObjectFields({
+      id: orderView?.shipment?.id,
+      status: orderView?.shipment?.status
+    }),
+    notification_target: removeEmptyObjectFields({
+      channel: 'whatsapp',
+      number: config.whatsappTargetNumber || undefined
+    })
+  })
+}
+
+function detectMercadoLibreOrderEvents(previousOrder, currentOrderView, currentOrderRaw) {
+  const events = []
+  const previousStatus = String(previousOrder?.status || '').trim().toLowerCase()
+  const currentStatus = String(currentOrderView?.status || '').trim().toLowerCase()
+  const previousPaymentStatus = getMercadoLibreOrderPaymentStatus(previousOrder)
+  const currentPaymentStatus = String(currentOrderView?.payment_status || '').trim().toLowerCase()
+  const previousShipmentId = getMercadoLibreOrderShipmentId(previousOrder)
+  const previousShipmentStatus = String(previousOrder?.shipping?.status || '').trim().toLowerCase()
+  const currentShipmentId = Number(currentOrderView?.shipment?.id || 0) || null
+  const currentShipmentStatus = String(currentOrderView?.shipment?.status || '').trim().toLowerCase()
+
+  if (!previousOrder) {
+    const payload = buildMercadoLibreN8nEventPayload('new_order', currentOrderView, currentOrderRaw)
+    events.push({
+      ...payload,
+      event_key: buildMercadoLibreOrderEventKey(payload)
+    })
+    return events
+  }
+
+  if (currentPaymentStatus === 'approved' && previousPaymentStatus !== 'approved') {
+    const payload = buildMercadoLibreN8nEventPayload('payment_approved', currentOrderView, currentOrderRaw)
+    events.push({
+      ...payload,
+      event_key: buildMercadoLibreOrderEventKey(payload)
+    })
+  }
+
+  if (currentStatus === 'cancelled' && previousStatus !== 'cancelled') {
+    const payload = buildMercadoLibreN8nEventPayload('order_cancelled', currentOrderView, currentOrderRaw)
+    events.push({
+      ...payload,
+      event_key: buildMercadoLibreOrderEventKey(payload)
+    })
+  }
+
+  if (
+    currentShipmentId
+    && currentShipmentStatus
+    && previousOrder
+    && previousShipmentId === currentShipmentId
+    && previousShipmentStatus
+    && previousShipmentStatus !== currentShipmentStatus
+  ) {
+    const payload = buildMercadoLibreN8nEventPayload('shipment_status_changed', currentOrderView, currentOrderRaw)
+    events.push({
+      ...payload,
+      event_key: buildMercadoLibreOrderEventKey(payload)
+    })
+  }
+
+  return events
+}
+
+async function reserveMercadoLibreN8nEvent(eventPayload, conn = pool) {
+  const [result] = await conn.query(
+    `INSERT IGNORE INTO mercadolibre_n8n_eventos (
+       event_key,
+       event_type,
+       order_id,
+       payload_json,
+       delivery_status,
+       first_seen_at
+     ) VALUES (?, ?, ?, ?, 'pending', NOW())`,
+    [
+      String(eventPayload?.event_key || '').trim(),
+      String(eventPayload?.event || '').trim(),
+      Number(eventPayload?.order_id || 0),
+      toSafeJson(eventPayload)
+    ]
+  )
+
+  return result?.affectedRows > 0
+}
+
+async function updateMercadoLibreN8nEventDelivery(eventKey, data, conn = pool) {
+  await conn.query(
+    `UPDATE mercadolibre_n8n_eventos
+     SET
+       delivery_status = ?,
+       http_status = ?,
+       response_body = ?,
+       last_attempt_at = NOW(),
+       dispatched_at = ?,
+       payload_json = ?
+     WHERE event_key = ?`,
+    [
+      String(data?.deliveryStatus || 'pending').trim() || 'pending',
+      data?.httpStatus ? Number(data.httpStatus) : null,
+      data?.responseBody ? truncateMercadoLibreWebhookText(data.responseBody) : null,
+      data?.deliveryStatus === 'delivered' ? new Date() : null,
+      data?.payload ? toSafeJson(data.payload) : null,
+      String(eventKey || '').trim()
+    ]
+  )
+}
+
+async function dispatchMercadoLibreEventToConfiguredN8nWebhook(eventPayload) {
+  const config = getMercadoLibreN8nConfig()
+  if (!config.webhookUrl) {
+    const error = new Error('Debes configurar MERCADOLIBRE_N8N_WEBHOOK_URL para despachar eventos a n8n.')
+    error.statusCode = 503
+    throw error
+  }
+
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), config.webhookTimeoutMs)
+
+  try {
+    const response = await fetch(config.webhookUrl, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(eventPayload),
+      signal: controller.signal
+    })
+
+    const contentType = response.headers.get('content-type') || ''
+    const body = contentType.includes('application/json')
+      ? await response.json().catch(() => null)
+      : await response.text().catch(() => '')
+
+    if (!response.ok) {
+      const error = new Error('n8n rechazó el webhook de Mercado Libre.')
+      error.statusCode = response.status
+      error.payload = body
+      throw error
+    }
+
+    return {
+      httpStatus: response.status,
+      body
+    }
+  } catch (err) {
+    if (err?.name === 'AbortError') {
+      const timeoutError = new Error('Tiempo de espera agotado enviando webhook de Mercado Libre a n8n.')
+      timeoutError.statusCode = 504
+      throw timeoutError
+    }
+    throw err
+  } finally {
+    clearTimeout(timer)
   }
 }
 
@@ -6168,6 +6740,209 @@ app.post('/api/mercadolibre/sync-stock', async (req, res) => {
   }
 })
 
+app.get('/api/mercadolibre/pedidos', async (req, res) => {
+  try {
+    if (!requireMercadoLibreInternalApiAuthorization(req, res)) {
+      return
+    }
+
+    const result = await collectMercadoLibreOrderViews({
+      limit: req.query.limit,
+      offset: req.query.offset,
+      filters: {
+        referencia: req.query.referencia,
+        producto_id: req.query.producto_id,
+        item_id: req.query.item_id,
+        buyer: req.query.buyer,
+        comprador: req.query.comprador,
+        status: req.query.status,
+        payment_status: req.query.payment_status,
+        shipment_status: req.query.shipment_status,
+        estado_envio: req.query.estado_envio,
+        pending_shipping: req.query.pending_shipping,
+        pendientes_envio: req.query.pendientes_envio
+      }
+    })
+
+    return res.json({
+      ok: true,
+      count: result.orders.length,
+      pedidos: result.orders.map((entry) => entry.view)
+    })
+  } catch (err) {
+    return res.status(Number(err?.statusCode || 500)).json({
+      ok: false,
+      error: err?.message || 'No se pudieron consultar los pedidos de Mercado Libre.'
+    })
+  }
+})
+
+app.get('/api/mercadolibre/pedidos/pendientes', async (req, res) => {
+  try {
+    if (!requireMercadoLibreInternalApiAuthorization(req, res)) {
+      return
+    }
+
+    const result = await collectMercadoLibreOrderViews({
+      limit: req.query.limit,
+      offset: req.query.offset,
+      onlyPending: true,
+      filters: {
+        referencia: req.query.referencia,
+        producto_id: req.query.producto_id,
+        item_id: req.query.item_id,
+        buyer: req.query.buyer,
+        comprador: req.query.comprador,
+        shipment_status: req.query.shipment_status,
+        estado_envio: req.query.estado_envio,
+        pending_shipping: req.query.pending_shipping,
+        pendientes_envio: req.query.pendientes_envio
+      }
+    })
+
+    return res.json({
+      ok: true,
+      count: result.orders.length,
+      pedidos: result.orders.map((entry) => entry.view)
+    })
+  } catch (err) {
+    return res.status(Number(err?.statusCode || 500)).json({
+      ok: false,
+      error: err?.message || 'No se pudieron consultar los pedidos pendientes de Mercado Libre.'
+    })
+  }
+})
+
+app.get('/api/mercadolibre/pedidos/:orderId', async (req, res) => {
+  try {
+    if (!requireMercadoLibreInternalApiAuthorization(req, res)) {
+      return
+    }
+
+    const orderId = Number(req.params.orderId)
+    if (!Number.isFinite(orderId) || orderId <= 0) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Debes indicar un orderId valido de Mercado Libre.'
+      })
+    }
+
+    const result = await collectMercadoLibreOrderViews({
+      orderIds: [orderId]
+    })
+    const entry = result.orders[0]
+    if (!entry) {
+      return res.status(404).json({
+        ok: false,
+        error: `No se encontro la orden ${orderId} en Mercado Libre.`
+      })
+    }
+
+    return res.json({
+      ok: true,
+      pedido: entry.view
+    })
+  } catch (err) {
+    return res.status(Number(err?.statusCode || 500)).json({
+      ok: false,
+      error: err?.message || 'No se pudo consultar el detalle del pedido de Mercado Libre.'
+    })
+  }
+})
+
+app.post('/api/mercadolibre/n8n/webhook', async (req, res) => {
+  try {
+    if (!requireMercadoLibreInternalApiAuthorization(req, res)) {
+      return
+    }
+
+    const requestedOrderIds = Array.isArray(req.body?.order_ids)
+      ? req.body.order_ids
+      : []
+    const dryRun = parseBooleanLike(req.body?.dry_run ?? req.query.dry_run ?? false)
+    const result = await collectMercadoLibreOrderViews({
+      orderIds: requestedOrderIds,
+      limit: req.body?.limit ?? req.query.limit,
+      offset: req.body?.offset ?? req.query.offset
+    })
+
+    const dispatchResults = []
+    for (const entry of result.orders) {
+      const previousOrder = parseMercadoLibreStoredOrderRaw(entry.previousRow)
+      const events = detectMercadoLibreOrderEvents(previousOrder, entry.view, entry.order)
+
+      for (const eventPayload of events) {
+        const reserved = await reserveMercadoLibreN8nEvent(eventPayload)
+        if (!reserved) {
+          dispatchResults.push({
+            event: eventPayload.event,
+            order_id: eventPayload.order_id,
+            status: 'duplicate_skipped'
+          })
+          continue
+        }
+
+        if (dryRun) {
+          await updateMercadoLibreN8nEventDelivery(eventPayload.event_key, {
+            deliveryStatus: 'dry_run',
+            payload: eventPayload
+          })
+          dispatchResults.push({
+            event: eventPayload.event,
+            order_id: eventPayload.order_id,
+            status: 'dry_run'
+          })
+          continue
+        }
+
+        try {
+          const delivery = await dispatchMercadoLibreEventToConfiguredN8nWebhook(eventPayload)
+          await updateMercadoLibreN8nEventDelivery(eventPayload.event_key, {
+            deliveryStatus: 'delivered',
+            httpStatus: delivery.httpStatus,
+            responseBody: delivery.body,
+            payload: eventPayload
+          })
+          dispatchResults.push({
+            event: eventPayload.event,
+            order_id: eventPayload.order_id,
+            status: 'delivered'
+          })
+        } catch (err) {
+          await updateMercadoLibreN8nEventDelivery(eventPayload.event_key, {
+            deliveryStatus: 'failed',
+            httpStatus: err?.statusCode || null,
+            responseBody: err?.payload || err?.message || null,
+            payload: eventPayload
+          })
+          dispatchResults.push({
+            event: eventPayload.event,
+            order_id: eventPayload.order_id,
+            status: 'failed',
+            error: err?.message || 'No se pudo entregar el webhook a n8n.'
+          })
+        }
+      }
+    }
+
+    return res.json({
+      ok: true,
+      scanned_orders: result.orders.length,
+      detected_events: dispatchResults.length,
+      delivered: dispatchResults.filter((item) => item.status === 'delivered').length,
+      duplicates: dispatchResults.filter((item) => item.status === 'duplicate_skipped').length,
+      dry_run: dispatchResults.filter((item) => item.status === 'dry_run').length,
+      failed: dispatchResults.filter((item) => item.status === 'failed').length,
+      results: dispatchResults
+    })
+  } catch (err) {
+    return res.status(Number(err?.statusCode || 500)).json({
+      ok: false,
+      error: err?.message || 'No se pudo procesar el webhook interno hacia n8n.'
+    })
+  }
+})
+
 app.get('/api/mercadolibre/ordenes', async (req, res) => {
   try {
     if (!requireMercadoLibreApiAuthorization(req, res)) {
@@ -6932,12 +7707,17 @@ app.delete('/api/programados/:id', async (req, res) => {
 app.use(express.static(path.resolve(__dirname)))
 
 const PORT = Number(process.env.PORT || 8080)
+let serverInstance = null
 
-initPool().then(() => {
-  app.listen(PORT, () => {
-    console.log(`Servidor web en http://localhost:${PORT}`)
+async function startServer() {
+  await initPool()
+  return new Promise((resolve) => {
+    serverInstance = app.listen(PORT, () => {
+      console.log(`Servidor web en http://localhost:${PORT}`)
+      resolve(serverInstance)
+    })
   })
-})
+}
 
 const PDF_BODEGA_PATH = 'G:\\Mi unidad\\FERREDISTRIBUCIONES ALUMAS SAS\\bodega';
 
@@ -6970,3 +7750,22 @@ app.post('/api/save-pdf', async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+if (require.main === module) {
+  startServer().catch((err) => {
+    console.error('No se pudo iniciar el servidor:', err?.message || err)
+    process.exit(1)
+  })
+}
+
+module.exports = {
+  app,
+  startServer,
+  buildMercadoLibreInternalSignature,
+  getMercadoLibreOrderPaymentStatus,
+  getMercadoLibreOrderBuyerName,
+  isMercadoLibreOrderPendingAttention,
+  buildMercadoLibreOrderEventKey,
+  buildMercadoLibreN8nEventPayload,
+  detectMercadoLibreOrderEvents
+}
