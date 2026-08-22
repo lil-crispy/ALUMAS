@@ -422,6 +422,297 @@ function pickFirstExistingColumn(columns, candidates) {
   return null
 }
 
+function normalizeClienteQuickText(value, maxLength = 0) {
+  let normalized = String(value ?? '').replace(/\s+/g, ' ').trim()
+  if (maxLength > 0) normalized = normalized.slice(0, maxLength)
+  return normalized
+}
+
+function sanitizeDigits(value) {
+  return String(value ?? '').replace(/\D/g, '').trim()
+}
+
+function calculateNitVerificationDigit(nitValue) {
+  const digits = sanitizeDigits(nitValue)
+  if (!digits) return ''
+  const weights = [3, 7, 13, 17, 19, 23, 29, 37, 41, 43, 47, 53, 59, 67, 71]
+  const reversed = digits.split('').reverse()
+  let total = 0
+  for (let index = 0; index < reversed.length; index += 1) {
+    const digit = Number(reversed[index] || 0)
+    const weight = Number(weights[index] || 0)
+    total += digit * weight
+  }
+  const remainder = total % 11
+  return String(remainder > 1 ? 11 - remainder : remainder)
+}
+
+function looksLikeEmpresaCliente(data = {}) {
+  const nitDigits = sanitizeDigits(data.nit || data.nit_cc || data.identification)
+  const dv = normalizeClienteQuickText(data.dv, 8)
+  const docCode = normalizeClienteQuickText(data.identification_document_code, 8)
+  const text = [
+    data.clase_identificacion,
+    data.organizacion_juridica,
+    data.tipo_sociedad,
+    data.nombre,
+    data.company
+  ].map((value) => normalizeClienteQuickText(value).toUpperCase()).join(' ')
+  if (docCode === '31') return true
+  if (dv) return true
+  if (nitDigits.length >= 9) return true
+  return /(NIT|SAS|S\.A|LTDA|SOCIEDAD|EMPRESA|COOPERATIVA|ASOCIACION|FUNDACION|CORPORACION)/i.test(text)
+}
+
+function inferClienteIdentificationDocumentCode(data = {}) {
+  const current = normalizeClienteQuickText(data.identification_document_code, 8)
+  if (current) return current
+  const clase = normalizeClienteQuickText(data.clase_identificacion).toUpperCase()
+  if (clase.includes('NIT')) return '31'
+  if (clase.includes('CEDULA DE CIUDADANIA') || clase.includes('CÉDULA DE CIUDADANÍA')) return '13'
+  if (clase.includes('CEDULA DE EXTRANJERIA') || clase.includes('CÉDULA DE EXTRANJERÍA')) return '22'
+  if (clase.includes('PASAPORTE')) return '41'
+  return looksLikeEmpresaCliente(data) ? '31' : '13'
+}
+
+function inferClienteLegalOrganizationCode(data = {}) {
+  const current = normalizeClienteQuickText(data.legal_organization_code, 8)
+  if (current) return current
+  const organizationText = [
+    data.organizacion_juridica,
+    data.tipo_sociedad,
+    data.company,
+    data.nombre
+  ].map((value) => normalizeClienteQuickText(value).toUpperCase()).join(' ')
+  if (organizationText.includes('PERSONA NATURAL')) return '1'
+  if (normalizeClienteQuickText(data.identification_document_code, 8) === '31') return '2'
+  return looksLikeEmpresaCliente(data) ? '2' : '1'
+}
+
+function buildClienteQuickDraft(input = {}) {
+  const nitDigits = sanitizeDigits(input.nit_cc || input.identification)
+  const identification = sanitizeDigits(input.identification) || nitDigits
+  const draft = {
+    id: Number.isFinite(Number(input.id)) && Number(input.id) > 0 ? Number(input.id) : null,
+    nombre: normalizeClienteQuickText(input.nombre, 255),
+    nit_cc: nitDigits || normalizeClienteQuickText(input.nit_cc, 64),
+    telefono: normalizeClienteQuickText(input.telefono, 64),
+    direccion: normalizeClienteQuickText(input.direccion, 255),
+    email: normalizeClienteQuickText(input.email, 255).toLowerCase(),
+    tipo_cliente: normalizeClienteQuickText(input.tipo_cliente, 64) || 'Cliente final',
+    identification,
+    identification_document_code: inferClienteIdentificationDocumentCode({
+      ...input,
+      nit_cc: nitDigits,
+      identification
+    }),
+    dv: normalizeClienteQuickText(input.dv, 8),
+    legal_organization_code: inferClienteLegalOrganizationCode(input),
+    tribute_code: normalizeClienteQuickText(input.tribute_code, 16) || 'ZZ',
+    company: normalizeClienteQuickText(input.company, 255),
+    trade_name: normalizeClienteQuickText(input.trade_name, 255),
+    names: normalizeClienteQuickText(input.names, 255),
+    country_code: normalizeClienteQuickText(input.country_code, 8).toUpperCase() || 'CO',
+    municipality_code: sanitizeDigits(input.municipality_code) || '11001',
+    department_code: sanitizeDigits(input.department_code) || '11'
+  }
+
+  if (!draft.identification) {
+    draft.identification = draft.nit_cc
+  }
+  if (draft.identification_document_code === '31' && !draft.dv && draft.identification) {
+    draft.dv = calculateNitVerificationDigit(draft.identification)
+  }
+  if (!draft.legal_organization_code) {
+    draft.legal_organization_code = inferClienteLegalOrganizationCode(draft)
+  }
+  if (!draft.company) {
+    draft.company = draft.nombre
+  }
+  if (!draft.names) {
+    draft.names = draft.company || draft.nombre
+  }
+  if (!draft.trade_name) {
+    draft.trade_name = draft.names || draft.company || draft.nombre
+  }
+  return draft
+}
+
+function buildClienteRuesExpedienteId(codigoCamara, matricula) {
+  const codigo = sanitizeDigits(codigoCamara)
+  const matriculaDigits = sanitizeDigits(matricula)
+  if (!codigo || !matriculaDigits) return ''
+  return `${codigo}${matriculaDigits.padStart(10, '0')}`
+}
+
+async function fetchJsonWithBasicError(url, options = {}) {
+  const response = await fetch(url, options)
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status} consultando ${url}`)
+  }
+  return response.json()
+}
+
+async function lookupClientePublicoPorNit(nitDigits) {
+  const cleanNit = sanitizeDigits(nitDigits)
+  if (cleanNit.length < 5) {
+    throw new Error('El NIT o documento debe tener al menos 5 dígitos para consultarlo.')
+  }
+
+  const selectFields = [
+    'razon_social',
+    'numero_identificacion',
+    'codigo_camara',
+    'matricula',
+    'clase_identificacion',
+    'organizacion_juridica',
+    'tipo_sociedad'
+  ].join(',')
+  const summaryUrl = `https://www.datos.gov.co/resource/c82u-588k.json?$limit=1&$select=${encodeURIComponent(selectFields)}&$where=${encodeURIComponent(`numero_identificacion='${cleanNit}'`)}`
+
+  let summary = null
+  let detail = null
+  let summaryError = null
+  let detailError = null
+
+  try {
+    const data = await fetchJsonWithBasicError(summaryUrl)
+    summary = Array.isArray(data) && data.length ? data[0] : null
+  } catch (error) {
+    summaryError = error
+  }
+
+  if (summary?.codigo_camara && summary?.matricula) {
+    const expedienteId = buildClienteRuesExpedienteId(summary.codigo_camara, summary.matricula)
+    if (expedienteId) {
+      try {
+        const detailPayload = await fetchJsonWithBasicError(`https://ruesapi.rues.org.co/WEB2/api/Expediente/DetalleRM/${encodeURIComponent(expedienteId)}`)
+        detail = detailPayload?.registros || null
+      } catch (error) {
+        detailError = error
+      }
+    }
+  }
+
+  return {
+    nit: cleanNit,
+    found: !!summary,
+    summary,
+    detail,
+    summaryError,
+    detailError
+  }
+}
+
+function buildClienteDraftFromLookupResult(lookupResult = {}) {
+  const summary = lookupResult?.summary || {}
+  const detail = lookupResult?.detail || {}
+  const nombre = normalizeClienteQuickText(
+    detail.razon_social
+    || summary.razon_social
+    || ''
+  )
+  return buildClienteQuickDraft({
+    nombre,
+    nit_cc: lookupResult?.nit || summary.numero_identificacion || detail.numero_identificacion,
+    identification: lookupResult?.nit || summary.numero_identificacion || detail.numero_identificacion,
+    clase_identificacion: detail.clase_identificacion || summary.clase_identificacion,
+    organizacion_juridica: detail.organizacion_juridica || summary.organizacion_juridica,
+    tipo_sociedad: detail.tipo_sociedad || summary.tipo_sociedad,
+    dv: detail.dv || '',
+    direccion: detail.dir_fiscal || detail.dir_comercial || '',
+    telefono: detail.tel_fiscal_1 || detail.tel_com_1 || detail.tel_fiscal_2 || detail.tel_com_2 || '',
+    email: detail.email_fiscal || detail.email_com || '',
+    company: nombre,
+    trade_name: nombre,
+    names: nombre,
+    tribute_code: 'ZZ',
+    country_code: 'CO',
+    municipality_code: '11001',
+    department_code: '11'
+  })
+}
+
+async function getClienteForUi(clienteId, conn = pool) {
+  const columns = await getTableColumns('clientes', conn)
+  const columnSet = new Set(columns.map((column) => String(column || '').toLowerCase()))
+  const selectField = (field, alias = field) => {
+    if (columnSet.has(field.toLowerCase())) {
+      return field === alias ? `\`${field}\`` : `\`${field}\` AS \`${alias}\``
+    }
+    return `NULL AS \`${alias}\``
+  }
+
+  const [rows] = await conn.query(
+    `SELECT
+       \`id_cliente\` AS id,
+       ${selectField('nombre')},
+       ${selectField('nit_cc')},
+       ${selectField('telefono')},
+       ${selectField('direccion')},
+       ${selectField('tipo_cliente')},
+       ${selectField('identification')},
+       ${selectField('identification_document_code')},
+       ${selectField('legal_organization_code')},
+       ${selectField('tribute_code')},
+       ${selectField('email')},
+       ${selectField('company')},
+       ${selectField('trade_name')},
+       ${selectField('names')},
+       ${selectField('dv')},
+       ${selectField('department_code')},
+       ${selectField('municipality_code')},
+       ${selectField('country_code')}
+     FROM clientes
+     WHERE id_cliente = ?
+     LIMIT 1`,
+    [Number(clienteId)]
+  )
+
+  const cliente = rows && rows.length ? rows[0] : null
+  if (!cliente) return null
+  const facturacion = buildClienteFactusEmissionStatus(cliente)
+  return {
+    ...enrichClienteWithFacturacion(cliente),
+    factus_emision_completa: facturacion.ready,
+    factus_emision_campos_faltantes: facturacion.missing_fields,
+    factus_emision_mensaje: facturacion.message
+  }
+}
+
+async function findExistingClienteByDraft(draft, conn = pool) {
+  const columns = await getTableColumns('clientes', conn)
+  const nitColumn = pickFirstExistingColumn(columns, ['nit_cc'])
+  const identificationColumn = pickFirstExistingColumn(columns, ['identification'])
+  const conditions = []
+  const params = []
+  const normalizedNit = sanitizeDigits(draft?.nit_cc)
+  const normalizedIdentification = sanitizeDigits(draft?.identification)
+
+  const normalizedColumnSql = (columnName) => `REPLACE(REPLACE(REPLACE(COALESCE(\`${columnName}\`, ''), '.', ''), '-', ''), ' ', '')`
+
+  if (nitColumn && normalizedNit) {
+    conditions.push(`${normalizedColumnSql(nitColumn)} = ?`)
+    params.push(normalizedNit)
+  }
+  if (identificationColumn && normalizedIdentification) {
+    conditions.push(`${normalizedColumnSql(identificationColumn)} = ?`)
+    params.push(normalizedIdentification)
+  }
+
+  if (!conditions.length) return null
+
+  const [rows] = await conn.query(
+    `SELECT id_cliente AS id
+     FROM clientes
+     WHERE ${conditions.join(' OR ')}
+     ORDER BY id_cliente ASC
+     LIMIT 1`,
+    params
+  )
+  return rows && rows.length ? Number(rows[0].id) : null
+}
+
 function parseBooleanLike(value) {
   if (typeof value === 'boolean') return value
   if (typeof value === 'number') return value === 1
@@ -4845,6 +5136,159 @@ app.get('/api/clientes', async (req, res) => {
   }
 })
 
+app.get('/api/clientes/lookup-nit', async (req, res) => {
+  try {
+    const nit = sanitizeDigits(req.query.nit || req.query.q || '')
+    if (nit.length < 5) {
+      return res.status(400).json({
+        ok: false,
+        error: 'El NIT o documento debe tener al menos 5 dígitos.'
+      })
+    }
+
+    const lookup = await lookupClientePublicoPorNit(nit)
+    const cliente = buildClienteDraftFromLookupResult(lookup)
+    const facturacion = buildClienteFactusEmissionStatus(cliente)
+
+    if (!lookup.found) {
+      return res.json({
+        ok: true,
+        found: false,
+        cliente,
+        facturacion,
+        message: lookup.summaryError
+          ? 'No fue posible consultar automaticamente el NIT en este momento.'
+          : 'No se encontraron resultados publicos para ese NIT.'
+      })
+    }
+
+    return res.json({
+      ok: true,
+      found: true,
+      cliente,
+      facturacion,
+      message: lookup.detailError
+        ? 'Se autocompletaron los datos disponibles. Revisa manualmente tributo, municipio y departamento.'
+        : 'Datos fiscales autocompletados correctamente.',
+      source: {
+        resumen: !!lookup.summary,
+        detalle: !!lookup.detail
+      }
+    })
+  } catch (err) {
+    res.status(500).json({
+      ok: false,
+      error: err.message || 'No fue posible consultar automáticamente el NIT en este momento.'
+    })
+  }
+})
+
+app.post('/api/clientes/facturacion-preview', async (req, res) => {
+  try {
+    const cliente = buildClienteQuickDraft(req.body || {})
+    const facturacion = buildClienteFactusEmissionStatus(cliente)
+    return res.json({
+      ok: true,
+      cliente,
+      facturacion
+    })
+  } catch (err) {
+    res.status(500).json({
+      ok: false,
+      error: err.message || 'No se pudo validar el formulario del cliente.'
+    })
+  }
+})
+
+app.post('/api/clientes/quick-create', async (req, res) => {
+  try {
+    const draft = buildClienteQuickDraft(req.body || {})
+    if (!draft.nombre) {
+      return res.status(400).json({
+        ok: false,
+        error: 'El nombre del cliente es obligatorio.'
+      })
+    }
+    if (!draft.nit_cc && !draft.identification) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Debes ingresar al menos NIT/CC o identificación fiscal.'
+      })
+    }
+
+    const conn = await pool.getConnection()
+    try {
+      const existingId = await findExistingClienteByDraft(draft, conn)
+      if (existingId) {
+        const clienteExistente = await getClienteForUi(existingId, conn)
+        return res.json({
+          ok: true,
+          created: false,
+          existing: true,
+          cliente: clienteExistente,
+          facturacion: buildClienteFactusEmissionStatus(clienteExistente),
+          message: 'El cliente ya existía y fue reutilizado.'
+        })
+      }
+
+      const columns = await getTableColumns('clientes', conn)
+      const columnSet = new Set(columns.map((column) => String(column || '').toLowerCase()))
+      const payloadByColumn = {
+        nombre: draft.nombre,
+        nit_cc: draft.nit_cc,
+        telefono: draft.telefono || null,
+        direccion: draft.direccion || null,
+        email: draft.email || null,
+        tipo_cliente: draft.tipo_cliente || 'Cliente final',
+        identification: draft.identification || null,
+        identification_document_code: draft.identification_document_code || null,
+        legal_organization_code: draft.legal_organization_code || null,
+        tribute_code: draft.tribute_code || null,
+        company: draft.company || null,
+        trade_name: draft.trade_name || null,
+        names: draft.names || null,
+        dv: draft.dv || null,
+        municipality_code: draft.municipality_code || null,
+        department_code: draft.department_code || null,
+        country_code: draft.country_code || null
+      }
+
+      const insertColumns = Object.keys(payloadByColumn).filter((column) => columnSet.has(column.toLowerCase()))
+      if (!insertColumns.length) {
+        return res.status(500).json({
+          ok: false,
+          error: 'La tabla clientes no tiene columnas disponibles para guardar el cliente rápido.'
+        })
+      }
+
+      const insertValues = insertColumns.map((column) => payloadByColumn[column])
+      const placeholders = insertColumns.map(() => '?').join(', ')
+      const [result] = await conn.query(
+        `INSERT INTO clientes (${insertColumns.map((column) => `\`${column}\``).join(', ')})
+         VALUES (${placeholders})`,
+        insertValues
+      )
+
+      const clienteCreado = await getClienteForUi(result.insertId, conn)
+      return res.status(201).json({
+        ok: true,
+        created: true,
+        existing: false,
+        cliente: clienteCreado,
+        facturacion: buildClienteFactusEmissionStatus(clienteCreado),
+        message: 'Cliente creado correctamente.'
+      })
+    } finally {
+      conn.release()
+    }
+  } catch (err) {
+    res.status(500).json({
+      ok: false,
+      error: err.message || 'No se pudo crear el cliente.'
+    })
+  }
+})
+
 app.get('/api/clientes/:id/facturacion-status', async (req, res) => {
   try {
     const id = Number(req.params.id)
@@ -4857,29 +5301,7 @@ app.get('/api/clientes/:id/facturacion-status', async (req, res) => {
       })
     }
 
-    const [rows] = await pool.query(
-      `SELECT
-         id_cliente AS id,
-         nombre,
-         nit_cc,
-         telefono,
-         direccion,
-         tipo_cliente,
-         identification,
-         identification_document_code,
-         legal_organization_code,
-         tribute_code,
-         email,
-         company,
-         trade_name,
-         names
-       FROM clientes
-       WHERE id_cliente = ?
-       LIMIT 1`,
-      [id]
-    )
-
-    const cliente = rows && rows.length ? rows[0] : null
+    const cliente = await getClienteForFactus(id)
     if (!cliente) {
       return res.status(404).json({
         ready: false,
@@ -4889,7 +5311,7 @@ app.get('/api/clientes/:id/facturacion-status', async (req, res) => {
       })
     }
 
-    return res.json(buildClienteFacturacionStatus(cliente))
+    return res.json(buildClienteFactusEmissionStatus(cliente))
   } catch (err) {
     res.status(500).json({
       ready: false,

@@ -851,6 +851,135 @@
         font-weight: bold;
         margin: 0 5px;
     }
+    .cliente-input-row {
+      display: flex;
+      align-items: stretch;
+      gap: 6px;
+      width: 100%;
+    }
+    .cliente-add-btn {
+      width: 34px;
+      min-width: 34px;
+      border: 1px solid #2563eb;
+      border-radius: 6px;
+      background: #2563eb;
+      color: #fff;
+      font-size: 20px;
+      line-height: 1;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 0;
+    }
+    .cliente-add-btn:hover {
+      background: #1d4ed8;
+    }
+    .cliente-rapido-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px 14px;
+    }
+    .cliente-rapido-grid-base {
+      margin-bottom: 16px;
+    }
+    .cliente-rapido-span-2 {
+      grid-column: 1 / -1;
+    }
+    .cliente-rapido-select {
+      width: 100%;
+      padding: 8px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #fff;
+    }
+    .cliente-rapido-factus-box {
+      border-top: 1px solid #ddd;
+      margin-top: 16px;
+      padding-top: 14px;
+    }
+    .cliente-rapido-factus-box h4 {
+      margin: 0 0 12px 0;
+      color: #0f172a;
+    }
+    .cliente-rapido-actions-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+    .cliente-rapido-ayuda,
+    .cliente-rapido-footnote {
+      font-size: 12px;
+      color: #475569;
+    }
+    .cliente-rapido-footnote {
+      margin-top: 10px;
+    }
+    .cliente-rapido-estado {
+      margin-bottom: 14px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+    }
+    .cliente-rapido-estado[data-tone="error"] {
+      background: #fef2f2;
+      color: #b91c1c;
+      border-color: #fecaca;
+    }
+    .cliente-rapido-estado[data-tone="success"] {
+      background: #ecfdf5;
+      color: #047857;
+      border-color: #a7f3d0;
+    }
+    .cliente-rapido-indicador-wrap {
+      margin-top: 14px;
+      padding: 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: #fafafa;
+    }
+    .cliente-rapido-indicador-title {
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #111827;
+    }
+    .cliente-rapido-factus-indicador {
+      font-weight: 700;
+      padding: 10px 12px;
+      border-radius: 6px;
+      background: #e5e7eb;
+      color: #334155;
+    }
+    .cliente-rapido-factus-indicador[data-state="ready"] {
+      background: #dcfce7;
+      color: #166534;
+    }
+    .cliente-rapido-factus-indicador[data-state="error"] {
+      background: #fef3c7;
+      color: #b45309;
+    }
+    .cliente-rapido-factus-indicador[data-state="loading"] {
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+    .cliente-rapido-factus-detalle {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #475569;
+      white-space: pre-wrap;
+    }
+    @media (max-width: 768px) {
+      .cliente-rapido-grid {
+        grid-template-columns: 1fr;
+      }
+      .cliente-rapido-span-2 {
+        grid-column: auto;
+      }
+    }
   </style>
   <link rel="stylesheet" href="./css/remision.css?v=20251209">
 
@@ -893,8 +1022,6 @@
   <!-- Librerías para PDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <!-- Librería para Código de Barras -->
-  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
   <div id="pdf-template" style="display:none; width: 21cm; background: white; padding: 1cm; box-sizing: border-box; font-family: Arial, sans-serif; position: absolute; top: 0; left: 0; z-index: -1000; color: black;">
     <!-- Header -->
     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
@@ -1046,9 +1173,6 @@
         <div class="titulo"></div>
         <img src="./img/LOGO4.webp" alt="Logo ALUMAS" style="max-width: 300px; display: block; margin: 0 auto;">
         <div id="mensaje-motivacional" class="mensaje-motivacional"></div>
-        <div id="barcode-container" style="text-align: center; margin-top: 10px; display: none;">
-          <svg id="barcode"></svg>
-        </div>
       </div>
     </div>
 
@@ -1063,7 +1187,10 @@
         <p>
           <strong>CLIENTE:</strong>
           <span class="cliente-container">
-            <input type="text" id="nombre-cliente" class="cliente-input" placeholder="Buscar cliente por nombre o NIT..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="cliente_busqueda_remision">
+            <span class="cliente-input-row">
+              <input type="text" id="nombre-cliente" class="cliente-input" placeholder="Buscar cliente por nombre o NIT..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="cliente_busqueda_remision">
+              <button type="button" id="btn-crear-cliente-rapido" class="cliente-add-btn" title="Crear cliente rápido" aria-label="Crear cliente rápido">+</button>
+            </span>
             <input type="hidden" id="selected-client-id" value="">
             <div id="autocomplete-dropdown" class="autocomplete-dropdown"></div>
           </span>
@@ -1968,9 +2095,6 @@
     function limpiarTabla() {
       if (document.body.classList.contains('bloqueado')) return;
       
-      // Ocultar código de barras si existe
-      const barcodeContainer = document.getElementById('barcode-container');
-      if (barcodeContainer) barcodeContainer.style.display = 'none';
       const tempId = document.getElementById('temp-cot-id');
       if (tempId) tempId.remove();
 
@@ -2966,23 +3090,6 @@ try {
           return;
       }
       const idCotizacion = generarIdCotizacion();
-      
-      // Generar código de barras
-      if (window.JsBarcode) {
-          const barcodeContainer = document.getElementById('barcode-container');
-          const svgNode = document.getElementById('barcode');
-          if (barcodeContainer && svgNode) {
-              barcodeContainer.style.display = 'block';
-              JsBarcode(svgNode, idCotizacion, {
-                  format: "CODE128",
-                  displayValue: true,
-                  fontSize: 16,
-                  height: 30,
-                  width: 2,
-                  margin: 5
-              });
-          }
-      }
       guardarDatosCotizacion(idCotizacion);
       aplicarCotizacionUI();
       
@@ -3532,6 +3639,7 @@ try {
     document.addEventListener('DOMContentLoaded', () => {
       try { cargarReporte(); } catch (e) {}
       inicializarAutocompletadoCliente();
+      inicializarModalClienteRapido();
       inicializarFacturacionElectronica();
       ['pago-efectivo','pago-tarjeta','pago-qr'].forEach(id => {
         const el = document.getElementById(id);
@@ -3985,6 +4093,7 @@ try {
     let facturacionProductosRequestId = 0
     let facturacionProductosSyncTimer = null
     let selectedClientId = null
+    let clienteRapidoLookupToken = 0
     let facturacionElectronicaEstadoActual = {
       clienteId: null,
       ready: null,
@@ -4030,6 +4139,273 @@ try {
         return hiddenValue
       }
       return null
+    }
+    function getClienteRapidoElements() {
+      return {
+        modal: document.getElementById('modal-cliente-rapido'),
+        estado: document.getElementById('cliente-rapido-estado'),
+        indicador: document.getElementById('cliente-rapido-factus-indicador'),
+        detalle: document.getElementById('cliente-rapido-factus-detalle'),
+        fields: {
+          id: document.getElementById('cliente-rapido-id'),
+          nombre: document.getElementById('cliente-rapido-nombre'),
+          nit_cc: document.getElementById('cliente-rapido-nit'),
+          telefono: document.getElementById('cliente-rapido-telefono'),
+          direccion: document.getElementById('cliente-rapido-direccion'),
+          email: document.getElementById('cliente-rapido-email'),
+          tipo_cliente: document.getElementById('cliente-rapido-tipo-cliente'),
+          identification: document.getElementById('cliente-rapido-identification'),
+          identification_document_code: document.getElementById('cliente-rapido-doc-code'),
+          dv: document.getElementById('cliente-rapido-dv'),
+          legal_organization_code: document.getElementById('cliente-rapido-legal-org'),
+          tribute_code: document.getElementById('cliente-rapido-tribute'),
+          municipality_code: document.getElementById('cliente-rapido-municipality'),
+          department_code: document.getElementById('cliente-rapido-department'),
+          country_code: document.getElementById('cliente-rapido-country'),
+          company: document.getElementById('cliente-rapido-company'),
+          trade_name: document.getElementById('cliente-rapido-trade-name'),
+          names: document.getElementById('cliente-rapido-names')
+        }
+      }
+    }
+    function setClienteRapidoStatus(message, tone = '') {
+      const { estado } = getClienteRapidoElements()
+      if (!estado) return
+      if (!message) {
+        estado.style.display = 'none'
+        estado.textContent = ''
+        estado.dataset.tone = ''
+        return
+      }
+      estado.style.display = 'block'
+      estado.textContent = message
+      estado.dataset.tone = tone || ''
+    }
+    function getClienteRapidoFormData() {
+      const { fields } = getClienteRapidoElements()
+      const data = {}
+      Object.entries(fields).forEach(([key, element]) => {
+        data[key] = element ? element.value : ''
+      })
+      return data
+    }
+    function setClienteRapidoFormData(data = {}, options = {}) {
+      const { preserveManual = true } = options
+      const { fields } = getClienteRapidoElements()
+      Object.entries(fields).forEach(([key, element]) => {
+        if (!element || key === 'id') return
+        const incoming = data[key]
+        if (incoming === undefined || incoming === null) return
+        const normalizedIncoming = String(incoming)
+        const currentValue = String(element.value || '').trim()
+        const wasEditedManually = String(element.dataset.userEdited || '') === 'true'
+        if (preserveManual && wasEditedManually && currentValue && currentValue !== 'Automático') {
+          return
+        }
+        element.value = normalizedIncoming
+      })
+    }
+    function renderClienteRapidoFactusStatus(payload = {}) {
+      const { indicador, detalle } = getClienteRapidoElements()
+      if (!indicador || !detalle) return
+      const facturacion = payload?.facturacion || payload || {}
+      const ready = !!facturacion.ready
+      const missing = Array.isArray(facturacion.missing_labels) ? facturacion.missing_labels : []
+      indicador.dataset.state = facturacion.ready === undefined || facturacion.ready === null
+        ? (payload.loading ? 'loading' : 'idle')
+        : (ready ? 'ready' : 'error')
+      if (payload.loading) {
+        indicador.textContent = payload.message || 'Consultando información pública del NIT...'
+        detalle.textContent = ''
+        return
+      }
+      indicador.textContent = ready
+        ? 'Cliente apto para factura electrónica.'
+        : 'Cliente no apto para factura electrónica.'
+      detalle.textContent = ready
+        ? String(facturacion.message || 'Cliente apto para emisión en Factus.')
+        : `Faltan estos datos: ${missing.join(', ') || 'Revisión manual requerida.'}`
+    }
+    async function refrescarClienteRapidoFactusPreview() {
+      const payload = getClienteRapidoFormData()
+      try {
+        const resp = await fetch(getApiBase() + '/api/clientes/facturacion-preview', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+        const data = await resp.json().catch(() => ({}))
+        if (!resp.ok) {
+          throw new Error(data?.error || 'No se pudo validar el cliente.')
+        }
+        renderClienteRapidoFactusStatus(data.facturacion || {})
+      } catch (error) {
+        renderClienteRapidoFactusStatus({
+          ready: false,
+          missing_labels: [],
+          message: error?.message || 'No se pudo validar el cliente.'
+        })
+      }
+    }
+    function resetModalClienteRapido() {
+      const { fields } = getClienteRapidoElements()
+      Object.entries(fields).forEach(([key, element]) => {
+        if (!element) return
+        element.dataset.userEdited = 'false'
+        if (key === 'id') {
+          element.value = 'Automático'
+          return
+        }
+        if (key === 'tipo_cliente') {
+          element.value = 'Cliente final'
+          return
+        }
+        if (key === 'tribute_code') {
+          element.value = 'ZZ'
+          return
+        }
+        if (key === 'municipality_code') {
+          element.value = '11001'
+          return
+        }
+        if (key === 'department_code') {
+          element.value = '11'
+          return
+        }
+        if (key === 'country_code') {
+          element.value = 'CO'
+          return
+        }
+        element.value = ''
+      })
+      setClienteRapidoStatus('', '')
+      renderClienteRapidoFactusStatus({ ready: null, message: '' })
+    }
+    function abrirModalClienteRapido() {
+      resetModalClienteRapido()
+      const inputCliente = document.getElementById('nombre-cliente')
+      const baseValue = String(inputCliente?.value || '').trim()
+      const cleaned = baseValue.replace(/^\d+\s*-\s*[^-]*-\s*/, '').trim()
+      const nitDetectado = (baseValue.match(/\d{5,}/) || [])[0] || ''
+      const { fields, modal } = getClienteRapidoElements()
+      if (fields.nombre && cleaned) fields.nombre.value = cleaned
+      if (fields.nit_cc && nitDetectado) fields.nit_cc.value = nitDetectado
+      if (modal) modal.style.display = 'flex'
+      refrescarClienteRapidoFactusPreview()
+    }
+    function cerrarModalClienteRapido() {
+      const { modal } = getClienteRapidoElements()
+      if (modal) modal.style.display = 'none'
+    }
+    function inicializarModalClienteRapido() {
+      const plusBtn = document.getElementById('btn-crear-cliente-rapido')
+      const lookupBtn = document.getElementById('btn-cliente-rapido-consultar')
+      const saveBtn = document.getElementById('btn-cliente-rapido-guardar')
+      const { modal, fields } = getClienteRapidoElements()
+
+      if (plusBtn) {
+        plusBtn.addEventListener('click', abrirModalClienteRapido)
+      }
+      if (lookupBtn) {
+        lookupBtn.addEventListener('click', consultarClienteRapidoPorNit)
+      }
+      if (saveBtn) {
+        saveBtn.addEventListener('click', guardarClienteRapido)
+      }
+
+      Object.values(fields).forEach((element) => {
+        if (!element || element.disabled) return
+        element.addEventListener('input', () => {
+          element.dataset.userEdited = 'true'
+          if (element.id === 'cliente-rapido-nit') {
+            element.value = element.value.replace(/[^\d.-]/g, '')
+          }
+          if (element.id === 'cliente-rapido-dv' || element.id === 'cliente-rapido-municipality' || element.id === 'cliente-rapido-department') {
+            element.value = element.value.replace(/\D/g, '')
+          }
+          if (element.id === 'cliente-rapido-country') {
+            element.value = element.value.toUpperCase()
+          }
+          refrescarClienteRapidoFactusPreview()
+        })
+        element.addEventListener('change', () => {
+          element.dataset.userEdited = 'true'
+          refrescarClienteRapidoFactusPreview()
+        })
+      })
+
+      if (modal) {
+        modal.addEventListener('click', (event) => {
+          if (event.target === modal) {
+            cerrarModalClienteRapido()
+          }
+        })
+      }
+    }
+    async function consultarClienteRapidoPorNit() {
+      const { fields } = getClienteRapidoElements()
+      const nit = String(fields.nit_cc?.value || '').replace(/\D/g, '')
+      if (nit.length < 5) {
+        setClienteRapidoStatus('Ingresa un NIT o documento válido para consultar.', 'error')
+        return
+      }
+      const requestToken = ++clienteRapidoLookupToken
+      setClienteRapidoStatus('Consultando información pública del NIT...', '')
+      renderClienteRapidoFactusStatus({ loading: true, message: 'Consultando información pública del NIT...' })
+      try {
+        const resp = await fetch(getApiBase() + '/api/clientes/lookup-nit?nit=' + encodeURIComponent(nit))
+        const data = await resp.json().catch(() => ({}))
+        if (requestToken !== clienteRapidoLookupToken) return
+        if (!resp.ok || data?.ok === false) {
+          throw new Error(data?.error || 'No fue posible consultar automáticamente el NIT en este momento.')
+        }
+        if (data?.cliente) {
+          setClienteRapidoFormData(data.cliente, { preserveManual: true })
+        }
+        setClienteRapidoStatus(data?.message || (data?.found ? 'Datos fiscales autocompletados correctamente.' : 'No se encontraron resultados para ese NIT.'), data?.found ? 'success' : 'error')
+        renderClienteRapidoFactusStatus(data?.facturacion || {})
+      } catch (error) {
+        setClienteRapidoStatus(error?.message || 'No fue posible consultar automáticamente el NIT en este momento.', 'error')
+        renderClienteRapidoFactusStatus({
+          ready: false,
+          missing_labels: [],
+          message: error?.message || 'No fue posible consultar automáticamente el NIT en este momento.'
+        })
+      }
+    }
+    async function guardarClienteRapido() {
+      const payload = getClienteRapidoFormData()
+      if (!String(payload.nombre || '').trim()) {
+        setClienteRapidoStatus('El nombre del cliente es obligatorio.', 'error')
+        return
+      }
+      if (!String(payload.nit_cc || payload.identification || '').trim()) {
+        setClienteRapidoStatus('Debes ingresar NIT/CC o identificación fiscal.', 'error')
+        return
+      }
+      setClienteRapidoStatus('Guardando cliente...', '')
+      try {
+        const resp = await fetch(getApiBase() + '/api/clientes/quick-create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+        const data = await resp.json().catch(() => ({}))
+        if (!resp.ok || data?.ok === false) {
+          throw new Error(data?.error || 'No se pudo crear el cliente.')
+        }
+        const cliente = data?.cliente || null
+        if (cliente) {
+          seleccionarClienteAutocomplete(cliente)
+        }
+        setClienteRapidoStatus(data?.message || 'Cliente guardado correctamente.', 'success')
+        renderClienteRapidoFactusStatus(data?.facturacion || {})
+        setTimeout(() => {
+          cerrarModalClienteRapido()
+        }, 500)
+      } catch (error) {
+        setClienteRapidoStatus(error?.message || 'No se pudo crear el cliente.', 'error')
+      }
     }
     function obtenerElementosFacturacionElectronica() {
       return {
@@ -5437,6 +5813,128 @@ document.addEventListener('DOMContentLoaded', () => {
       <div style="text-align: center; margin-top: 20px;">
           <button class="btn-guardar-prog" onclick="guardarProgramacion()">Guardar</button>
           <button class="btn-cancelar-prog" onclick="cerrarModalProgramacion()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-cliente-rapido" class="modal-programacion">
+    <div class="modal-content modal-cliente-rapido-content" style="width: 760px; max-width: 96vw; max-height: 92vh; overflow-y: auto; text-align: left;">
+      <h3>Crear cliente rápido</h3>
+      <div id="cliente-rapido-estado" class="cliente-rapido-estado" style="display: none;"></div>
+
+      <div class="cliente-rapido-grid cliente-rapido-grid-base">
+        <div class="form-group">
+          <label for="cliente-rapido-id">ID:</label>
+          <input type="text" id="cliente-rapido-id" value="Automático" disabled>
+        </div>
+        <div class="form-group">
+          <label for="cliente-rapido-tipo-cliente">Tipo de cliente:</label>
+          <select id="cliente-rapido-tipo-cliente" class="cliente-rapido-select">
+            <option value="Cliente final" selected>Cliente final</option>
+            <option value="Mayorista">Mayorista</option>
+          </select>
+        </div>
+        <div class="form-group cliente-rapido-span-2">
+          <label for="cliente-rapido-nombre">Nombre*:</label>
+          <input type="text" id="cliente-rapido-nombre" placeholder="Nombre o razón social">
+        </div>
+        <div class="form-group">
+          <label for="cliente-rapido-nit">NIT/CC*:</label>
+          <input type="text" id="cliente-rapido-nit" placeholder="Documento o NIT">
+        </div>
+        <div class="form-group">
+          <label for="cliente-rapido-telefono">Teléfono:</label>
+          <input type="text" id="cliente-rapido-telefono" placeholder="Teléfono">
+        </div>
+        <div class="form-group cliente-rapido-span-2">
+          <label for="cliente-rapido-direccion">Dirección:</label>
+          <input type="text" id="cliente-rapido-direccion" placeholder="Dirección fiscal o comercial">
+        </div>
+        <div class="form-group cliente-rapido-span-2">
+          <label for="cliente-rapido-email">Email:</label>
+          <input type="email" id="cliente-rapido-email" placeholder="correo@dominio.com">
+        </div>
+      </div>
+
+      <div class="cliente-rapido-factus-box">
+        <h4>Datos fiscales para facturación electrónica</h4>
+        <div class="cliente-rapido-grid">
+          <div class="form-group">
+            <label for="cliente-rapido-doc-code">Tipo identificación:</label>
+            <select id="cliente-rapido-doc-code" class="cliente-rapido-select">
+              <option value="">Sin definir</option>
+              <option value="31">NIT</option>
+              <option value="13">Cédula de ciudadanía</option>
+              <option value="22">Cédula de extranjería</option>
+              <option value="41">Pasaporte</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="cliente-rapido-identification">Identificación fiscal:</label>
+            <input type="text" id="cliente-rapido-identification" placeholder="Si se deja vacío, se usa el NIT/CC">
+          </div>
+          <div class="form-group">
+            <label for="cliente-rapido-dv">DV:</label>
+            <input type="text" id="cliente-rapido-dv" placeholder="Opcional para NIT">
+          </div>
+          <div class="form-group">
+            <label for="cliente-rapido-legal-org">Tipo organización:</label>
+            <select id="cliente-rapido-legal-org" class="cliente-rapido-select">
+              <option value="">Sin definir</option>
+              <option value="1">Persona natural</option>
+              <option value="2">Persona jurídica</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="cliente-rapido-tribute">Tributo:</label>
+            <select id="cliente-rapido-tribute" class="cliente-rapido-select">
+              <option value="ZZ" selected>ZZ - No aplica</option>
+              <option value="01">01 - IVA</option>
+              <option value="04">04 - INC</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="cliente-rapido-municipality">Municipio código:</label>
+            <input type="text" id="cliente-rapido-municipality" value="11001">
+          </div>
+          <div class="form-group">
+            <label for="cliente-rapido-department">Departamento código:</label>
+            <input type="text" id="cliente-rapido-department" value="11">
+          </div>
+          <div class="form-group">
+            <label for="cliente-rapido-country">País:</label>
+            <input type="text" id="cliente-rapido-country" value="CO">
+          </div>
+          <div class="form-group">
+            <label for="cliente-rapido-company">Razón social:</label>
+            <input type="text" id="cliente-rapido-company" placeholder="Razón social">
+          </div>
+          <div class="form-group">
+            <label for="cliente-rapido-trade-name">Nombre comercial:</label>
+            <input type="text" id="cliente-rapido-trade-name" placeholder="Nombre comercial">
+          </div>
+          <div class="form-group cliente-rapido-span-2">
+            <label for="cliente-rapido-names">Nombre para facturar:</label>
+            <input type="text" id="cliente-rapido-names" placeholder="Nombres o nombre principal">
+          </div>
+        </div>
+        <div class="cliente-rapido-actions-row">
+          <button type="button" class="btn-guardar-prog" id="btn-cliente-rapido-consultar">Consultar por NIT</button>
+          <span class="cliente-rapido-ayuda">Ingresa el NIT y usa este botón para autocompletar los datos fiscales disponibles.</span>
+        </div>
+        <div class="cliente-rapido-footnote">Estos campos no son obligatorios para crear un cliente normal, pero sí se usan para validar la facturación electrónica.</div>
+        <div class="cliente-rapido-indicador-wrap">
+          <div class="cliente-rapido-indicador-title">Estado para factura electrónica</div>
+          <div id="cliente-rapido-factus-indicador" class="cliente-rapido-factus-indicador" data-state="idle">
+            Completa los datos para validar este cliente.
+          </div>
+          <div id="cliente-rapido-factus-detalle" class="cliente-rapido-factus-detalle"></div>
+        </div>
+      </div>
+
+      <div style="text-align: center; margin-top: 20px;">
+        <button class="btn-guardar-prog" type="button" id="btn-cliente-rapido-guardar">Guardar cliente</button>
+        <button class="btn-cancelar-prog" type="button" onclick="cerrarModalClienteRapido()">Cancelar</button>
       </div>
     </div>
   </div>
