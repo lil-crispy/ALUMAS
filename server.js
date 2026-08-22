@@ -767,8 +767,33 @@ function normalizeVentaTime(value) {
   return match ? match[1] : null
 }
 
+function getSafeFactusCreatedTime() {
+  const formatter = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'America/Bogota',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  })
+
+  const parts = formatter.formatToParts(new Date())
+  const hour = Number(parts.find((part) => part.type === 'hour')?.value || 0)
+  const minute = Number(parts.find((part) => part.type === 'minute')?.value || 0)
+  const second = Number(parts.find((part) => part.type === 'second')?.value || 0)
+  const totalSeconds = Math.max(0, ((hour * 3600) + (minute * 60) + second) - 10)
+  const safeHour = String(Math.floor(totalSeconds / 3600)).padStart(2, '0')
+  const safeMinute = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0')
+  const safeSecond = String(totalSeconds % 60).padStart(2, '0')
+  return `${safeHour}:${safeMinute}:${safeSecond}`
+}
+
 function formatFactusDecimal(value, decimals = 2) {
   return normalizeVentaNumeric(value, 0).toFixed(decimals)
+}
+
+function roundFactusPrecision(value, decimals = 6) {
+  const numericValue = normalizeVentaNumeric(value, 0)
+  return Number(numericValue.toFixed(decimals))
 }
 
 function roundFactusMoney(value) {
@@ -776,21 +801,96 @@ function roundFactusMoney(value) {
   return Number(numericValue.toFixed(2))
 }
 
+function calculateFactusLineFinancials(item) {
+  const quantity = roundFactusPrecision(item?.quantity, 6)
+  const price = roundFactusPrecision(item?.price, 6)
+  const discountRate = roundFactusPrecision(item?.discount_rate, 6)
+  const lineBase = roundFactusPrecision(quantity * price, 6)
+  const discountValue = roundFactusPrecision(lineBase * (discountRate / 100), 6)
+  const taxableBase = roundFactusPrecision(lineBase - discountValue, 6)
+  const taxes = Array.isArray(item?.taxes) ? item.taxes : []
+  const lineTaxes = taxes.reduce((taxAcc, tax) => {
+    const rate = roundFactusPrecision(tax?.rate, 6)
+    return roundFactusPrecision(taxAcc + roundFactusPrecision(taxableBase * (rate / 100), 6), 6)
+  }, 0)
+  const total = roundFactusPrecision(taxableBase + lineTaxes, 6)
+
+  return {
+    quantity,
+    price,
+    discountRate,
+    lineBase,
+    discountValue,
+    taxableBase,
+    lineTaxes,
+    total
+  }
+}
+
 function calculateFactusItemsTotal(items) {
   return (Array.isArray(items) ? items : []).reduce((acc, item) => {
-    const quantity = roundFactusMoney(item?.quantity)
-    const price = roundFactusMoney(item?.price)
-    const discountRate = roundFactusMoney(item?.discount_rate)
-    const lineBase = roundFactusMoney(quantity * price)
-    const discountValue = roundFactusMoney(lineBase * (discountRate / 100))
-    const taxableBase = roundFactusMoney(lineBase - discountValue)
-    const taxes = Array.isArray(item?.taxes) ? item.taxes : []
-    const lineTaxes = taxes.reduce((taxAcc, tax) => {
-      const rate = roundFactusMoney(tax?.rate)
-      return roundFactusMoney(taxAcc + roundFactusMoney(taxableBase * (rate / 100)))
-    }, 0)
-    return roundFactusMoney(acc + taxableBase + lineTaxes)
+    const financials = calculateFactusLineFinancials(item)
+    return roundFactusMoney(acc + financials.total)
   }, 0)
+}
+
+function summarizeFactusPayload(payload) {
+  const items = Array.isArray(payload?.items) ? payload.items : []
+  const summary = items.reduce((acc, item) => {
+    const financials = calculateFactusLineFinancials(item)
+    acc.subtotal = roundFactusMoney(acc.subtotal + financials.taxableBase)
+    acc.total_tax = roundFactusMoney(acc.total_tax + financials.lineTaxes)
+    acc.total = roundFactusMoney(acc.total + financials.total)
+    return acc
+  }, {
+    subtotal: 0,
+    total_tax: 0,
+    total: 0
+  })
+
+  return {
+    subtotal: roundFactusMoney(summary.subtotal),
+    total_discount: 0,
+    total_tax: roundFactusMoney(summary.total_tax),
+    total: roundFactusMoney(summary.total)
+  }
+}
+
+function buildCanonicalVentaDetalleItems(items, factusPayload) {
+  const rawItems = Array.isArray(items) ? items : []
+  const payloadItems = Array.isArray(factusPayload?.items) ? factusPayload.items : []
+
+  if (!rawItems.length || rawItems.length !== payloadItems.length) {
+    return rawItems
+  }
+
+  const canonicalItems = payloadItems.map((payloadItem, index) => {
+    const rawItem = rawItems[index] || {}
+    const financials = calculateFactusLineFinancials(payloadItem)
+    return {
+      ...rawItem,
+      discount_rate: roundFactusMoney(payloadItem?.discount_rate ?? rawItem?.discount_rate ?? 0),
+      subtotal: roundFactusMoney(financials.taxableBase),
+      valor_total: roundFactusMoney(financials.total)
+    }
+  })
+
+  const payloadSummary = summarizeFactusPayload({ items: payloadItems })
+  const persistedSubtotal = canonicalItems.reduce((acc, item) => roundFactusMoney(acc + normalizeVentaNumeric(item?.subtotal, 0)), 0)
+  const persistedTotal = canonicalItems.reduce((acc, item) => roundFactusMoney(acc + normalizeVentaNumeric(item?.valor_total, 0)), 0)
+  const subtotalDelta = roundFactusMoney(payloadSummary.subtotal - persistedSubtotal)
+  const totalDelta = roundFactusMoney(payloadSummary.total - persistedTotal)
+
+  if (canonicalItems.length > 0 && (subtotalDelta !== 0 || totalDelta !== 0)) {
+    const lastIndex = canonicalItems.length - 1
+    canonicalItems[lastIndex] = {
+      ...canonicalItems[lastIndex],
+      subtotal: roundFactusMoney(normalizeVentaNumeric(canonicalItems[lastIndex]?.subtotal, 0) + subtotalDelta),
+      valor_total: roundFactusMoney(normalizeVentaNumeric(canonicalItems[lastIndex]?.valor_total, 0) + totalDelta)
+    }
+  }
+
+  return canonicalItems
 }
 
 function removeEmptyObjectFields(input) {
@@ -811,6 +911,8 @@ const MERCADOLIBRE_OAUTH_STATE_MAX_AGE_MS = 10 * 60 * 1000
 const MERCADOLIBRE_HTTP_TIMEOUT_MS = 15000
 const MERCADOLIBRE_REQUIRED_SCOPES = ['offline_access', 'read', 'write']
 const MERCADOLIBRE_AUTH_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000
+const FACTUS_FALLBACK_PRODUCT_ID = 1417
+const FACTUS_FALLBACK_PRODUCT_NAME = 'Producto electronico no registrado'
 const MERCADOLIBRE_AUTH_RATE_LIMIT_MAX_ATTEMPTS = 5
 const MERCADOLIBRE_TOKEN_REFRESH_BUFFER_MS = 5 * 60 * 1000
 const MERCADOLIBRE_DEFAULT_REMOTE_PAGE_SIZE = 50
@@ -4031,48 +4133,121 @@ function buildFriendlyFactusValidationMessage(payload) {
   return `${lines.join('\n')}\n\nDetalle Factus:\n${details.join('\n')}`
 }
 
-function buildFactusItemsPayload(items) {
+function itemRequiresFactusProductReplacement(item) {
+  const productoId = Number(item?.producto_id ?? item?.id_producto ?? 0)
+  if (parseBooleanLike(item?.factus_requires_product_replacement)) {
+    return true
+  }
+  if (!Number.isFinite(productoId) || productoId <= 0) {
+    return true
+  }
+
+  const factusIsExcluded = parseBooleanLike(item?.factus_is_excluded)
+  const hasFactusExcludedConfig = Object.prototype.hasOwnProperty.call(item || {}, 'factus_is_excluded')
+  if (!String(item?.factus_code_reference || '').trim()) return true
+  if (!String(item?.descripcion || '').trim()) return true
+  if (!String(item?.factus_unit_measure_code || '').trim()) return true
+  if (!String(item?.factus_standard_code || '').trim()) return true
+  if (!hasFactusExcludedConfig) return true
+  if (!factusIsExcluded) {
+    if (!String(item?.factus_tax_code || '').trim()) return true
+    if (normalizeVentaNumeric(item?.factus_tax_rate, -1) < 0) return true
+  }
+
+  return false
+}
+
+async function getFactusFallbackProducto(conn = pool) {
+  const productColumns = await getTableColumns('productos')
+  const productoSelectFields = buildProductoSelectFields(productColumns)
+  const [rows] = await conn.query(
+    `SELECT ${productoSelectFields}
+     FROM productos
+     WHERE id_producto = ?
+     LIMIT 1`,
+    [FACTUS_FALLBACK_PRODUCT_ID]
+  )
+
+  const producto = rows && rows.length ? rows[0] : null
+  if (!producto) {
+    throw new Error(`No existe el producto de reemplazo Factus con ID ${FACTUS_FALLBACK_PRODUCT_ID}.`)
+  }
+
+  const facturacionStatus = buildProductoFacturacionStatus(producto)
+  if (!facturacionStatus.ready) {
+    throw new Error(`El producto de reemplazo Factus con ID ${FACTUS_FALLBACK_PRODUCT_ID} no está listo para facturación electrónica.`)
+  }
+
+  return producto
+}
+
+async function buildFactusItemsPayload(items, options = {}) {
   if (!Array.isArray(items) || items.length === 0) {
     throw new Error('No hay items válidos para enviar a Factus.')
   }
 
-  return items.map((item) => {
+  const fallbackProduct = options.fallbackProduct || await getFactusFallbackProducto(options.conn || pool)
+  const replacements = []
+  const factusItems = items.map((item, index) => {
     const quantity = normalizeVentaNumeric(item.cantidad, 0)
     const subtotal = normalizeVentaNumeric(item.subtotal, 0)
     const rawUnitPrice = normalizeVentaNumeric(item.precio_unitario ?? item.valor_unitario, 0)
     const unitPrice = quantity > 0 && subtotal > 0 ? subtotal / quantity : rawUnitPrice
-    const factusIsExcluded = parseBooleanLike(item.factus_is_excluded)
+    const replaceProduct = itemRequiresFactusProductReplacement(item)
+    const sourceItem = replaceProduct ? fallbackProduct : item
+    const factusIsExcluded = parseBooleanLike(sourceItem.factus_is_excluded)
     const taxes = factusIsExcluded
       ? []
       : [{
-          code: String(item.factus_tax_code || '').trim(),
-          rate: formatFactusDecimal(item.factus_tax_rate ?? 0)
+          code: String(sourceItem.factus_tax_code || '').trim(),
+          rate: formatFactusDecimal(sourceItem.factus_tax_rate ?? 0)
         }]
 
-    if (!String(item.factus_code_reference || '').trim() || !String(item.descripcion || '').trim() || !String(item.factus_unit_measure_code || '').trim() || !String(item.factus_standard_code || '').trim()) {
+    if (!Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(unitPrice) || unitPrice <= 0) {
+      throw new Error('Hay productos con cantidad o precio inválido para emitir la factura electrónica.')
+    }
+
+    if (!String(sourceItem.factus_code_reference || '').trim() || !String(sourceItem.nombre || sourceItem.descripcion || '').trim() || !String(sourceItem.factus_unit_measure_code || '').trim() || !String(sourceItem.factus_standard_code || '').trim()) {
       throw new Error('Hay productos sin metadatos Factus completos para emitir la factura electrónica.')
     }
 
-    if (!factusIsExcluded && (!taxes[0]?.code || normalizeVentaNumeric(item.factus_tax_rate, -1) < 0)) {
+    if (!factusIsExcluded && (!taxes[0]?.code || normalizeVentaNumeric(sourceItem.factus_tax_rate, -1) < 0)) {
       throw new Error('Hay productos gravados sin impuesto o tarifa válida para Factus.')
     }
 
+    if (replaceProduct) {
+      replacements.push({
+        line: index + 1,
+        replacement_product_id: FACTUS_FALLBACK_PRODUCT_ID,
+        original_product_id: Number.isFinite(Number(item?.producto_id ?? item?.id_producto))
+          ? Number(item?.producto_id ?? item?.id_producto)
+          : null,
+        original_description: String(item?.descripcion || '').trim() || null
+      })
+    }
+
     return removeEmptyObjectFields({
-      code_reference: String(item.factus_code_reference || '').trim(),
-      name: String(item.descripcion || '').trim(),
-      quantity: formatFactusDecimal(quantity),
-      discount_rate: formatFactusDecimal(item.discount_rate ?? 0),
-      price: formatFactusDecimal(unitPrice),
-      unit_measure_code: String(item.factus_unit_measure_code || '').trim(),
-      standard_code: String(item.factus_standard_code || '').trim(),
+      code_reference: String(sourceItem.factus_code_reference || '').trim(),
+      name: String(sourceItem.nombre || sourceItem.descripcion || FACTUS_FALLBACK_PRODUCT_NAME).trim(),
+      quantity: formatFactusDecimal(quantity, 6),
+      discount_rate: formatFactusDecimal(item.discount_rate ?? 0, 2),
+      price: formatFactusDecimal(unitPrice, 6),
+      unit_measure_code: String(sourceItem.factus_unit_measure_code || '').trim(),
+      standard_code: String(sourceItem.factus_standard_code || '').trim(),
       taxes,
       withholding_taxes: []
     })
   })
+
+  return {
+    factusItems,
+    replacements
+  }
 }
 
-function buildFactusBillPayload({ body, ventaId, cliente, items, paymentDetails, numberingRange, referenceCode }) {
-  const factusItems = buildFactusItemsPayload(items)
+async function buildFactusBillPayload({ body, ventaId, cliente, items, paymentDetails, numberingRange, referenceCode, conn = pool }) {
+  const fallbackProduct = await getFactusFallbackProducto(conn)
+  const { factusItems, replacements } = await buildFactusItemsPayload(items, { fallbackProduct, conn })
   const canonicalTotal = calculateFactusItemsTotal(factusItems)
   const paymentForm = mapFactusPaymentForm(paymentDetails[0]?.payment_form || body?.tipo_pago)
   const factusPaymentDetails = paymentDetails.map((pago, index, pagos) => removeEmptyObjectFields({
@@ -4098,7 +4273,7 @@ function buildFactusBillPayload({ body, ventaId, cliente, items, paymentDetails,
     operation_type: String(body?.operation_type || '10'),
     send_email: parseBooleanLike(process.env.FACTUS_SEND_EMAIL || 'false'),
     observation: String(body?.observation || '').trim() || undefined,
-    created_time: normalizeVentaTime(body?.fecha) || undefined,
+    created_time: getSafeFactusCreatedTime(),
     customer: buildFactusCustomerPayload(cliente),
     payment_details: factusPaymentDetails,
     items: factusItems
@@ -4108,7 +4283,10 @@ function buildFactusBillPayload({ body, ventaId, cliente, items, paymentDetails,
     throw new Error('La venta no tiene métodos de pago válidos para Factus.')
   }
 
-  return payload
+  return {
+    payload,
+    replacements
+  }
 }
 
 function parseFactusInvoiceResult(payload) {
@@ -4397,6 +4575,12 @@ async function insertVentaCabecera(conn, payload) {
 
 async function persistVentaElectronicaData(conn, body, ventaId, items, paymentDetails, options = {}) {
   const environment = String(process.env.FACTUS_ENVIRONMENT || process.env.FACTUS_API_ENVIRONMENT || 'sandbox').trim() || 'sandbox'
+  const persistedItems = Array.isArray(options.persistedItems) && options.persistedItems.length
+    ? options.persistedItems
+    : items
+  const persistedPaymentDetails = Array.isArray(options.persistedPaymentDetails) && options.persistedPaymentDetails.length
+    ? options.persistedPaymentDetails
+    : paymentDetails
   const referenceCode = String(
     options.referenceCode
     || body?.facturacion?.reference_code
@@ -4404,7 +4588,7 @@ async function persistVentaElectronicaData(conn, body, ventaId, items, paymentDe
     || `VENTA-${ventaId}`
   ).trim()
 
-  for (const rawItem of items) {
+  for (const rawItem of persistedItems) {
     const item = rawItem || {}
     await conn.query(
       `INSERT INTO ventas_detalle (
@@ -4442,7 +4626,7 @@ async function persistVentaElectronicaData(conn, body, ventaId, items, paymentDe
     )
   }
 
-  for (const rawPago of paymentDetails) {
+  for (const rawPago of persistedPaymentDetails) {
     const pago = rawPago || {}
     await conn.query(
       `INSERT INTO ventas_payment_details (
@@ -4536,8 +4720,10 @@ async function processVentaWithExistingLogic(conn, body, options = {}) {
   const items = normalizeVentaDetalleItems(body)
   const paymentDetails = normalizeVentaPaymentDetails(body)
   let factusPayload = null
+  let factusFinancialSummary = null
   let factusResult = null
   let factusReferenceCode = null
+  let factusItemReplacements = []
   let resolvedConsecutivo = normalizeConsecutivoValue(requestedConsecutivo)
 
   if (!usuario_id || !cliente_id) {
@@ -4576,15 +4762,37 @@ async function processVentaWithExistingLogic(conn, body, options = {}) {
     }
     const numberingRange = await getFactusActiveNumberingRange()
     factusReferenceCode = buildFactusReferenceCode(body, resolvedConsecutivo)
-    factusPayload = buildFactusBillPayload({
+    const factusBuildResult = await buildFactusBillPayload({
       body,
       ventaId: resolvedConsecutivo,
       cliente: clienteFactus,
       items,
       paymentDetails,
       numberingRange,
-      referenceCode: factusReferenceCode
+      referenceCode: factusReferenceCode,
+      conn
     })
+    factusPayload = factusBuildResult?.payload || null
+    factusItemReplacements = Array.isArray(factusBuildResult?.replacements) ? factusBuildResult.replacements : []
+    factusFinancialSummary = summarizeFactusPayload(factusPayload)
+    const requestedTotal = roundFactusMoney(total || body?.total || 0)
+    if (Math.abs((factusFinancialSummary?.total || 0) - requestedTotal) >= 0.01) {
+      console.warn('[Factus][Totals] Ajustando total de venta al canonico de Factus:', JSON.stringify({
+        venta_id: Number(resolvedConsecutivo),
+        requested_total: requestedTotal,
+        canonical_total: factusFinancialSummary.total,
+        canonical_subtotal: factusFinancialSummary.subtotal,
+        canonical_total_tax: factusFinancialSummary.total_tax,
+        difference: roundFactusMoney(factusFinancialSummary.total - requestedTotal)
+      }))
+    }
+    if (factusItemReplacements.length > 0) {
+      console.warn('[Factus][Items] Se reemplazaron productos no válidos por el producto de contingencia:', JSON.stringify({
+        venta_id: Number(resolvedConsecutivo),
+        replacement_product_id: FACTUS_FALLBACK_PRODUCT_ID,
+        replacements: factusItemReplacements
+      }))
+    }
     console.log('[Factus] Payload a enviar:', JSON.stringify({
       venta_id: Number(resolvedConsecutivo),
       reference_code: factusReferenceCode,
@@ -4592,7 +4800,9 @@ async function processVentaWithExistingLogic(conn, body, options = {}) {
     }))
   }
 
-  const ventaTotal = Number(total || 0)
+  const ventaTotal = esFacturaElectronica
+    ? roundFactusMoney(factusFinancialSummary?.total || total || 0)
+    : Number(total || 0)
   await insertVentaCabecera(conn, {
     id_consecutivo: resolvedConsecutivo,
     usuario_id,
@@ -4601,9 +4811,9 @@ async function processVentaWithExistingLogic(conn, body, options = {}) {
     tipo_pago,
     forma_pago,
     punto_venta,
-    subtotal: body?.subtotal ?? null,
-    total_discount: body?.total_discount ?? 0,
-    total_tax: body?.total_tax ?? 0,
+    subtotal: esFacturaElectronica ? (factusFinancialSummary?.subtotal ?? body?.subtotal ?? null) : (body?.subtotal ?? null),
+    total_discount: esFacturaElectronica ? (factusFinancialSummary?.total_discount ?? body?.total_discount ?? 0) : (body?.total_discount ?? 0),
+    total_tax: esFacturaElectronica ? (factusFinancialSummary?.total_tax ?? body?.total_tax ?? 0) : (body?.total_tax ?? 0),
     observation: body?.observation || null,
     factura_electronica: esFacturaElectronica,
     electronic_status: esFacturaElectronica ? 'pending' : null,
@@ -4611,8 +4821,11 @@ async function processVentaWithExistingLogic(conn, body, options = {}) {
   })
 
   if (esFacturaElectronica) {
+    const persistedItems = buildCanonicalVentaDetalleItems(items, factusPayload)
     await persistVentaElectronicaData(conn, body, resolvedConsecutivo, items, paymentDetails, {
-      referenceCode: factusReferenceCode
+      referenceCode: factusReferenceCode,
+      persistedItems,
+      persistedPaymentDetails: factusPayload?.payment_details || paymentDetails
     })
   }
 

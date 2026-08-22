@@ -3951,6 +3951,7 @@ try {
     function construirPayloadVentaElectronica() {
       const filas = obtenerFilasProductosFacturacion()
       const errores = []
+      const replacementMessages = []
       const items = []
       let subtotal = 0
       let totalTax = 0
@@ -3972,13 +3973,7 @@ try {
         const factusTaxRate = extraerNumeroDesdeTexto(dataset.factusTaxRate)
         const factusIsExcluded = parsearBooleanoFacturacion(dataset.factusIsExcluded) === true
         const missingFields = []
-
-        if (!Number.isFinite(productoId) || productoId <= 0) {
-          const mensaje = `La fila ${filaNumero} no corresponde a un producto registrado.`
-          marcarFilaConErrorFacturacionProducto(itemFila.fila, mensaje)
-          errores.push(mensaje)
-          return
-        }
+        const productoRegistrado = Number.isFinite(productoId) && productoId > 0
 
         if (!factusCodeReference) missingFields.push('factus_code_reference')
         if (!itemFila.descripcion) missingFields.push('nombre')
@@ -3991,10 +3986,13 @@ try {
           if (!Number.isFinite(factusTaxRate) || factusTaxRate < 0) missingFields.push('factus_tax_rate')
         }
 
-        if (missingFields.length > 0) {
+        const blockingFields = missingFields.filter((field) => field === 'precio_final')
+        const requiresFactusReplacement = !productoRegistrado || (missingFields.length > blockingFields.length)
+
+        if (blockingFields.length > 0) {
           const estado = {
             ready: false,
-            missing_fields: missingFields,
+            missing_fields: blockingFields,
             missing_labels: []
           }
           const mensajesFila = construirMensajesErrorProducto(filaNumero, estado)
@@ -4002,6 +4000,10 @@ try {
           errores.push(`El producto de la fila ${filaNumero} no cumple con los registros completos para facturarlo electrónicamente.`)
           errores.push(...mensajesFila)
           return
+        }
+
+        if (requiresFactusReplacement) {
+          replacementMessages.push(construirMensajeReemplazoProductoFactus(filaNumero))
         }
 
         let subtotalLinea = totalLinea
@@ -4020,8 +4022,8 @@ try {
         total = redondearValorFacturacion(total + totalLineaFacturacion)
 
         items.push({
-          producto_id: productoId,
-          id_producto: productoId,
+          producto_id: productoRegistrado ? productoId : null,
+          id_producto: productoRegistrado ? productoId : null,
           descripcion: itemFila.descripcion,
           cantidad,
           precio_unitario: precioUnitario,
@@ -4034,7 +4036,9 @@ try {
           factus_standard_code: factusStandardCode,
           factus_tax_code: factusTaxCode || null,
           factus_tax_rate: factusIsExcluded ? 0 : factusTaxRate,
-          factus_is_excluded: factusIsExcluded
+          factus_is_excluded: factusIsExcluded,
+          factus_requires_product_replacement: requiresFactusReplacement,
+          factus_replacement_product_id: requiresFactusReplacement ? FACTUS_PRODUCTO_REEMPLAZO_ID : null
         })
       })
 
@@ -4052,7 +4056,8 @@ try {
         total_discount: 0,
         total_tax: totalTax,
         total,
-        items
+        items,
+        replacementMessages: Array.from(new Set(replacementMessages))
       }
     }
     async function buscarClientesRemoto(termino) {
@@ -4079,6 +4084,8 @@ try {
     }
     const MENSAJE_FACTURA_ELECTRONICA_SIN_CLIENTE = 'No se puede generar factura electrónica sin un cliente registrado y válido.'
     const MENSAJE_FACTURACION_PRODUCTOS_BACKEND = 'No fue posible validar los productos para factura electrónica porque el backend público no envía el estado fiscal de productos.'
+    const FACTUS_PRODUCTO_REEMPLAZO_ID = 1417
+    const FACTUS_PRODUCTO_REEMPLAZO_NOMBRE = 'Producto electronico no registrado'
     const MENSAJES_FACTURACION_PRODUCTO = {
       factus_code_reference: 'falta código de referencia del producto.',
       nombre: 'falta nombre del producto.',
@@ -4104,6 +4111,7 @@ try {
       ready: null,
       message: '',
       errors: [],
+      replacementMessages: [],
       checked: false,
       backendUnavailable: false
     }
@@ -4529,6 +4537,7 @@ try {
         ready: null,
         message: '',
         errors: [],
+        replacementMessages: [],
         checked: false,
         backendUnavailable: false
       }
@@ -4550,6 +4559,22 @@ try {
         return Array.isArray(parsed) ? parsed : []
       } catch {
         return []
+      }
+    }
+    function construirMensajeReemplazoProductoFactus(filaNumero) {
+      return `Fila ${filaNumero}: se facturará como ${FACTUS_PRODUCTO_REEMPLAZO_NOMBRE} (ID ${FACTUS_PRODUCTO_REEMPLAZO_ID}) solo en la factura electrónica.`
+    }
+    function crearEstadoProductoConReemplazoFactus(item, detalle = '') {
+      return {
+        ready: true,
+        replacement: true,
+        replacement_message: construirMensajeReemplazoProductoFactus(item?.filaNumero || 0),
+        message: detalle
+          ? `${construirMensajeReemplazoProductoFactus(item?.filaNumero || 0)} ${String(detalle).trim()}`
+          : construirMensajeReemplazoProductoFactus(item?.filaNumero || 0),
+        missing_fields: [],
+        missing_labels: [],
+        replacement_product_id: FACTUS_PRODUCTO_REEMPLAZO_ID
       }
     }
     function obtenerEstadoFacturacionDesdeMetadatosProducto(celda) {
@@ -4643,6 +4668,7 @@ try {
         ready: Object.prototype.hasOwnProperty.call(resultado || {}, 'ready') ? resultado.ready : null,
         message: String(resultado?.message || ''),
         errors: Array.isArray(resultado?.errors) ? resultado.errors : [],
+        replacementMessages: Array.isArray(resultado?.replacementMessages) ? resultado.replacementMessages : [],
         checked: !!resultado?.checked,
         backendUnavailable: !!resultado?.backendUnavailable
       }
@@ -4697,12 +4723,7 @@ try {
     async function consultarEstadoFacturacionProductoFila(item, cachePorProducto) {
       const productoId = Number(item.id)
       if (!Number.isFinite(productoId) || productoId <= 0) {
-        return {
-          ready: false,
-          message: `La fila ${item.filaNumero} no corresponde a un producto registrado en base de datos.`,
-          missing_fields: [],
-          missing_labels: []
-        }
+        return crearEstadoProductoConReemplazoFactus(item, 'El producto no está registrado en la base de datos.')
       }
       if (cachePorProducto.has(productoId)) {
         return cachePorProducto.get(productoId)
@@ -4713,25 +4734,32 @@ try {
         const resp = await fetch(url)
         const data = await resp.json().catch(() => ({}))
         if (!resp.ok) {
-          if (resp.status === 404 && fallback) {
-            cachePorProducto.set(productoId, fallback)
-            return fallback
-          }
           if (resp.status === 404) {
-            return {
-              ready: false,
-              message: MENSAJE_FACTURACION_PRODUCTOS_BACKEND,
-              missing_fields: [],
-              missing_labels: [],
-              backendUnavailable: true
-            }
+            const replacementState = crearEstadoProductoConReemplazoFactus(item, 'El producto no fue encontrado en la base de datos.')
+            cachePorProducto.set(productoId, replacementState)
+            return replacementState
+          }
+          if (fallback && fallback.ready === false) {
+            const replacementState = crearEstadoProductoConReemplazoFactus(item, fallback.message)
+            cachePorProducto.set(productoId, replacementState)
+            return replacementState
           }
           return normalizarEstadoFacturacionProducto(data)
         }
         const estado = normalizarEstadoFacturacionProducto(data)
+        if (!estado.ready) {
+          const replacementState = crearEstadoProductoConReemplazoFactus(item, estado.message)
+          cachePorProducto.set(productoId, replacementState)
+          return replacementState
+        }
         cachePorProducto.set(productoId, estado)
         return estado
       } catch (error) {
+        if (fallback && fallback.ready === false) {
+          const replacementState = crearEstadoProductoConReemplazoFactus(item, fallback.message)
+          cachePorProducto.set(productoId, replacementState)
+          return replacementState
+        }
         if (fallback) {
           cachePorProducto.set(productoId, fallback)
           return fallback
@@ -4779,26 +4807,19 @@ try {
       }
       const cachePorProducto = new Map()
       const errores = []
+      const replacementMessages = []
       let backendUnavailable = false
       for (const item of items) {
         if (requestId !== facturacionProductosRequestId) {
           return facturacionProductosEstadoActual
         }
-        if (!item.descripcion && !item.id) {
-          const mensaje = `La fila ${item.filaNumero} no corresponde a un producto registrado en base de datos.`
-          marcarFilaConErrorFacturacionProducto(item.fila, mensaje)
-          errores.push(mensaje)
-          continue
-        }
-        if (!item.id && item.descripcion) {
-          const mensaje = `La fila ${item.filaNumero} no corresponde a un producto registrado en base de datos.`
-          marcarFilaConErrorFacturacionProducto(item.fila, mensaje)
-          errores.push(mensaje)
-          continue
-        }
         const estado = await consultarEstadoFacturacionProductoFila(item, cachePorProducto)
         if (requestId !== facturacionProductosRequestId) {
           return facturacionProductosEstadoActual
+        }
+        if (estado?.replacement) {
+          replacementMessages.push(estado.replacement_message || construirMensajeReemplazoProductoFactus(item.filaNumero))
+          continue
         }
         if (!estado.ready) {
           const mensajesFila = estado.backendUnavailable
@@ -4812,11 +4833,14 @@ try {
       facturacionProductosEstadoActual = {
         ready: errores.length === 0,
         message: errores.length === 0
-          ? 'Todos los productos están aptos para factura electrónica'
+          ? (replacementMessages.length > 0
+            ? `Se reemplazarán ${replacementMessages.length} producto(s) no válido(s) por ${FACTUS_PRODUCTO_REEMPLAZO_NOMBRE} en la factura electrónica`
+            : 'Todos los productos están aptos para factura electrónica')
           : (backendUnavailable
             ? MENSAJE_FACTURACION_PRODUCTOS_BACKEND
             : 'Hay productos con errores para factura electrónica'),
         errors: errores,
+        replacementMessages: Array.from(new Set(replacementMessages)),
         checked: true,
         backendUnavailable
       }
