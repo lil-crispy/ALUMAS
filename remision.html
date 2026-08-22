@@ -2407,6 +2407,26 @@ try {
     return [];
 }
     }
+    function construirUrlImagenProductoSugerencia(imagen) {
+      const logoRespaldo = './img/LOGO3.webp'
+      const valor = String(imagen || '').trim()
+      if (!valor) return logoRespaldo
+      if (/^https?:\/\//i.test(valor)) return valor
+      const nombreArchivo = valor.replace(/\\/g, '/').split('/').pop().trim()
+      if (!nombreArchivo) return logoRespaldo
+      return '/img/productos/' + encodeURIComponent(nombreArchivo)
+    }
+    function escaparHtmlProducto(texto) {
+      return String(texto || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+    }
+    function actualizarCapasPanelSugerencias(visible) {
+      document.body.classList.toggle('sugerencias-producto-open', !!visible)
+    }
     function precioBasePorCliente(producto) {
       try {
         const tipo = (clienteSeleccionado && clienteSeleccionado.tipo_cliente) ? String(clienteSeleccionado.tipo_cliente).toLowerCase() : '';
@@ -2445,6 +2465,7 @@ try {
       dropdown.innerHTML = '';
       if (!productos || productos.length === 0) {
         dropdown.innerHTML = '<div class="no-productos">No se encontraron productos que coincidan con la búsqueda.</div>';
+        actualizarCapasPanelSugerencias(true);
         panel.style.display = 'block';
         return;
       }
@@ -2462,11 +2483,26 @@ try {
         const precioMayor = Number(producto.precio_mayorista || 0);
         const precio3 = Number(producto.precio_3 || 0);
         const cantidadPrecio3 = Number(producto.cantidad_precio_3 || 0);
+        const imagenProducto = construirUrlImagenProductoSugerencia(producto.imagen);
         item.innerHTML = `
-          <div class="producto-nombre">${producto.nombre}</div>
-          <div class="producto-info">ID: ${producto.id || ''} | Stock: ${producto.stock || 0}</div>
-          <div class="producto-info">Final: ${formatearPesos(precioFinal)} | Mayor: ${formatearPesos(precioMayor)}</div>
-          ${producto.precio_3 != null && producto.cantidad_precio_3 != null ? `<div class="producto-info">Especial: ${formatearPesos(precio3)} desde ${cantidadPrecio3} und</div>` : ''}
+          <div class="producto-item-layout">
+            <div class="producto-thumb-frame">
+              <img
+                class="producto-thumb"
+                src="${imagenProducto}"
+                alt="${escaparHtmlProducto(producto.nombre)}"
+                loading="lazy"
+                decoding="async"
+                onerror="this.onerror=null;this.src='./img/LOGO3.webp';"
+              >
+            </div>
+            <div class="producto-detalle">
+              <div class="producto-nombre">${escaparHtmlProducto(producto.nombre)}</div>
+              <div class="producto-info">ID: ${producto.id || ''} | Stock: ${producto.stock || 0}</div>
+              <div class="producto-info">Final: ${formatearPesos(precioFinal)} | Mayor: ${formatearPesos(precioMayor)}</div>
+              ${producto.precio_3 != null && producto.cantidad_precio_3 != null ? `<div class="producto-info">Especial: ${formatearPesos(precio3)} desde ${cantidadPrecio3} und</div>` : ''}
+            </div>
+          </div>
         `;
         
         // Eventos Mouse para Selección
@@ -2500,11 +2536,13 @@ try {
       // Listener para terminar arrastre
       document.addEventListener('mouseup', () => { isMouseDown = false; }, { once: true });
 
+      actualizarCapasPanelSugerencias(true);
       panel.style.display = 'block';
     }
     function cerrarPanelSugerencias() {
       const panel = document.getElementById('panel-sugerencias');
       if (panel) panel.style.display = 'none';
+      actualizarCapasPanelSugerencias(false);
       celdaProductoActiva = null;
     }
     function ocultarDropdownProductos() {

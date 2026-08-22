@@ -1,0 +1,327 @@
+{
+  "name": "ALUMAS - Clientes diario 9AM Evolution",
+  "active": false,
+  "settings": {
+    "timezone": "America/Bogota",
+    "executionOrder": "v1"
+  },
+  "nodes": [
+    {
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger 9AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        220,
+        320
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "read-contacts",
+      "name": "Leer contactos runtime",
+      "type": "n8n-nodes-base.readBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        500,
+        200
+      ],
+      "parameters": {
+        "filePath": "/data/alumas_runtime/contactos.json",
+        "dataPropertyName": "contactsBinary"
+      }
+    },
+    {
+      "id": "extract-contacts",
+      "name": "Extraer contactos JSON",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        760,
+        200
+      ],
+      "parameters": {
+        "operation": "fromJson",
+        "binaryPropertyName": "contactsBinary",
+        "destinationKey": "contactsData",
+        "options": {
+          "keepSource": "json"
+        }
+      }
+    },
+    {
+      "id": "read-token",
+      "name": "Leer token Evolution",
+      "type": "n8n-nodes-base.readBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        500,
+        440
+      ],
+      "parameters": {
+        "filePath": "/data/alumas_runtime/evolution_instance_token.txt",
+        "dataPropertyName": "tokenBinary"
+      }
+    },
+    {
+      "id": "extract-token",
+      "name": "Extraer token texto",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        760,
+        440
+      ],
+      "parameters": {
+        "operation": "text",
+        "binaryPropertyName": "tokenBinary",
+        "destinationKey": "tokenText",
+        "options": {
+          "keepSource": "json"
+        }
+      }
+    },
+    {
+      "id": "merge-runtime",
+      "name": "Combinar runtime",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1020,
+        320
+      ],
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "numberInputs": 2,
+        "options": {}
+      }
+    },
+    {
+      "id": "prepare-campaign",
+      "name": "Preparar campaña diaria",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        320
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const source = $input.first().json;\nconst data = source.contactsData || {};\nconst token = String(source.tokenText || '').trim();\nconst timezone = 'America/Bogota';\n\nconst weekdayMap = {\n  monday: 'lunes',\n  tuesday: 'martes',\n  wednesday: 'miércoles',\n  thursday: 'jueves',\n  friday: 'viernes',\n  saturday: 'sábado',\n  sunday: 'domingo',\n};\n\nconst aliases = {\n  miercoles: 'miércoles',\n  sabado: 'sábado',\n};\n\nfunction normalizeDay(value) {\n  const lowered = String(value || '').trim().toLowerCase();\n  return aliases[lowered] || lowered;\n}\n\nfunction normalizePhone(rawPhone) {\n  let digits = String(rawPhone || '').replace(/\\D/g, '');\n  digits = digits.replace(/^0+/, '');\n  if (digits.length === 10 && digits.startsWith('3')) {\n    digits = `57${digits}`;\n  }\n  if (digits.length === 12 && digits.startsWith('57') && digits[2] === '3') {\n    return digits;\n  }\n  return digits || null;\n}\n\nfunction weekBucket(dayOfMonth) {\n  if (dayOfMonth >= 1 && dayOfMonth <= 8) return 1;\n  if (dayOfMonth >= 9 && dayOfMonth <= 16) return 2;\n  if (dayOfMonth >= 17 && dayOfMonth <= 24) return 3;\n  return 4;\n}\n\nfunction nowInTimezone(tz) {\n  const parts = new Intl.DateTimeFormat('en-CA', {\n    timeZone: tz,\n    year: 'numeric',\n    month: '2-digit',\n    day: '2-digit',\n    hour: '2-digit',\n    minute: '2-digit',\n    second: '2-digit',\n    hour12: false,\n    weekday: 'long',\n  }).formatToParts(new Date());\n  const byType = Object.fromEntries(parts.map((part) => [part.type, part.value]));\n  return {\n    isoLocal: `${byType.year}-${byType.month}-${byType.day}T${byType.hour}:${byType.minute}:${byType.second}`,\n    weekday: weekdayMap[(byType.weekday || '').toLowerCase()] || byType.weekday,\n    dayOfMonth: Number(byType.day),\n  };\n}\n\nfunction composeMessage(baseMessage, promotion) {\n  const cleanBase = String(baseMessage || '').trim();\n  const cleanPromotion = String(promotion || '').trim();\n  if (!cleanPromotion) return cleanBase;\n  if (!cleanBase) return cleanPromotion;\n  return `${cleanBase}\\n\\n${cleanPromotion}`;\n}\n\nconst now = nowInTimezone(timezone);\nconst selectedDay = normalizeDay(now.weekday);\nconst selectedWeekBucket = weekBucket(now.dayOfMonth);\nconst promociones = data.promociones_por_semana || {};\nconst promotion = promociones[String(selectedWeekBucket)] || promociones[selectedWeekBucket] || '';\nconst contacts = Array.isArray(data.mensajes_por_dia?.[selectedDay]) ? data.mensajes_por_dia[selectedDay] : [];\n\nif (!token) {\n  return [{ json: { should_send: false, status: 'missing_token', system_day: now.weekday, selected_day: selectedDay, contact_count: contacts.length, generated_at: now.isoLocal } }];\n}\n\nconst sanitizedContacts = contacts\n  .filter((item) => Array.isArray(item) && item.length >= 2)\n  .map((item) => ({\n    number: normalizePhone(item[0]),\n    text: composeMessage(item[1], promotion),\n  }))\n  .filter((item) => item.number && item.text);\n\nif (!sanitizedContacts.length) {\n  return [{ json: { should_send: false, status: 'no_contacts_for_today', system_day: now.weekday, selected_day: selectedDay, day_matches_system: selectedDay === now.weekday, selected_week_bucket: selectedWeekBucket, promotion, contact_count: 0, generated_at: now.isoLocal } }];\n}\n\nreturn sanitizedContacts.map((contact, index) => ({\n  json: {\n    should_send: true,\n    status: 'ready_to_send',\n    generated_at: now.isoLocal,\n    system_day: now.weekday,\n    selected_day: selectedDay,\n    day_matches_system: selectedDay === now.weekday,\n    selected_week_bucket: selectedWeekBucket,\n    promotion,\n    contact_count: sanitizedContacts.length,\n    contact_index: index + 1,\n    number: contact.number,\n    text: contact.text,\n    evolution_api_key: token,\n  }\n}));"
+      }
+    },
+    {
+      "id": "should-send",
+      "name": "¿Hay envíos hoy?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1580,
+        320
+      ],
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.should_send }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "send-whatsapp",
+      "name": "Enviar por Evolution API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1860,
+        220
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://evolution_api:8080/message/sendText/alumas",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $json.evolution_api_key }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $json.number }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text }}"
+            }
+          ]
+        },
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 1500
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "no-contacts",
+      "name": "Sin contactos para hoy",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1860,
+        420
+      ],
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"status\": $json.status,\n  \"selected_day\": $json.selected_day,\n  \"system_day\": $json.system_day,\n  \"contact_count\": $json.contact_count,\n  \"promotion\": $json.promotion,\n  \"generated_at\": $json.generated_at\n}"
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger 9AM": {
+      "main": [
+        [
+          {
+            "node": "Leer contactos runtime",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Leer token Evolution",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer contactos runtime": {
+      "main": [
+        [
+          {
+            "node": "Extraer contactos JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer contactos JSON": {
+      "main": [
+        [
+          {
+            "node": "Combinar runtime",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer token Evolution": {
+      "main": [
+        [
+          {
+            "node": "Extraer token texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer token texto": {
+      "main": [
+        [
+          {
+            "node": "Combinar runtime",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Combinar runtime": {
+      "main": [
+        [
+          {
+            "node": "Preparar campaña diaria",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar campaña diaria": {
+      "main": [
+        [
+          {
+            "node": "¿Hay envíos hoy?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Hay envíos hoy?": {
+      "main": [
+        [
+          {
+            "node": "Enviar por Evolution API",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Sin contactos para hoy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

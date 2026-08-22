@@ -1,0 +1,71 @@
+services:
+  evolution_api:
+    image: evoapicloud/evolution-api:v2.3.7
+    container_name: evolution_api
+    restart: unless-stopped
+    depends_on:
+      evolution_postgres:
+        condition: service_healthy
+      evolution_redis:
+        condition: service_started
+    env_file:
+      - .env
+    ports:
+      - "127.0.0.1:${EVOLUTION_HOST_PORT:-8081}:8080"
+    volumes:
+      - evolution_instances:/evolution/instances
+    networks:
+      evolution-net:
+        aliases:
+          - evolution_api
+          - evolution-api
+      n8n-shared:
+        aliases:
+          - evolution_api
+
+  evolution_redis:
+    image: redis:7-alpine
+    container_name: evolution_redis
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+    volumes:
+      - evolution_redis:/data
+    networks:
+      - evolution-net
+
+  evolution_postgres:
+    image: postgres:15-alpine
+    container_name: evolution_postgres
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DATABASE}
+      POSTGRES_USER: ${POSTGRES_USERNAME}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - evolution_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U ${POSTGRES_USERNAME} -d ${POSTGRES_DATABASE}
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - evolution-net
+
+volumes:
+  evolution_instances:
+  evolution_redis:
+  evolution_postgres:
+
+networks:
+  evolution-net:
+    name: evolution-net
+  n8n-shared:
+    external: true
+    name: n8n_default

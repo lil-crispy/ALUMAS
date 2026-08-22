@@ -1853,6 +1853,132 @@ async function getMercadoLibreExistingPublicationForProduct(productoId, conn = p
   return rows && rows.length ? rows[0] : null
 }
 
+async function getMercadoLibreItemDetail(accessToken, itemId) {
+  const normalizedItemId = normalizeMercadoLibreStringValue(itemId, 32)
+  if (!normalizedItemId) {
+    const error = new Error('Debes indicar un item_id valido de Mercado Libre.')
+    error.statusCode = 400
+    throw error
+  }
+
+  return mercadolibreAuthenticatedRequest(accessToken, `/items/${normalizedItemId}`, {
+    operation: `item_detail_${normalizedItemId}`
+  })
+}
+
+async function getMercadoLibreItemPrices(accessToken, itemId) {
+  const normalizedItemId = normalizeMercadoLibreStringValue(itemId, 32)
+  if (!normalizedItemId) {
+    const error = new Error('Debes indicar un item_id valido para consultar precios.')
+    error.statusCode = 400
+    throw error
+  }
+
+  return mercadolibreAuthenticatedRequest(
+    accessToken,
+    buildMercadoLibreApiUrl(`/items/${normalizedItemId}/prices`),
+    { operation: `item_prices_${normalizedItemId}` }
+  )
+}
+
+async function getMercadoLibreItemPriceToWin(accessToken, itemId) {
+  const normalizedItemId = normalizeMercadoLibreStringValue(itemId, 32)
+  if (!normalizedItemId) {
+    const error = new Error('Debes indicar un item_id valido para consultar automatizacion de precios.')
+    error.statusCode = 400
+    throw error
+  }
+
+  return mercadolibreAuthenticatedRequest(
+    accessToken,
+    buildMercadoLibreApiUrl(`/items/${normalizedItemId}/price_to_win`),
+    { operation: `item_price_to_win_${normalizedItemId}` }
+  )
+}
+
+function sanitizeMercadoLibreItemPrices(data) {
+  return removeEmptyObjectFields({
+    id: data?.id,
+    prices: Array.isArray(data?.prices)
+      ? data.prices.slice(0, 10).map((price) => removeEmptyObjectFields({
+        id: price?.id,
+        type: price?.type,
+        amount: price?.amount,
+        regular_amount: price?.regular_amount,
+        currency_id: price?.currency_id,
+        last_updated: price?.last_updated,
+        conditions: removeEmptyObjectFields({
+          context_restrictions: Array.isArray(price?.conditions?.context_restrictions)
+            ? price.conditions.context_restrictions.slice(0, 10)
+            : undefined,
+          start_time: price?.conditions?.start_time,
+          end_time: price?.conditions?.end_time
+        })
+      }))
+      : undefined
+  })
+}
+
+function sanitizeMercadoLibrePriceToWin(data) {
+  return removeEmptyObjectFields({
+    item_id: data?.item_id,
+    current_price: data?.current_price,
+    currency_id: data?.currency_id,
+    price_to_win: data?.price_to_win,
+    status: data?.status,
+    consistent: data?.consistent,
+    reason: Array.isArray(data?.reason) ? data.reason.slice(0, 10) : undefined
+  })
+}
+
+function sanitizeMercadoLibreOperationError(err) {
+  return removeEmptyObjectFields({
+    status: Number(err?.statusCode || 0) || undefined,
+    message: err?.message || undefined,
+    details: err?.payload || undefined
+  })
+}
+
+function detectMercadoLibrePriceAutomation(itemPrices, priceToWin) {
+  const prices = Array.isArray(itemPrices?.prices) ? itemPrices.prices : []
+  const nonStandardPrices = prices.filter((price) => String(price?.type || '').trim().toLowerCase() !== 'standard')
+  const contextualPrices = prices.filter((price) => {
+    const conditions = price?.conditions || {}
+    return (
+      (Array.isArray(conditions.context_restrictions) && conditions.context_restrictions.length > 0) ||
+      Boolean(conditions.start_time) ||
+      Boolean(conditions.end_time)
+    )
+  })
+
+  const priceToWinStatus = String(priceToWin?.status || '').trim().toLowerCase()
+  const priceToWinReasons = Array.isArray(priceToWin?.reason)
+    ? priceToWin.reason.map((reason) => String(reason || '').trim().toLowerCase()).filter(Boolean)
+    : []
+  const priceToWinOptedOut = priceToWinReasons.includes('item_not_opted_in')
+  const priceToWinActive = Boolean(
+    (priceToWinStatus && priceToWinStatus !== 'not_listed') ||
+    (priceToWin?.current_price !== null && priceToWin?.current_price !== undefined) ||
+    (priceToWin?.price_to_win !== null && priceToWin?.price_to_win !== undefined) ||
+    (Array.isArray(priceToWin?.boosts) && priceToWin.boosts.length > 0)
+  ) && !priceToWinOptedOut
+
+  const active = nonStandardPrices.length > 0 || contextualPrices.length > 0 || priceToWinActive
+  return {
+    active,
+    message: active
+      ? 'No se puede modificar el precio vía API porque Mercado Libre tiene automatización de precios activa.'
+      : null,
+    diagnostics: {
+      prices: sanitizeMercadoLibreItemPrices(itemPrices),
+      price_to_win: sanitizeMercadoLibrePriceToWin(priceToWin),
+      non_standard_prices: nonStandardPrices.length,
+      contextual_prices: contextualPrices.length,
+      price_to_win_active: priceToWinActive
+    }
+  }
+}
+
 function isMercadoLibrePublicationAlreadyActive(publicacion) {
   const itemId = String(publicacion?.item_id || '').trim()
   const status = String(publicacion?.status || '').trim().toLowerCase()
@@ -2526,6 +2652,104 @@ async function syncMercadoLibreStock(mappings, accessToken, conn = pool) {
   }
 
   return results
+}
+
+async function updateMercadoLibreItemPrice(producto, publication, nextPrice, account, accessToken, conn = pool) {
+  const itemId = normalizeMercadoLibreStringValue(publication?.item_id, 32)
+  const normalizedPrice = normalizeVentaNumeric(nextPrice, 0)
+
+  if (!itemId) {
+    const error = new Error('El producto no tiene una publicación de Mercado Libre vinculada.')
+    error.statusCode = 404
+    throw error
+  }
+
+  if (!(normalizedPrice > 0)) {
+    const error = new Error('Debes enviar un precio valido para actualizar la publicación de Mercado Libre.')
+    error.statusCode = 400
+    throw error
+  }
+
+  const remoteItemBefore = await getMercadoLibreItemDetail(accessToken, itemId)
+  let itemPrices = null
+  let priceToWin = null
+  let itemPricesError = null
+  let priceToWinError = null
+
+  try {
+    itemPrices = await getMercadoLibreItemPrices(accessToken, itemId)
+  } catch (err) {
+    itemPricesError = sanitizeMercadoLibreOperationError(err)
+  }
+
+  try {
+    priceToWin = await getMercadoLibreItemPriceToWin(accessToken, itemId)
+  } catch (err) {
+    priceToWinError = sanitizeMercadoLibreOperationError(err)
+  }
+
+  const priceState = detectMercadoLibrePriceAutomation(itemPrices, priceToWin)
+  priceState.diagnostics = removeEmptyObjectFields({
+    ...priceState.diagnostics,
+    prices_error: itemPricesError,
+    price_to_win_error: priceToWinError
+  })
+
+  if (priceState.active) {
+    const error = new Error(priceState.message)
+    error.statusCode = 409
+    error.payload = priceState.diagnostics
+    throw error
+  }
+
+  let updatedItem
+  try {
+    updatedItem = await mercadolibreAuthenticatedRequest(accessToken, `/items/${itemId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        price: normalizedPrice
+      }),
+      operation: `item_price_update_${itemId}`
+    })
+  } catch (err) {
+    err.remoteItemBefore = removeEmptyObjectFields({
+      id: remoteItemBefore?.id,
+      status: remoteItemBefore?.status,
+      sub_status: remoteItemBefore?.sub_status,
+      price: remoteItemBefore?.price,
+      permalink: remoteItemBefore?.permalink
+    })
+    throw err
+  }
+
+  await upsertMercadoLibrePublication({
+    meliUserId: account.meli_user_id,
+    itemId,
+    productoId: publication?.producto_id || producto?.id_producto || null,
+    sellerSku: extractMercadoLibreSellerSku(updatedItem),
+    categoryId: updatedItem.category_id || publication?.category_id || null,
+    title: updatedItem.title || updatedItem.family_name || publication?.title || null,
+    status: updatedItem.status || publication?.status || null,
+    price: updatedItem.price ?? normalizedPrice,
+    availableQuantity: updatedItem.available_quantity ?? publication?.available_quantity ?? null,
+    permalink: updatedItem.permalink || publication?.permalink || null,
+    rawJson: updatedItem
+  }, conn)
+
+  return {
+    item: updatedItem,
+    remoteItemBefore: removeEmptyObjectFields({
+      id: remoteItemBefore?.id,
+      status: remoteItemBefore?.status,
+      sub_status: remoteItemBefore?.sub_status,
+      price: remoteItemBefore?.price,
+      permalink: remoteItemBefore?.permalink
+    }),
+    priceState
+  }
 }
 
 function normalizeMercadoLibreLimitQuery(value, fallback) {
@@ -5176,6 +5400,79 @@ app.post('/api/mercadolibre/publicar', async (req, res) => {
           secure_url: picture?.secure_url || null
         }))
         : undefined
+    })
+  }
+})
+
+app.post('/api/mercadolibre/publicacion/actualizar-precio', async (req, res) => {
+  try {
+    if (!requireMercadoLibreApiAuthorization(req, res)) {
+      return
+    }
+
+    const productoId = Number(req.body?.producto_id)
+    const requestedPrice = normalizeVentaNumeric(req.body?.price, 0)
+    if (!Number.isFinite(productoId) || productoId <= 0) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Debes enviar producto_id valido para actualizar el precio en Mercado Libre.'
+      })
+    }
+
+    if (!(requestedPrice > 0)) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Debes enviar un price valido para actualizar la publicación de Mercado Libre.'
+      })
+    }
+
+    const producto = await getProductoByIdProducto(productoId)
+    if (!producto) {
+      return res.status(404).json({
+        ok: false,
+        error: 'El producto indicado no existe en ALUMAS.'
+      })
+    }
+
+    const publication = await getMercadoLibreExistingPublicationForProduct(productoId)
+    if (!publication || !String(publication.item_id || '').trim()) {
+      return res.status(404).json({
+        ok: false,
+        error: 'El producto no tiene una publicación de Mercado Libre vinculada.'
+      })
+    }
+
+    const { account, accessToken } = await getValidMercadoLibreAccessToken()
+    const updateResult = await updateMercadoLibreItemPrice(
+      producto,
+      publication,
+      requestedPrice,
+      account,
+      accessToken
+    )
+
+    return res.json({
+      ok: true,
+      message: 'Precio actualizado correctamente',
+      producto_id: productoId,
+      item_id: updateResult.item?.id || String(publication.item_id || '').trim() || null,
+      status: updateResult.item?.status || publication.status || null,
+      permalink: updateResult.item?.permalink || publication.permalink || null,
+      price: updateResult.item?.price ?? requestedPrice,
+      net_amount_estimated: null,
+      details: {
+        remote_item_before: updateResult.remoteItemBefore,
+        prices: updateResult.priceState?.diagnostics?.prices,
+        price_to_win: updateResult.priceState?.diagnostics?.price_to_win
+      }
+    })
+  } catch (err) {
+    return res.status(Number(err?.statusCode || 500)).json({
+      ok: false,
+      error: err?.message || 'No se pudo actualizar el precio de la publicación en Mercado Libre.',
+      details: err?.payload || undefined,
+      cause: Array.isArray(err?.payload?.cause) ? err.payload.cause : undefined,
+      remote_item_before: err?.remoteItemBefore || undefined
     })
   }
 })

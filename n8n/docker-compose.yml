@@ -11,6 +11,8 @@ services:
       - N8N_SECURE_COOKIE=false
     volumes:
       - n8n_n8n_data:/home/node/.n8n
+      - ./scripts:/data/alumas/n8n/scripts:ro
+      - ./runtime:/data/alumas_runtime
 
 volumes:
   n8n_n8n_data:

@@ -1,0 +1,106 @@
+{
+  "name": "ALUMAS - Buenas noches padres 9:30PM",
+  "active": false,
+  "settings": {
+    "timezone": "America/Bogota",
+    "executionOrder": "v1"
+  },
+  "nodes": [
+    {
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger 9:30PM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        260,
+        300
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "30 21 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "prepare-messages",
+      "name": "Preparar mensajes padres",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        300
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "return [\n  {\n    json: {\n      recipient: 'madre',\n      number: '{{MOTHER_NUMBER_E164}}',\n      text: 'Hola ma, te amo mucho. Feliz noche. Dios te bendiga y espero que descanses muy bien.'\n    }\n  },\n  {\n    json: {\n      recipient: 'padre',\n      number: '{{FATHER_NUMBER_E164}}',\n      text: 'Hola pa, te quiero mucho. Feliz noche. Dios te bendiga y espero que descanses muy bien.'\n    }\n  }\n];"
+      }
+    },
+    {
+      "id": "send-whatsapp",
+      "name": "Enviar por Evolution API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        900,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "{{EVOLUTION_API_INTERNAL_URL}}/message/sendText/{{EVOLUTION_INSTANCE_NAME}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "{{EVOLUTION_INSTANCE_API_KEY}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $json.number }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text }}"
+            }
+          ]
+        },
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger 9:30PM": {
+      "main": [
+        [
+          {
+            "node": "Preparar mensajes padres",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar mensajes padres": {
+      "main": [
+        [
+          {
+            "node": "Enviar por Evolution API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

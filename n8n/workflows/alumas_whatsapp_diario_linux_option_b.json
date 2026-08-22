@@ -1,0 +1,221 @@
+{
+  "name": "ALUMAS - WhatsApp diario Linux Option B",
+  "active": false,
+  "settings": {
+    "timezone": "America/Bogota",
+    "executionOrder": "v1"
+  },
+  "nodes": [
+    {
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger 9AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        280,
+        300
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "resolve-campaign",
+      "name": "Resolver campaña diaria",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        560,
+        300
+      ],
+      "parameters": {
+        "command": "python3 /data/alumas/n8n/scripts/alumas_whatsapp_campaign.py --contacts-path /data/alumas_runtime/contactos.json --timezone America/Bogota --dry-run"
+      }
+    },
+    {
+      "id": "parse-cli-json",
+      "name": "Parsear JSON CLI",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        840,
+        300
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const stdout = $json.stdout ?? '';\nconst parsed = JSON.parse(stdout);\nreturn [{ json: parsed }];"
+      }
+    },
+    {
+      "id": "has-contacts",
+      "name": "¿Hay mensajes hoy?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ Number($json.contact_count || 0) }}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ready-summary",
+      "name": "Resumen listo para envío",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1400,
+        220
+      ],
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "status",
+              "value": "ready_for_transport"
+            },
+            {
+              "name": "selected_day",
+              "value": "={{ $json.selected_day }}"
+            },
+            {
+              "name": "system_day",
+              "value": "={{ $json.system_day }}"
+            },
+            {
+              "name": "promotion",
+              "value": "={{ $json.promotion }}"
+            }
+          ],
+          "number": [
+            {
+              "name": "contact_count",
+              "value": "={{ Number($json.contact_count || 0) }}"
+            },
+            {
+              "name": "selected_week_bucket",
+              "value": "={{ Number($json.selected_week_bucket || 0) }}"
+            }
+          ],
+          "boolean": [
+            {
+              "name": "day_matches_system",
+              "value": "={{ Boolean($json.day_matches_system) }}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "no-contacts",
+      "name": "Sin mensajes para hoy",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1400,
+        380
+      ],
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "status",
+              "value": "no_contacts_for_today"
+            },
+            {
+              "name": "selected_day",
+              "value": "={{ $json.selected_day }}"
+            },
+            {
+              "name": "system_day",
+              "value": "={{ $json.system_day }}"
+            }
+          ],
+          "number": [
+            {
+              "name": "contact_count",
+              "value": "={{ Number($json.contact_count || 0) }}"
+            }
+          ],
+          "boolean": [
+            {
+              "name": "day_matches_system",
+              "value": "={{ Boolean($json.day_matches_system) }}"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger 9AM": {
+      "main": [
+        [
+          {
+            "node": "Resolver campaña diaria",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolver campaña diaria": {
+      "main": [
+        [
+          {
+            "node": "Parsear JSON CLI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parsear JSON CLI": {
+      "main": [
+        [
+          {
+            "node": "¿Hay mensajes hoy?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Hay mensajes hoy?": {
+      "main": [
+        [
+          {
+            "node": "Resumen listo para envío",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Sin mensajes para hoy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
