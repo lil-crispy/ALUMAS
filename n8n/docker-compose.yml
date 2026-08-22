@@ -9,6 +9,7 @@ services:
       - TZ=America/Bogota
       - GENERIC_TIMEZONE=America/Bogota
       - N8N_SECURE_COOKIE=false
+      - N8N_RESTRICT_FILE_ACCESS_TO=/data/alumas_runtime
     volumes:
       - n8n_n8n_data:/home/node/.n8n
       - ./scripts:/data/alumas/n8n/scripts:ro
