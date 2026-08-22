@@ -4568,6 +4568,11 @@ function buildProductoSelectFields(columns) {
     '`precio_3`',
     '`cantidad_precio_3`'
   ]
+  if (columnSet.has('imagen')) {
+    baseFields.push('`imagen`')
+  } else {
+    baseFields.push('NULL AS `imagen`')
+  }
   const facturacionFields = [
     'factus_code_reference',
     'factus_unit_measure_code',
