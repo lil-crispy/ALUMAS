@@ -1082,11 +1082,11 @@
           </div>
         </div>
       </div>
-      <p><strong>NIT:</strong> 901797743-2</p>
-      <p><strong>ATENCIÓN AL CLIENTE:</strong> 3015827791</p>
-      <p><strong>CONSULTAR ENVÍOS:</strong> 3197245235</p>
-      <p class="nota-whatsapp"><strong>Por seguridad, solo atendemos llamadas y mensajes vía WhatsApp.</strong></p>
-      <p><strong>DIR:</strong> CALLE 139#109-46</p>
+      <p class="solo-impresion-info"><strong>NIT:</strong> 901797743-2</p>
+      <p class="solo-impresion-info"><strong>ATENCIÓN AL CLIENTE:</strong> 3015827791</p>
+      <p class="solo-impresion-info"><strong>CONSULTAR ENVÍOS:</strong> 3197245235</p>
+      <p class="nota-whatsapp solo-impresion-info"><strong>Por seguridad, solo atendemos llamadas y mensajes vía WhatsApp.</strong></p>
+      <p class="solo-impresion-info"><strong>DIR:</strong> CALLE 139#109-46</p>
       <div id="info-transporte"></div>
     </div>
 
@@ -1110,12 +1110,6 @@
         <option value="CONTADO" selected>Contado</option>
         <option value="CREDITO">Crédito</option>
       </select>
-    </div>
-
-    <div class="scanner-cotizacion-container">
-      <span class="scanner-icon">📷</span>
-      <input type="text" id="scannerCotizacion" class="scanner-input" placeholder="Escanear código...">
-      <button id="btn-buscar-cot" class="btn-buscar-scan" title="Buscar cotización">✔️</button>
     </div>
 
     <style>
@@ -1238,6 +1232,14 @@
       .facturacion-producto-error-row td:nth-child(2) {
         box-shadow: inset 0 0 0 2px #dc2626;
       }
+      .solo-impresion-info {
+        display: none;
+      }
+      @media print {
+        .solo-impresion-info {
+          display: block !important;
+        }
+      }
       @media (max-width: 900px) {
         .cliente-facturacion-row {
           flex-direction: column;
@@ -1250,54 +1252,6 @@
         .facturacion-electronica-toggle-row {
           justify-content: flex-start;
         }
-      }
-      .scanner-cotizacion-container {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 10px auto;
-        width: fit-content;
-        background: #f9f9f9;
-        padding: 5px 10px;
-        border-radius: 20px;
-        border: 1px solid #ddd;
-        transition: all 0.3s ease;
-      }
-      .scanner-cotizacion-container:hover,
-      .scanner-cotizacion-container:focus-within {
-        border-color: #00acc1;
-        background: #fff;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      }
-      .scanner-icon {
-        font-size: 1.2em;
-        margin-right: 8px;
-        opacity: 0.6;
-      }
-      .scanner-input {
-        border: none;
-        background: transparent;
-        outline: none;
-        width: 150px;
-        font-size: 0.9em;
-        color: #333;
-      }
-      .scanner-input::placeholder {
-        color: #aaa;
-      }
-      .btn-buscar-scan {
-        background: none;
-        border: none;
-        cursor: pointer;
-        font-size: 1.1em;
-        color: #00acc1;
-        margin-left: 5px;
-        padding: 0 5px;
-        transition: transform 0.2s;
-      }
-      .btn-buscar-scan:hover {
-        transform: scale(1.2);
-        color: #00838f;
       }
     </style>
 
@@ -3051,65 +3005,7 @@ try {
       }, 2000);
     }
 
-    // Inicialización del Scanner
     document.addEventListener('DOMContentLoaded', () => {
-        const scannerInput = document.getElementById('scannerCotizacion');
-        if (scannerInput) {
-            scannerInput.setAttribute('autocomplete', 'off'); // Evitar autocompletado del navegador
-            
-            // Función procesar código
-            const procesarCodigo = (codigo) => {
-                if (!codigo) return;
-                codigo = codigo.trim(); // No uppercase para este formato numérico simple
-                
-                // Intentar recuperar directo (formato nuevo corto)
-                let cotizacion = recuperarCotizacion(codigo);
-                
-                // Si no, intentar formato antiguo
-                if (!cotizacion && codigo.toUpperCase().startsWith('COT-')) {
-                   const dataStr = localStorage.getItem(`COT_DATA_${codigo.toUpperCase()}`);
-                   if (dataStr) cotizacion = JSON.parse(dataStr);
-                }
-
-                if (cotizacion) {
-                    cargarCotizacionEnTabla(cotizacion);
-                    scannerInput.value = ''; 
-                    scannerInput.blur(); 
-                } else {
-                    alert("⚠️ Cotización NO encontrada.\n\nCódigo buscado: " + codigo);
-                    scannerInput.value = '';
-                    scannerInput.focus();
-                }
-            };
-
-            // Evento Enter (Principal para escáneres)
-            scannerInput.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    procesarCodigo(this.value);
-                }
-            });
-            
-            // Evento Change (Respaldo para pegar/mouse)
-            scannerInput.addEventListener('change', function(e) {
-                // Solo si el usuario hace click fuera o pega y sale
-                if (this.value) procesarCodigo(this.value);
-            });
-
-            // Nuevo botón de búsqueda manual
-            const btnBuscar = document.getElementById('btn-buscar-cot');
-            if (btnBuscar) {
-                btnBuscar.addEventListener('click', () => {
-                    const val = scannerInput.value.trim();
-                    if (!val) {
-                        alert("Por favor ingrese un código.");
-                        scannerInput.focus();
-                        return;
-                    }
-                    procesarCodigo(val);
-                });
-            }
-        }
         limpiarCotizacionesAntiguas();
     });
 
