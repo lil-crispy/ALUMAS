@@ -1,0 +1,474 @@
+{
+  "id": "Q9x2Lm7PvR4kDs1N",
+  "name": "ALUMAS - Reportes ventas diario 7PM Evolution",
+  "active": false,
+  "settings": {
+    "timezone": "America/Bogota",
+    "executionOrder": "v1"
+  },
+  "nodes": [
+    {
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger 7PM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        220,
+        320
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 19 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "read-token",
+      "name": "Leer token Evolution",
+      "type": "n8n-nodes-base.readBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        500,
+        220
+      ],
+      "parameters": {
+        "filePath": "/data/alumas_runtime/evolution_instance_token.txt",
+        "dataPropertyName": "tokenBinary"
+      }
+    },
+    {
+      "id": "extract-token",
+      "name": "Extraer token texto",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        760,
+        220
+      ],
+      "parameters": {
+        "operation": "text",
+        "binaryPropertyName": "tokenBinary",
+        "destinationKey": "tokenText",
+        "options": {
+          "keepSource": "json"
+        }
+      }
+    },
+    {
+      "id": "generate-reports",
+      "name": "Generar reportes PDF diarios",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        500,
+        420
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://status_generator:8000/generate-sales-reports",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "neverError": false,
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "merge-runtime",
+      "name": "Combinar token y reportes",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1040,
+        320
+      ],
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "numberInputs": 2,
+        "options": {}
+      }
+    },
+    {
+      "id": "prepare-recipients",
+      "name": "Preparar destinatarios reportes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        320
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const source = $input.first().json || {};\nconst token = String(source.tokenText || '').trim();\nconst reports = Array.isArray(source.reports) ? source.reports : [];\nconst recipients = Array.isArray(source.recipients) ? source.recipients : [];\nconst ferreteria = reports.find((item) => String(item.point_sale || '').toLowerCase() === 'ferreteria');\nconst bodega = reports.find((item) => String(item.point_sale || '').toLowerCase() === 'bodega');\n\nfunction normalizePhone(rawPhone) {\n  let digits = String(rawPhone || '').replace(/\\D/g, '');\n  digits = digits.replace(/^0+/, '');\n  if (digits.length === 10 && digits.startsWith('3')) digits = `57${digits}`;\n  if (digits.length === 12 && digits.startsWith('57') && digits[2] === '3') return digits;\n  return digits || null;\n}\n\nconst numbers = recipients.map(normalizePhone).filter(Boolean);\nif (!token || !ferreteria || !bodega || !numbers.length) {\n  return [{\n    json: {\n      should_send: false,\n      status: 'missing_runtime_data',\n      has_token: Boolean(token),\n      has_ferreteria_report: Boolean(ferreteria),\n      has_bodega_report: Boolean(bodega),\n      recipients_count: numbers.length,\n      report_date: source.report_date || null,\n      generated_at: source.generated_at || null\n    }\n  }];\n}\n\nreturn numbers.map((number, index) => ({\n  json: {\n    should_send: true,\n    status: 'ready_to_send',\n    recipient_index: index + 1,\n    recipient_count: numbers.length,\n    report_date: source.report_date,\n    generated_at: source.generated_at,\n    number,\n    evolution_api_key: token,\n    message_text: String(source.message_text || '').trim(),\n    ferreteria_url: ferreteria.public_url,\n    ferreteria_file_name: ferreteria.file_name || `reporte_ventas_ferreteria_${String(source.report_date || '').replace(/-/g, '')}.pdf`,\n    ferreteria_caption: 'Reporte de ventas HOY - Ferreteria',\n    bodega_url: bodega.public_url,\n    bodega_file_name: bodega.file_name || `reporte_ventas_bodega_${String(source.report_date || '').replace(/-/g, '')}.pdf`,\n    bodega_caption: 'Reporte de ventas HOY - Bodega',\n    total_general: source.total_general ?? 0\n  }\n}));"
+      }
+    },
+    {
+      "id": "should-send",
+      "name": "¿Hay reportes para enviar?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1600,
+        320
+      ],
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.should_send }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "send-ferreteria-pdf",
+      "name": "Enviar PDF Ferreteria",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1880,
+        160
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://evolution_api:8080/message/sendMedia/alumas",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $('Preparar destinatarios reportes').item.json.evolution_api_key }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $('Preparar destinatarios reportes').item.json.number }}"
+            },
+            {
+              "name": "mediatype",
+              "value": "document"
+            },
+            {
+              "name": "mimetype",
+              "value": "application/pdf"
+            },
+            {
+              "name": "media",
+              "value": "={{ $('Preparar destinatarios reportes').item.json.ferreteria_url }}"
+            },
+            {
+              "name": "fileName",
+              "value": "={{ $('Preparar destinatarios reportes').item.json.ferreteria_file_name }}"
+            },
+            {
+              "name": "caption",
+              "value": "={{ $('Preparar destinatarios reportes').item.json.ferreteria_caption }}"
+            }
+          ]
+        },
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 1500
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": false,
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "send-bodega-pdf",
+      "name": "Enviar PDF Bodega",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2160,
+        160
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://evolution_api:8080/message/sendMedia/alumas",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $('Preparar destinatarios reportes').item.json.evolution_api_key }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $('Preparar destinatarios reportes').item.json.number }}"
+            },
+            {
+              "name": "mediatype",
+              "value": "document"
+            },
+            {
+              "name": "mimetype",
+              "value": "application/pdf"
+            },
+            {
+              "name": "media",
+              "value": "={{ $('Preparar destinatarios reportes').item.json.bodega_url }}"
+            },
+            {
+              "name": "fileName",
+              "value": "={{ $('Preparar destinatarios reportes').item.json.bodega_file_name }}"
+            },
+            {
+              "name": "caption",
+              "value": "={{ $('Preparar destinatarios reportes').item.json.bodega_caption }}"
+            }
+          ]
+        },
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 1500
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": false,
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "send-final-text",
+      "name": "Enviar mensaje final",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2440,
+        160
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://evolution_api:8080/message/sendText/alumas",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $('Preparar destinatarios reportes').item.json.evolution_api_key }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $('Preparar destinatarios reportes').item.json.number }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $('Preparar destinatarios reportes').item.json.message_text }}"
+            }
+          ]
+        },
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 1200
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": false,
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "no-reports",
+      "name": "Sin reportes disponibles",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1880,
+        420
+      ],
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"status\": $json.status,\n  \"has_token\": $json.has_token,\n  \"has_ferreteria_report\": $json.has_ferreteria_report,\n  \"has_bodega_report\": $json.has_bodega_report,\n  \"recipients_count\": $json.recipients_count,\n  \"report_date\": $json.report_date,\n  \"generated_at\": $json.generated_at\n}"
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger 7PM": {
+      "main": [
+        [
+          {
+            "node": "Leer token Evolution",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Generar reportes PDF diarios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer token Evolution": {
+      "main": [
+        [
+          {
+            "node": "Extraer token texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer token texto": {
+      "main": [
+        [
+          {
+            "node": "Combinar token y reportes",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Generar reportes PDF diarios": {
+      "main": [
+        [
+          {
+            "node": "Combinar token y reportes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combinar token y reportes": {
+      "main": [
+        [
+          {
+            "node": "Preparar destinatarios reportes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar destinatarios reportes": {
+      "main": [
+        [
+          {
+            "node": "¿Hay reportes para enviar?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Hay reportes para enviar?": {
+      "main": [
+        [
+          {
+            "node": "Enviar PDF Ferreteria",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Sin reportes disponibles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar PDF Ferreteria": {
+      "main": [
+        [
+          {
+            "node": "Enviar PDF Bodega",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar PDF Bodega": {
+      "main": [
+        [
+          {
+            "node": "Enviar mensaje final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

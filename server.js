@@ -762,6 +762,59 @@ function normalizeVentaPaymentDetails(body) {
   return []
 }
 
+function normalizeVentaPaymentFormForStorage(value, tipoPago) {
+  const normalized = String(value || '').trim().toLowerCase()
+  if (normalized === '2' || normalized === 'credito' || normalized === 'crédito' || String(tipoPago || '').trim().toUpperCase() === 'CREDITO') {
+    return 'credito'
+  }
+  return 'contado'
+}
+
+function normalizeVentaPaymentMethodForStorage(value, tipoPago) {
+  const normalized = String(value || '').trim().toLowerCase()
+  if (normalized === '10' || normalized === 'cash' || normalized === 'efectivo') return 'cash'
+  if (normalized === '48' || normalized === 'card' || normalized === 'tarjeta') return 'card'
+  if (normalized === '42' || normalized === 'qr') return 'qr'
+  if (normalized === '1' || normalized === 'credit' || String(tipoPago || '').trim().toUpperCase() === 'CREDITO') return 'credit'
+  if (normalized === 'mixed' || normalized === 'mixto') return 'mixed'
+  return normalized || 'cash'
+}
+
+function buildVentaPaymentDetailsForPersistence(body, totalFallback = 0, sourceDetails = null) {
+  const details = Array.isArray(sourceDetails) && sourceDetails.length
+    ? sourceDetails
+    : normalizeVentaPaymentDetails(body)
+
+  if (details.length) {
+    return details
+      .map((rawPago) => {
+        const pago = rawPago || {}
+        return {
+          payment_form: normalizeVentaPaymentFormForStorage(pago.payment_form, body?.tipo_pago),
+          payment_method_code: normalizeVentaPaymentMethodForStorage(pago.payment_method_code || pago.metodo_pago || body?.forma_pago, body?.tipo_pago),
+          amount: normalizeVentaNumeric(pago.amount ?? totalFallback ?? body?.total, 0),
+          due_date: normalizeVentaDate(pago.due_date),
+          reference_code: pago.reference_code ? String(pago.reference_code) : null
+        }
+      })
+      .filter((pago) => normalizeVentaNumeric(pago.amount, 0) > 0)
+  }
+
+  if (!String(body?.forma_pago || '').trim()) {
+    return []
+  }
+
+  return [
+    {
+      payment_form: normalizeVentaPaymentFormForStorage(null, body?.tipo_pago),
+      payment_method_code: normalizeVentaPaymentMethodForStorage(body?.forma_pago, body?.tipo_pago),
+      amount: normalizeVentaNumeric(totalFallback ?? body?.total, 0),
+      due_date: null,
+      reference_code: null
+    }
+  ].filter((pago) => normalizeVentaNumeric(pago.amount, 0) > 0)
+}
+
 function toSafeJson(value) {
   try {
     return JSON.stringify(value ?? null)
@@ -5150,9 +5203,6 @@ async function persistVentaElectronicaData(conn, body, ventaId, items, paymentDe
   const persistedItems = Array.isArray(options.persistedItems) && options.persistedItems.length
     ? options.persistedItems
     : items
-  const persistedPaymentDetails = Array.isArray(options.persistedPaymentDetails) && options.persistedPaymentDetails.length
-    ? options.persistedPaymentDetails
-    : paymentDetails
   const referenceCode = String(
     options.referenceCode
     || body?.facturacion?.reference_code
@@ -5198,28 +5248,6 @@ async function persistVentaElectronicaData(conn, body, ventaId, items, paymentDe
     )
   }
 
-  for (const rawPago of persistedPaymentDetails) {
-    const pago = rawPago || {}
-    await conn.query(
-      `INSERT INTO ventas_payment_details (
-        venta_id,
-        payment_form,
-        payment_method_code,
-        amount,
-        due_date,
-        reference_code
-      ) VALUES (?, ?, ?, ?, ?, ?)`,
-      [
-        Number(ventaId),
-        String(pago.payment_form || 'contado'),
-        String(pago.payment_method_code || 'cash'),
-        normalizeVentaNumeric(pago.amount ?? body.total, 0),
-        normalizeVentaDate(pago.due_date),
-        pago.reference_code ? String(pago.reference_code) : null
-      ]
-    )
-  }
-
   await conn.query(
     `INSERT INTO factus_documentos (
       venta_id,
@@ -5240,6 +5268,30 @@ async function persistVentaElectronicaData(conn, body, ventaId, items, paymentDe
   )
 
   return referenceCode
+}
+
+async function persistVentaPaymentDetails(conn, ventaId, paymentDetails) {
+  for (const rawPago of paymentDetails) {
+    const pago = rawPago || {}
+    await conn.query(
+      `INSERT INTO ventas_payment_details (
+        venta_id,
+        payment_form,
+        payment_method_code,
+        amount,
+        due_date,
+        reference_code
+      ) VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        Number(ventaId),
+        String(pago.payment_form || 'contado'),
+        String(pago.payment_method_code || 'cash'),
+        normalizeVentaNumeric(pago.amount, 0),
+        normalizeVentaDate(pago.due_date),
+        pago.reference_code ? String(pago.reference_code) : null
+      ]
+    )
+  }
 }
 
 function normalizeConsecutivoValue(value) {
@@ -5375,6 +5427,11 @@ async function processVentaWithExistingLogic(conn, body, options = {}) {
   const ventaTotal = esFacturaElectronica
     ? roundFactusMoney(factusFinancialSummary?.total || total || 0)
     : Number(total || 0)
+  const persistedPaymentDetails = buildVentaPaymentDetailsForPersistence(
+    body,
+    ventaTotal,
+    esFacturaElectronica ? (factusPayload?.payment_details || paymentDetails) : paymentDetails
+  )
   await insertVentaCabecera(conn, {
     id_consecutivo: resolvedConsecutivo,
     usuario_id,
@@ -5396,9 +5453,12 @@ async function processVentaWithExistingLogic(conn, body, options = {}) {
     const persistedItems = buildCanonicalVentaDetalleItems(items, factusPayload)
     await persistVentaElectronicaData(conn, body, resolvedConsecutivo, items, paymentDetails, {
       referenceCode: factusReferenceCode,
-      persistedItems,
-      persistedPaymentDetails: factusPayload?.payment_details || paymentDetails
+      persistedItems
     })
+  }
+
+  if (persistedPaymentDetails.length > 0) {
+    await persistVentaPaymentDetails(conn, resolvedConsecutivo, persistedPaymentDetails)
   }
 
   for (const it of items) {
@@ -5702,11 +5762,22 @@ async function getCajaResumen(conn = pool) {
   const endStr = `${y}-${m}-${d} 23:59:59`
 
   const [[ventaRow]] = await conn.query(
-    `SELECT COALESCE(SUM(total), 0) AS total_efectivo
-     FROM ventas
-     WHERE fecha >= ? AND fecha <= ?
-       AND UPPER(TRIM(COALESCE(forma_pago, ''))) = 'EFECTIVO'
-       AND LOWER(TRIM(COALESCE(punto_venta, 'ferreteria'))) = 'ferreteria'`,
+    `SELECT COALESCE(SUM(
+        CASE
+          WHEN vpd.id IS NOT NULL THEN
+            CASE
+              WHEN LOWER(TRIM(COALESCE(vpd.payment_method_code, ''))) IN ('cash', 'efectivo', '10') THEN COALESCE(vpd.amount, 0)
+              ELSE 0
+            END
+          WHEN UPPER(TRIM(COALESCE(v.forma_pago, ''))) = 'EFECTIVO' THEN COALESCE(v.total, 0)
+          ELSE 0
+        END
+      ), 0) AS total_efectivo
+     FROM ventas v
+     LEFT JOIN ventas_payment_details vpd
+       ON vpd.venta_id = v.id_consecutivo
+     WHERE v.fecha >= ? AND v.fecha <= ?
+       AND LOWER(TRIM(COALESCE(v.punto_venta, 'ferreteria'))) = 'ferreteria'`,
     [startStr, endStr]
   )
   let egresoRow = { total_egresos: 0 }
@@ -7602,7 +7673,39 @@ app.get('/api/reporte-ventas', async (req, res) => {
       'SELECT id_consecutivo, total, forma_pago, tipo_pago, fecha, punto_venta FROM ventas WHERE fecha >= ? AND fecha <= ? ORDER BY id_consecutivo DESC',
       [startStr, endStr]
     )
-    res.json({ ok: true, ventas: rows })
+    const saleIds = rows.map((row) => Number(row.id_consecutivo)).filter((id) => Number.isFinite(id) && id > 0)
+    let paymentDetailsByVenta = new Map()
+
+    if (saleIds.length) {
+      const placeholders = saleIds.map(() => '?').join(', ')
+      const [paymentRows] = await pool.query(
+        `SELECT venta_id, payment_form, payment_method_code, SUM(amount) AS amount
+         FROM ventas_payment_details
+         WHERE venta_id IN (${placeholders})
+         GROUP BY venta_id, payment_form, payment_method_code
+         ORDER BY venta_id DESC, payment_method_code ASC`,
+        saleIds
+      )
+
+      paymentDetailsByVenta = paymentRows.reduce((acc, row) => {
+        const ventaId = Number(row.venta_id)
+        if (!acc.has(ventaId)) acc.set(ventaId, [])
+        acc.get(ventaId).push({
+          payment_form: row.payment_form,
+          payment_method_code: row.payment_method_code,
+          amount: normalizeVentaNumeric(row.amount, 0)
+        })
+        return acc
+      }, new Map())
+    }
+
+    res.json({
+      ok: true,
+      ventas: rows.map((row) => ({
+        ...row,
+        payment_details: paymentDetailsByVenta.get(Number(row.id_consecutivo)) || []
+      }))
+    })
   } catch (err) {
     console.error('[Reporte] Error:', err.message)
     res.status(500).json({ ok: false, error: err.message })

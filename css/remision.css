@@ -214,9 +214,36 @@ th, td {
   display: flex;
   gap: 16px;
   justify-content: center;
+  flex-wrap: wrap;
 }
 .metodos-pago label {
   font-weight: bold;
+}
+.metodo-pago-opcion {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid #93c5fd;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease, box-shadow 120ms ease;
+}
+.metodo-pago-opcion.selected {
+  background: #2563eb;
+  border-color: #1d4ed8;
+  color: #fff;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.22);
+}
+.metodo-pago-opcion.selected-mixto {
+  background: #16a34a;
+  border-color: #15803d;
+  color: #fff;
+  box-shadow: 0 4px 10px rgba(22, 163, 74, 0.22);
+}
+.metodo-pago-opcion input {
+  margin: 0;
 }
 
 .btn {

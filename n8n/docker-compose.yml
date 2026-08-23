@@ -20,12 +20,14 @@ services:
       context: ./status_generator_service
     container_name: status_generator
     restart: unless-stopped
+    ports:
+      - "8000:8000"
     environment:
       - ALUMAS_REPO_ROOT=/workspace/alumas
       - ALUMAS_ESTADOS_LOG_PATH=/data/alumas_runtime/logs/status_generator_estados_debug.log
       - DB_HOST=host.docker.internal
       - STATUS_RUNTIME_DIR=/data/alumas_runtime/statuses
-      - STATUS_GENERATOR_PUBLIC_BASE_URL=http://status_generator:8000/generated
+      - STATUS_GENERATOR_PUBLIC_BASE_URL=http://72.62.166.253:8000/generated
       - STATUS_GENERATOR_DEFAULT_COUNT=15
       - STATUS_GENERATOR_DEFAULT_ORDER=aleatorio
       - STATUS_GENERATOR_LOGO_PATH=/workspace/alumas/img/LOGO3.png

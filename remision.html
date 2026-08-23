@@ -1218,9 +1218,10 @@
     </div>
 
     <div class="metodos-pago">
-      <label><input type="checkbox" id="pago-efectivo"> Efectivo</label>
-      <label><input type="checkbox" id="pago-tarjeta"> Tarjeta</label>
-      <label><input type="checkbox" id="pago-qr"> QR</label>
+      <label class="metodo-pago-opcion"><input type="checkbox" id="pago-efectivo"> Efectivo</label>
+      <label class="metodo-pago-opcion"><input type="checkbox" id="pago-tarjeta"> Tarjeta</label>
+      <label class="metodo-pago-opcion"><input type="checkbox" id="pago-qr"> QR</label>
+      <label class="metodo-pago-opcion metodo-pago-mixto"><input type="checkbox" id="pago-mixto"> Mixto</label>
     </div>
 
     <div id="detalle-pago-efectivo" style="display: none; margin-top: 5px;">
@@ -1629,6 +1630,161 @@
 
       actualizarTotales();
       actualizarFechaHora();
+    }
+
+    const PAYMENT_METHOD_IDS = ['pago-efectivo', 'pago-tarjeta', 'pago-qr']
+    const PAYMENT_OPTION_IDS = [...PAYMENT_METHOD_IDS, 'pago-mixto']
+
+    function resetearDetallePagoEfectivo() {
+      const pagadoEl = document.getElementById('valor-pagado')
+      const cambioEl = document.getElementById('valor-cambio')
+      if (pagadoEl) pagadoEl.value = ''
+      if (cambioEl) {
+        cambioEl.innerText = 'Cambio: $ 0'
+        cambioEl.style.color = '#2e7d32'
+      }
+    }
+
+    function normalizarMetodoPagoDetalle(valor) {
+      const metodo = String(valor || '').trim().toLowerCase()
+      if (metodo === 'cash') return 'efectivo'
+      if (metodo === 'card') return 'tarjeta'
+      if (metodo === 'qr') return 'qr'
+      if (metodo === 'mixed' || metodo === 'mixto') return 'mixto'
+      return metodo
+    }
+
+    function obtenerMetodosPagoSeleccionados() {
+      return PAYMENT_METHOD_IDS
+        .filter(id => document.getElementById(id)?.checked)
+        .map(id => normalizarMetodoPagoDetalle(id.replace('pago-', '')))
+    }
+
+    function esPagoMixtoSeleccionado() {
+      return !!document.getElementById('pago-mixto')?.checked
+    }
+
+    function actualizarEstadoMetodosPagoUI() {
+      const mixtoSeleccionado = esPagoMixtoSeleccionado()
+      PAYMENT_OPTION_IDS.forEach(id => {
+        const checkbox = document.getElementById(id)
+        const label = checkbox?.closest('label')
+        if (!checkbox || !label) return
+        label.classList.toggle('selected', !!checkbox.checked)
+        label.classList.toggle('selected-mixto', id === 'pago-mixto' && !!checkbox.checked)
+      })
+
+      const efectivoCheckbox = document.getElementById('pago-efectivo')
+      const detalle = document.getElementById('detalle-pago-efectivo')
+      const mostrarDetalleEfectivo = !!efectivoCheckbox?.checked && !mixtoSeleccionado
+      if (detalle) {
+        detalle.style.display = mostrarDetalleEfectivo ? 'block' : 'none'
+      }
+      if (!mostrarDetalleEfectivo) {
+        resetearDetallePagoEfectivo()
+      }
+    }
+
+    function manejarCambioMetodoPago(changedId) {
+      const changed = document.getElementById(changedId)
+      const mixtoCheckbox = document.getElementById('pago-mixto')
+      if (!changed) return
+
+      if (changedId === 'pago-mixto') {
+        if (changed.checked) {
+          PAYMENT_METHOD_IDS.forEach(id => {
+            const checkbox = document.getElementById(id)
+            if (checkbox) checkbox.checked = false
+          })
+        } else {
+          const seleccionados = obtenerMetodosPagoSeleccionados()
+          if (seleccionados.length > 1) {
+            let preservado = false
+            PAYMENT_METHOD_IDS.forEach(id => {
+              const checkbox = document.getElementById(id)
+              if (!checkbox?.checked) return
+              if (!preservado) {
+                preservado = true
+                return
+              }
+              checkbox.checked = false
+            })
+          }
+        }
+        actualizarEstadoMetodosPagoUI()
+        return
+      }
+
+      if (mixtoCheckbox?.checked) {
+        const seleccionados = obtenerMetodosPagoSeleccionados()
+        if (seleccionados.length > 2 && changed.checked) {
+          changed.checked = false
+          alert('Con pago mixto solo puede seleccionar dos métodos adicionales.')
+        }
+      } else if (changed.checked) {
+        PAYMENT_METHOD_IDS.forEach(id => {
+          if (id === changedId) return
+          const checkbox = document.getElementById(id)
+          if (checkbox) checkbox.checked = false
+        })
+      }
+
+      actualizarEstadoMetodosPagoUI()
+      if (changedId === 'pago-efectivo' && changed.checked && !mixtoCheckbox?.checked) {
+        setTimeout(() => document.getElementById('valor-pagado')?.focus(), 100)
+        calcularCambio()
+      }
+    }
+
+    function parsearMontoPagoMixto(valor) {
+      const texto = String(valor || '').trim()
+      if (!texto) return NaN
+      const limpio = texto.replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.')
+      const numero = Number(limpio)
+      return Number.isFinite(numero) ? Math.round(numero) : NaN
+    }
+
+    function solicitarMontosPagoMixto(total, metodos) {
+      const totalVenta = Math.round(Number(total || 0))
+      let restante = totalVenta
+      const pagos = []
+
+      for (let i = 0; i < metodos.length; i += 1) {
+        const metodo = normalizarMetodoPagoDetalle(metodos[i])
+        const esUltimo = i === metodos.length - 1
+        const mensaje = esUltimo
+          ? `Ingrese cuánto pagó en ${metodo.toUpperCase()}.\nDebe completar exactamente ${formatearPesos(restante)} para cerrar el pago mixto.`
+          : `Ingrese cuánto pagó en ${metodo.toUpperCase()}.\nTotal de la venta: ${formatearPesos(totalVenta)}\nValor restante por asignar después: ${formatearPesos(restante)}`
+        const respuesta = window.prompt(mensaje, String(restante))
+        if (respuesta === null) return null
+
+        const monto = parsearMontoPagoMixto(respuesta)
+        if (!Number.isFinite(monto) || monto <= 0) {
+          alert(`El valor ingresado para ${metodo.toUpperCase()} no es válido.`)
+          return null
+        }
+        if (monto > restante) {
+          alert(`El valor de ${metodo.toUpperCase()} no puede superar ${formatearPesos(restante)}.`)
+          return null
+        }
+        if (esUltimo && monto !== restante) {
+          alert(`El último método debe completar exactamente ${formatearPesos(restante)}.`)
+          return null
+        }
+
+        pagos.push({
+          method: metodo,
+          amount: monto
+        })
+        restante -= monto
+      }
+
+      if (restante !== 0) {
+        alert('La suma de los montos del pago mixto debe ser igual al total de la venta.')
+        return null
+      }
+
+      return pagos
     }
 
     function calcularCambio() {
@@ -3128,7 +3284,7 @@ try {
       const tipo = getTipoPago();
       const metodo = getSelectedMetodoPago();
       if (tipo !== 'CREDITO' && !metodo) {
-        alert('Seleccione un método de pago (Efectivo, Tarjeta o QR)');
+        alert('Seleccione un método de pago (Efectivo, Tarjeta, QR o Mixto)');
         return;
       }
       aplicarVentaUI();
@@ -3200,10 +3356,11 @@ try {
 
     window.addEventListener('afterprint', () => {
       aplicarVentaUI();
-      ['pago-efectivo','pago-tarjeta','pago-qr'].forEach(id => {
+      ['pago-efectivo','pago-tarjeta','pago-qr','pago-mixto'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.checked = false;
       });
+      actualizarEstadoMetodosPagoUI()
     });
 
     window.addEventListener('keydown', (e) => {
@@ -3520,13 +3677,33 @@ try {
             })
             console.log('Ventas cargadas (todas):', data.ventas.length)
             console.log('Ventas filtradas hoy:', soloHoy.length)
-            reporteVentas = soloHoy.map(v => ({
-              id: v.id_consecutivo,
-              v: parseInt(v.total) || 0,
-              m: (v.forma_pago || 'desconocido').toLowerCase(),
-              pv: (v.punto_venta || 'ferreteria').toLowerCase(),
-              fecha: v.fecha
-            }))
+            reporteVentas = soloHoy.flatMap(v => {
+              const paymentDetails = Array.isArray(v.payment_details) ? v.payment_details : []
+              const desglose = paymentDetails
+                .map((pago) => {
+                  const metodo = normalizarMetodoPagoDetalle(pago?.payment_method_code || pago?.metodo_pago || v.forma_pago)
+                  const valor = Math.round(Number(pago?.amount || 0))
+                  if (!['efectivo', 'tarjeta', 'qr'].includes(metodo) || !Number.isFinite(valor) || valor <= 0) return null
+                  return {
+                    id: v.id_consecutivo,
+                    v: valor,
+                    m: metodo,
+                    pv: (v.punto_venta || 'ferreteria').toLowerCase(),
+                    fecha: v.fecha
+                  }
+                })
+                .filter(Boolean)
+
+              if (desglose.length) return desglose
+
+              return [{
+                id: v.id_consecutivo,
+                v: parseInt(v.total) || 0,
+                m: normalizarMetodoPagoDetalle(v.forma_pago || 'desconocido'),
+                pv: (v.punto_venta || 'ferreteria').toLowerCase(),
+                fecha: v.fecha
+              }]
+            })
             actualizarUIReporte()
             return
           }
@@ -3641,33 +3818,13 @@ try {
       inicializarAutocompletadoCliente();
       inicializarModalClienteRapido();
       inicializarFacturacionElectronica();
-      ['pago-efectivo','pago-tarjeta','pago-qr'].forEach(id => {
+      PAYMENT_OPTION_IDS.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
-          el.addEventListener('change', () => {
-            if (el.checked) {
-              ['pago-efectivo','pago-tarjeta','pago-qr'].forEach(otherId => {
-                if (otherId !== id) {
-                  const other = document.getElementById(otherId);
-                  if (other) other.checked = false;
-                }
-              });
-            }
-            
-            // Actualizar visibilidad del detalle de efectivo
-            const efectivoCheckbox = document.getElementById('pago-efectivo');
-            const detalle = document.getElementById('detalle-pago-efectivo');
-            if (efectivoCheckbox && detalle) {
-                const isEfectivo = efectivoCheckbox.checked;
-                detalle.style.display = isEfectivo ? 'block' : 'none';
-                if (isEfectivo && id === 'pago-efectivo' && el.checked) {
-                    setTimeout(() => document.getElementById('valor-pagado')?.focus(), 100);
-                    calcularCambio();
-                }
-            }
-          });
+          el.addEventListener('change', () => manejarCambioMetodoPago(id));
         }
       });
+      actualizarEstadoMetodosPagoUI()
       
       const valorPagadoInput = document.getElementById('valor-pagado');
       if (valorPagadoInput) {
@@ -3812,9 +3969,11 @@ try {
       }
     }
     function getSelectedMetodoPago() {
+      const esMixto = document.getElementById('pago-mixto')?.checked;
       const esEf = document.getElementById('pago-efectivo')?.checked;
       const esTa = document.getElementById('pago-tarjeta')?.checked;
       const esQr = document.getElementById('pago-qr')?.checked;
+      if (esMixto) return 'mixto';
       if (esEf) return 'efectivo';
       if (esTa) return 'tarjeta';
       if (esQr) return 'qr';
@@ -3898,25 +4057,26 @@ try {
       if (metodoNormalizado === 'efectivo') return 'cash'
       if (metodoNormalizado === 'tarjeta') return 'card'
       if (metodoNormalizado === 'qr') return 'qr'
+      if (metodoNormalizado === 'mixto') return 'mixed'
       return metodoNormalizado || 'cash'
     }
-    function construirPaymentDetailsVenta(tipoPago, metodo, total) {
+    function construirPaymentDetailsVenta(tipoPago, metodo, total, pagosMixtos = []) {
       const paymentForm = mapearPaymentForm(tipoPago)
-      const details = [
-        {
-          payment_form: paymentForm,
-          payment_method_code: mapearPaymentMethodCode(metodo, tipoPago),
-          amount: redondearValorFacturacion(total || 0),
-          due_date: paymentForm === 'credito' ? obtenerFechaVencimientoPayload() : null
-        }
-      ]
+      const pagos = Array.isArray(pagosMixtos) && pagosMixtos.length
+        ? pagosMixtos
+        : [{ method: metodo, amount: total }]
+      const details = pagos.map(pago => ({
+        payment_form: paymentForm,
+        payment_method_code: mapearPaymentMethodCode(pago.method, tipoPago),
+        amount: redondearValorFacturacion(pago.amount || 0),
+        due_date: paymentForm === 'credito' ? obtenerFechaVencimientoPayload() : null
+      }))
       // #region debug-point E:payment-details-build
       reportDebugFeQrFecha('E', 'remision.html:construirPaymentDetailsVenta', 'Payment details FE construidos', {
         tipoPago,
         metodo,
         paymentForm,
-        amount: details[0]?.amount,
-        dueDate: details[0]?.due_date
+        details
       })
       // #endregion
       return details
@@ -5536,6 +5696,24 @@ try {
       const total = obtenerTotalNumerico()
       const clienteTexto = document.getElementById('nombre-cliente')?.value.trim() || ''
       const tipo_pago = getTipoPago()
+      const pagoMixtoActivo = String(metodo || '').toLowerCase() === 'mixto'
+      let pagosMixtos = []
+      if (pagoMixtoActivo) {
+        if (tipo_pago === 'CREDITO') {
+          alert('El pago mixto solo está disponible para ventas de contado.')
+          return false
+        }
+        const metodosMixtos = obtenerMetodosPagoSeleccionados()
+        if (metodosMixtos.length !== 2) {
+          alert('Si selecciona pago mixto, debe marcar exactamente dos métodos de pago adicionales.')
+          return false
+        }
+        pagosMixtos = solicitarMontosPagoMixto(total, metodosMixtos) || []
+        if (!pagosMixtos.length) {
+          return false
+        }
+      }
+      const paymentDetails = construirPaymentDetailsVenta(tipo_pago, metodo, total, pagosMixtos)
       const facturaElectronicaActiva = !!document.getElementById('factura-electronica-checkbox')?.checked
       const { usuario_id, cliente_id } = getIds()
       if (tipo_pago === 'CREDITO') {
@@ -5569,7 +5747,8 @@ try {
         forma_pago: (metodo || '').toUpperCase(),
         punto_venta: getPuntoVenta(),
         items,
-        cliente_nombre: clienteTexto
+        cliente_nombre: clienteTexto,
+        payment_details: paymentDetails
       }
       if (facturaElectronicaActiva) {
         const clienteIdSeleccionado = getSelectedClientId()
@@ -5583,7 +5762,9 @@ try {
           return false
         }
         const fechaVenta = obtenerFechaVentaPayload()
-        const paymentDetails = construirPaymentDetailsVenta(tipo_pago, metodo, estructuraVentaElectronica.total)
+        const paymentDetailsFactura = pagoMixtoActivo
+          ? construirPaymentDetailsVenta(tipo_pago, metodo, estructuraVentaElectronica.total, pagosMixtos)
+          : construirPaymentDetailsVenta(tipo_pago, metodo, estructuraVentaElectronica.total)
         payload.cliente_id = clienteIdSeleccionado
         payload.fecha = fechaVenta
         payload.subtotal = estructuraVentaElectronica.subtotal
@@ -5595,7 +5776,7 @@ try {
         payload.factus_numbering_range_id = factusNumberingPreviewActual?.numbering_range_id || null
         payload.factus_preview_number = factusNumberingPreviewActual?.preview_number || null
         payload.items = estructuraVentaElectronica.items
-        payload.payment_details = paymentDetails
+        payload.payment_details = paymentDetailsFactura
         payload.venta_detalle = estructuraVentaElectronica.items
         payload.facturacion = {
           cabecera: {
@@ -5611,7 +5792,7 @@ try {
             factura_electronica: true
           },
           detalle: estructuraVentaElectronica.items,
-          pagos: paymentDetails
+          pagos: paymentDetailsFactura
         }
       }
       const resp = await fetch(getApiBase() + '/api/venta', {
