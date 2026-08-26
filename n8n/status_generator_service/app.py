@@ -13,6 +13,7 @@ from zoneinfo import ZoneInfo
 
 from flask import Flask, jsonify, request, send_from_directory
 import mysql.connector
+from PIL import Image
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
@@ -22,6 +23,7 @@ from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, Tabl
 REPO_ROOT = Path(os.environ.get("ALUMAS_REPO_ROOT", "/workspace/alumas")).resolve()
 RUNTIME_ROOT = Path(os.environ.get("STATUS_RUNTIME_DIR", "/data/alumas_runtime/statuses")).resolve()
 PUBLIC_BASE_URL = os.environ.get("STATUS_GENERATOR_PUBLIC_BASE_URL", "http://status_generator:8000/generated").rstrip("/")
+INTERNAL_BASE_URL = os.environ.get("STATUS_GENERATOR_INTERNAL_BASE_URL", "http://status_generator:8000/generated").rstrip("/")
 DEFAULT_COUNT = int(os.environ.get("STATUS_GENERATOR_DEFAULT_COUNT", "15"))
 DEFAULT_ORDER = os.environ.get("STATUS_GENERATOR_DEFAULT_ORDER", "aleatorio")
 DEFAULT_IMAGE_FOLDER = os.environ.get("PRODUCT_IMAGES_FOLDER", "").strip()
@@ -85,6 +87,18 @@ def _resolve_output_dir(output_subdir: str | None) -> Path:
 
 def _public_url_for(relative_path: Path) -> str:
     return f"{PUBLIC_BASE_URL}/{quote(relative_path.as_posix(), safe='/')}"
+
+
+def _internal_url_for(relative_path: Path) -> str:
+    return f"{INTERNAL_BASE_URL}/{quote(relative_path.as_posix(), safe='/')}"
+
+
+def _build_delivery_image(original_path: Path, index: int) -> tuple[Path, str]:
+    delivery_name = f"status_{index:02d}.jpg"
+    delivery_path = original_path.with_name(delivery_name)
+    with Image.open(original_path) as image:
+        image.convert("RGB").save(delivery_path, "JPEG", quality=92, optimize=True)
+    return delivery_path, delivery_name
 
 
 def _to_decimal(value: object) -> Decimal:
@@ -529,12 +543,21 @@ def generate():
 
     enriched_files = []
     for item in result["generated_files"]:
-        relative_path = Path(item["file_path"]).resolve().relative_to(RUNTIME_ROOT)
+        original_path = Path(item["file_path"]).resolve()
+        relative_path = original_path.relative_to(RUNTIME_ROOT)
+        delivery_path, delivery_name = _build_delivery_image(original_path, int(item.get("index") or len(enriched_files) + 1))
+        delivery_relative_path = delivery_path.resolve().relative_to(RUNTIME_ROOT)
         enriched_files.append(
             {
                 **item,
+                "original_file_name": item.get("file_name"),
+                "original_relative_path": relative_path.as_posix(),
+                "original_public_url": _public_url_for(relative_path),
                 "relative_path": relative_path.as_posix(),
-                "public_url": _public_url_for(relative_path),
+                "delivery_file_name": delivery_name,
+                "delivery_relative_path": delivery_relative_path.as_posix(),
+                "internal_url": _internal_url_for(delivery_relative_path),
+                "public_url": _public_url_for(delivery_relative_path),
             }
         )
 

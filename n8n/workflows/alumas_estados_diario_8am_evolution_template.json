@@ -65,7 +65,7 @@
       "parameters": {
         "mode": "runOnceForAllItems",
         "language": "javaScript",
-        "jsCode": "const source = $input.first().json;\nconst generatedFiles = Array.isArray(source.generated_files) ? source.generated_files : [];\n\nif (!generatedFiles.length) {\n  return [{ json: { should_publish: false, status: 'no_generated_files', generated_count: 0 } }];\n}\n\nreturn generatedFiles.map((file, index) => ({\n  json: {\n    should_publish: true,\n    status: 'ready_to_publish',\n    generated_count: generatedFiles.length,\n    publish_index: index + 1,\n    content: file.public_url,\n    caption: '',\n    relative_path: file.relative_path,\n    file_name: file.file_name,\n    product_name: file.product?.nombre || '',\n  }\n}));"
+        "jsCode": "const source = $input.first().json;\nconst generatedFiles = Array.isArray(source.generated_files) ? source.generated_files : [];\n\nif (!generatedFiles.length) {\n  return [{ json: { should_publish: false, status: 'no_generated_files', generated_count: 0 } }];\n}\n\nreturn generatedFiles.map((file, index) => ({\n  json: {\n    should_publish: true,\n    status: 'ready_to_publish',\n    generated_count: generatedFiles.length,\n    publish_index: index + 1,\n    content: file.internal_url || file.public_url,\n    caption: '',\n    relative_path: file.delivery_relative_path || file.relative_path,\n    file_name: file.delivery_file_name || file.file_name,\n    product_name: file.product?.nombre || '',\n  }\n}));"
       }
     },
     {

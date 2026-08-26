@@ -9,6 +9,11 @@ services:
       - TZ=America/Bogota
       - GENERIC_TIMEZONE=America/Bogota
       - N8N_SECURE_COOKIE=false
+      - N8N_HOST=72.62.166.253
+      - N8N_PROTOCOL=http
+      - N8N_EDITOR_BASE_URL=http://72.62.166.253:5678
+      - N8N_WEBHOOK_URL=http://72.62.166.253:5678/
+      - N8N_PROXY_HOPS=0
       - N8N_RESTRICT_FILE_ACCESS_TO=/data/alumas_runtime
     volumes:
       - n8n_n8n_data:/home/node/.n8n
@@ -27,6 +32,7 @@ services:
       - ALUMAS_ESTADOS_LOG_PATH=/data/alumas_runtime/logs/status_generator_estados_debug.log
       - DB_HOST=host.docker.internal
       - STATUS_RUNTIME_DIR=/data/alumas_runtime/statuses
+      - STATUS_GENERATOR_INTERNAL_BASE_URL=http://status_generator:8000/generated
       - STATUS_GENERATOR_PUBLIC_BASE_URL=http://72.62.166.253:8000/generated
       - STATUS_GENERATOR_DEFAULT_COUNT=15
       - STATUS_GENERATOR_DEFAULT_ORDER=aleatorio

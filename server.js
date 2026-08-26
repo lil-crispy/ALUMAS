@@ -23,6 +23,64 @@ const DB_CONFIG = {
 }
 
 const CAJA_BASE_INICIAL = 100000
+const FACTUS_DEBUG_ENV_PATH = path.resolve(__dirname, '.dbg', 'factus-intermittent.env')
+
+function getFactusDebugConfig() {
+  let debugServerUrl = 'http://127.0.0.1:7777/event'
+  let debugSessionId = 'factus-intermittent'
+  try {
+    const content = fs.readFileSync(FACTUS_DEBUG_ENV_PATH, 'utf8')
+    for (const line of content.split(/\r?\n/)) {
+      if (line.startsWith('DEBUG_SERVER_URL=')) {
+        debugServerUrl = line.slice('DEBUG_SERVER_URL='.length).trim() || debugServerUrl
+      } else if (line.startsWith('DEBUG_SESSION_ID=')) {
+        debugSessionId = line.slice('DEBUG_SESSION_ID='.length).trim() || debugSessionId
+      }
+    }
+  } catch {}
+  return { debugServerUrl, debugSessionId }
+}
+
+function buildFactusDebugBogotaTimestamp() {
+  const formatter = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'America/Bogota',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  })
+  return formatter.format(new Date()).replace(' ', 'T')
+}
+
+function reportFactusDebugEvent({
+  runId = 'pre-fix',
+  hypothesisId,
+  location,
+  msg,
+  data,
+  traceId
+}) {
+  try {
+    const { debugServerUrl, debugSessionId } = getFactusDebugConfig()
+    fetch(debugServerUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: debugSessionId,
+        runId,
+        hypothesisId,
+        location,
+        msg,
+        data,
+        traceId,
+        ts: Date.now()
+      })
+    }).catch(() => {})
+  } catch {}
+}
 
 async function ensureSchema() {
   const createVentas = `
@@ -855,7 +913,8 @@ function getSafeFactusCreatedTime() {
   const hour = Number(parts.find((part) => part.type === 'hour')?.value || 0)
   const minute = Number(parts.find((part) => part.type === 'minute')?.value || 0)
   const second = Number(parts.find((part) => part.type === 'second')?.value || 0)
-  const totalSeconds = Math.max(0, ((hour * 3600) + (minute * 60) + second) - 10)
+  const safetyMarginSeconds = Math.max(10, Number(process.env.FACTUS_CREATED_TIME_SAFETY_SECONDS || 180))
+  const totalSeconds = Math.max(0, ((hour * 3600) + (minute * 60) + second) - safetyMarginSeconds)
   const safeHour = String(Math.floor(totalSeconds / 3600)).padStart(2, '0')
   const safeMinute = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0')
   const safeSecond = String(totalSeconds % 60).padStart(2, '0')
@@ -874,6 +933,14 @@ function roundFactusPrecision(value, decimals = 6) {
 function roundFactusMoney(value) {
   const numericValue = normalizeVentaNumeric(value, 0)
   return Number(numericValue.toFixed(2))
+}
+
+function factusMoneyToCents(value) {
+  return Math.round(normalizeVentaNumeric(value, 0) * 100)
+}
+
+function centsToFactusMoney(value) {
+  return Number((Number(value || 0) / 100).toFixed(2))
 }
 
 function calculateFactusLineFinancials(item) {
@@ -4417,10 +4484,35 @@ async function factusApiRequest(pathname, options = {}) {
     method = 'GET',
     body,
     headers = {},
-    retryAuth = true
+    retryAuth = true,
+    debugContext = null
   } = options
 
   const token = await getFactusAccessToken(false)
+  // #region debug-point D:factus-request-dispatch
+  if (pathname === '/v2/bills/validate' && body) {
+    reportFactusDebugEvent({
+      runId: 'pre-fix',
+      hypothesisId: 'D',
+      location: 'server.js:factusApiRequest',
+      traceId: debugContext?.traceId || null,
+      msg: '[DEBUG] Dispatching Factus validate request',
+      data: {
+        pathname,
+        method,
+        venta_id: debugContext?.ventaId || null,
+        created_time: body?.created_time || null,
+        payment_details_sum: roundFactusMoney(
+          Array.isArray(body?.payment_details)
+            ? body.payment_details.reduce((acc, pago) => acc + normalizeVentaNumeric(pago?.amount, 0), 0)
+            : 0
+        ),
+        payment_details_count: Array.isArray(body?.payment_details) ? body.payment_details.length : 0,
+        items_count: Array.isArray(body?.items) ? body.items.length : 0
+      }
+    })
+  }
+  // #endregion
   const response = await fetch(`${getFactusApiBase()}${pathname}`, {
     method,
     headers: {
@@ -4443,11 +4535,45 @@ async function factusApiRequest(pathname, options = {}) {
   }
 
   if (!response.ok) {
+    // #region debug-point E:factus-response-error
+    if (pathname === '/v2/bills/validate') {
+      reportFactusDebugEvent({
+        runId: 'pre-fix',
+        hypothesisId: 'E',
+        location: 'server.js:factusApiRequest',
+        traceId: debugContext?.traceId || null,
+        msg: '[DEBUG] Factus validate request failed',
+        data: {
+          venta_id: debugContext?.ventaId || null,
+          status_code: response.status,
+          payload
+        }
+      })
+    }
+    // #endregion
     const error = new Error(extractFactusErrorMessage(payload))
     error.statusCode = response.status
     error.payload = payload
     throw error
   }
+
+  // #region debug-point E:factus-response-success
+  if (pathname === '/v2/bills/validate') {
+    reportFactusDebugEvent({
+      runId: 'pre-fix',
+      hypothesisId: 'E',
+      location: 'server.js:factusApiRequest',
+      traceId: debugContext?.traceId || null,
+      msg: '[DEBUG] Factus validate request succeeded',
+      data: {
+        venta_id: debugContext?.ventaId || null,
+        status_code: response.status,
+        number: payload?.data?.number || payload?.number || null,
+        reference_code: payload?.data?.reference_code || payload?.reference_code || null
+      }
+    })
+  }
+  // #endregion
 
   return payload
 }
@@ -4854,15 +4980,41 @@ async function buildFactusItemsPayload(items, options = {}) {
     return removeEmptyObjectFields({
       code_reference: String(sourceItem.factus_code_reference || '').trim(),
       name: String(sourceItem.nombre || sourceItem.descripcion || FACTUS_FALLBACK_PRODUCT_NAME).trim(),
-      quantity: formatFactusDecimal(quantity, 6),
-      discount_rate: formatFactusDecimal(item.discount_rate ?? 0, 2),
-      price: formatFactusDecimal(unitPrice, 6),
+      // Factus v2 está validando estos campos como numéricos reales.
+      quantity: roundFactusPrecision(quantity, 6),
+      discount_rate: roundFactusPrecision(item.discount_rate ?? 0, 2),
+      price: roundFactusPrecision(unitPrice, 6),
       unit_measure_code: String(sourceItem.factus_unit_measure_code || '').trim(),
       standard_code: String(sourceItem.factus_standard_code || '').trim(),
       taxes,
       withholding_taxes: []
     })
   })
+
+  // #region debug-point C:factus-items-payload
+  reportFactusDebugEvent({
+    runId: 'pre-fix',
+    hypothesisId: 'C',
+    location: 'server.js:buildFactusItemsPayload',
+    traceId: options.referenceCode || `venta-${Number(options.ventaId || 0)}`,
+    msg: '[DEBUG] Factus items payload built',
+    data: {
+      venta_id: Number(options.ventaId || 0) || null,
+      replacements_count: replacements.length,
+      items: factusItems.map((item, index) => ({
+        line: index + 1,
+        quantity: item.quantity,
+        quantity_type: typeof item.quantity,
+        price: item.price,
+        price_type: typeof item.price,
+        discount_rate: item.discount_rate,
+        discount_rate_type: typeof item.discount_rate,
+        taxes_count: Array.isArray(item.taxes) ? item.taxes.length : 0,
+        code_reference: item.code_reference
+      }))
+    }
+  })
+  // #endregion
 
   return {
     factusItems,
@@ -4872,18 +5024,19 @@ async function buildFactusItemsPayload(items, options = {}) {
 
 async function buildFactusBillPayload({ body, ventaId, cliente, items, paymentDetails, numberingRange, referenceCode, conn = pool }) {
   const fallbackProduct = await getFactusFallbackProducto(conn)
-  const { factusItems, replacements } = await buildFactusItemsPayload(items, { fallbackProduct, conn })
+  const { factusItems, replacements } = await buildFactusItemsPayload(items, { fallbackProduct, conn, ventaId, referenceCode })
   const canonicalTotal = calculateFactusItemsTotal(factusItems)
+  const canonicalTotalCents = factusMoneyToCents(canonicalTotal)
   const paymentForm = mapFactusPaymentForm(paymentDetails[0]?.payment_form || body?.tipo_pago)
   const factusPaymentDetails = paymentDetails.map((pago, index, pagos) => removeEmptyObjectFields({
     payment_form: mapFactusPaymentForm(pago.payment_form || body?.tipo_pago),
     payment_method_code: mapFactusPaymentMethodCode(pago.payment_method_code || body?.forma_pago, paymentForm),
     amount: formatFactusDecimal(
       pagos.length === 1
-        ? canonicalTotal
+        ? centsToFactusMoney(canonicalTotalCents)
         : (index === pagos.length - 1
-          ? roundFactusMoney(canonicalTotal - pagos.slice(0, -1).reduce((acc, current) => acc + roundFactusMoney(current?.amount), 0))
-          : roundFactusMoney(pago.amount ?? 0))
+          ? centsToFactusMoney(canonicalTotalCents - pagos.slice(0, -1).reduce((acc, current) => acc + factusMoneyToCents(current?.amount), 0))
+          : centsToFactusMoney(factusMoneyToCents(pago.amount ?? 0)))
     ),
     due_date: mapFactusPaymentForm(pago.payment_form || body?.tipo_pago) === '2'
       ? (normalizeVentaDate(pago.due_date || body?.fecha) || normalizeVentaDate(body?.fecha))
@@ -4907,6 +5060,54 @@ async function buildFactusBillPayload({ body, ventaId, cliente, items, paymentDe
   if (!Array.isArray(payload.payment_details) || payload.payment_details.length === 0) {
     throw new Error('La venta no tiene métodos de pago válidos para Factus.')
   }
+
+  // #region debug-point A:factus-created-time
+  reportFactusDebugEvent({
+    runId: 'pre-fix',
+    hypothesisId: 'A',
+    location: 'server.js:buildFactusBillPayload',
+    traceId: referenceCode || `venta-${Number(ventaId || 0)}`,
+    msg: '[DEBUG] Factus created_time prepared',
+    data: {
+      venta_id: Number(ventaId || 0) || null,
+      created_time: payload.created_time,
+      bogota_now: buildFactusDebugBogotaTimestamp(),
+      document: payload.document,
+      numbering_range_id: payload.numbering_range_id || null
+    }
+  })
+  // #endregion
+
+  // #region debug-point B:factus-payment-details
+  reportFactusDebugEvent({
+    runId: 'pre-fix',
+    hypothesisId: 'B',
+    location: 'server.js:buildFactusBillPayload',
+    traceId: referenceCode || `venta-${Number(ventaId || 0)}`,
+    msg: '[DEBUG] Factus payment details prepared',
+    data: {
+      venta_id: Number(ventaId || 0) || null,
+      canonical_total: canonicalTotal,
+      payment_details_sum: roundFactusMoney(
+        factusPaymentDetails.reduce((acc, pago) => acc + normalizeVentaNumeric(pago?.amount, 0), 0)
+      ),
+      payment_details_count: factusPaymentDetails.length,
+      payment_details: factusPaymentDetails.map((pago, index) => ({
+        line: index + 1,
+        payment_form: pago.payment_form,
+        payment_method_code: pago.payment_method_code,
+        amount: pago.amount,
+        due_date: pago.due_date || null
+      })),
+      source_payment_details: (Array.isArray(paymentDetails) ? paymentDetails : []).map((pago, index) => ({
+        line: index + 1,
+        payment_form: pago?.payment_form || null,
+        payment_method_code: pago?.payment_method_code || null,
+        amount: pago?.amount ?? null
+      }))
+    }
+  })
+  // #endregion
 
   return {
     payload,
@@ -5497,7 +5698,11 @@ async function processVentaWithExistingLogic(conn, body, options = {}) {
   if (esFacturaElectronica) {
     const factusResponse = await factusApiRequest('/v2/bills/validate', {
       method: 'POST',
-      body: factusPayload
+      body: factusPayload,
+      debugContext: {
+        traceId: factusReferenceCode || `venta-${Number(resolvedConsecutivo)}`,
+        ventaId: Number(resolvedConsecutivo)
+      }
     })
     console.log('[Factus] Respuesta recibida:', JSON.stringify({
       venta_id: Number(resolvedConsecutivo),

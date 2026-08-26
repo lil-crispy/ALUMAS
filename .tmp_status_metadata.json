@@ -1,0 +1,267 @@
+{
+  "status": "ok",
+  "generated_at": "2026-08-25T13:00:19.410520+00:00",
+  "count": 15,
+  "order": "aleatorio",
+  "output_dir": "/data/alumas_runtime/statuses/20260825/130000_3962b99d",
+  "image_url": "https://ferredistribucionesalumas.com/img/productos/",
+  "image_folder": "",
+  "logo_path": "/workspace/alumas/img/LOGO3.png",
+  "generated_files": [
+    {
+      "index": 1,
+      "file_name": "01_236__REF IPL03 PANEL REDONDO INCRUSTAR LED 6W LUZ BLANCA MERCURY.png",
+      "file_path": "/data/alumas_runtime/statuses/20260825/130000_3962b99d/01_236__REF IPL03 PANEL REDONDO INCRUSTAR LED 6W LUZ BLANCA MERCURY.png",
+      "promo": "🎯 Ahorre hoy con nosotros",
+      "product": {
+        "id_producto": 236,
+        "nombre": "REF IPL03 PANEL REDONDO INCRUSTAR LED 6W LUZ BLANCA MERCURY",
+        "precio_final": 7000.0,
+        "precio_mayorista": 5290.0,
+        "stock": 62,
+        "imagen": "236_REF IPL03 PANEL REDONDO INCRUSTAR LED 6W LUZ BLANCA MERCURY.png",
+        "fecha_actualizacion": "2026-07-23T04:34:15"
+      },
+      "relative_path": "20260825/130000_3962b99d/01_236__REF IPL03 PANEL REDONDO INCRUSTAR LED 6W LUZ BLANCA MERCURY.png",
+      "public_url": "http://72.62.166.253:8000/generated/20260825/130000_3962b99d/01_236__REF%20IPL03%20PANEL%20REDONDO%20INCRUSTAR%20LED%206W%20LUZ%20BLANCA%20MERCURY.png"
+    },
+    {
+      "index": 2,
+      "file_name": "02_1223__REF ETU-1402 ESMALTE NEGRO K3 EN 1  CORAMA 1_4.png",
+      "file_path": "/data/alumas_runtime/statuses/20260825/130000_3962b99d/02_1223__REF ETU-1402 ESMALTE NEGRO K3 EN 1  CORAMA 1_4.png",
+      "promo": "💥 ¡Oferta limitada!",
+      "product": {
+        "id_producto": 1223,
+        "nombre": "REF ETU-1402 ESMALTE NEGRO K3 EN 1  CORAMA 1/4",
+        "precio_final": 25500.0,
+        "precio_mayorista": 23000.0,
+        "stock": 5,
+        "imagen": "1223_REF ETU-1402 ESMALTE NEGRO K3 EN 1  CORAMA 14.png",
+        "fecha_actualizacion": "2026-07-23T04:37:41"
+      },
+      "relative_path": "20260825/130000_3962b99d/02_1223__REF ETU-1402 ESMALTE NEGRO K3 EN 1  CORAMA 1_4.png",
+      "public_url": "http://72.62.166.253:8000/generated/20260825/130000_3962b99d/02_1223__REF%20ETU-1402%20ESMALTE%20NEGRO%20K3%20EN%201%20%20CORAMA%201_4.png"
+    },
+    {
+      "index": 3,
+      "file_name": "03_709__REF IBL63 BOMBILLO GU10 5 W 6500K.png",
+      "file_path": "/data/alumas_runtime/statuses/20260825/130000_3962b99d/03_709__REF IBL63 BOMBILLO GU10 5 W 6500K.png",
+      "promo": "🚚 Entrega hoy mismo",
+      "product": {
+        "id_producto": 709,
+        "nombre": "REF IBL63 BOMBILLO GU10 5 W 6500K",
+        "precio_final": 6000.0,
+        "precio_mayorista": 5000.0,
+        "stock": 24,
+        "imagen": "709_REF IBL63 BOMBILLO GU10 5 W 6500K.png",
+        "fecha_actualizacion": "2026-07-23T04:35:54"
+      },
+      "relative_path": "20260825/130000_3962b99d/03_709__REF IBL63 BOMBILLO GU10 5 W 6500K.png",
+      "public_url": "http://72.62.166.253:8000/generated/20260825/130000_3962b99d/03_709__REF%20IBL63%20BOMBILLO%20GU10%205%20W%206500K.png"
+    },
+    {
+      "index": 4,
+      "file_name": "04_253__REF IPL111 PANEL REDONDO INCRUSTAR TIPO FRAMELESS 9W LUZ BLA.png",
+      "file_path": "/data/alumas_runtime/statuses/20260825/130000_3962b99d/04_253__REF IPL111 PANEL REDONDO INCRUSTAR TIPO FRAMELESS 9W LUZ BLA.png",
+      "promo": "🔥 ¡HOY GRAN PROMO!",
+      "product": {
+        "id_producto": 253,
+        "nombre": "REF IPL111 PANEL REDONDO INCRUSTAR TIPO FRAMELESS 9W LUZ BLANCA MARCA MERCURY",
+        "precio_final": 8500.0,
+        "precio_mayorista": 5800.0,
+        "stock": 10,
+        "imagen": "253_REF IPL111 PANEL REDONDO INCRUSTAR TIPO FRAMELESS 9W LUZ BLANCA MARCA MERCURY.png",
+        "fecha_actualizacion": "2026-07-23T04:34:19"
+      },
+      "relative_path": "20260825/130000_3962b99d/04_253__REF IPL111 PANEL REDONDO INCRUSTAR TIPO FRAMELESS 9W LUZ BLA.png",
+      "public_url": "http://72.62.166.253:8000/generated/20260825/130000_3962b99d/04_253__REF%20IPL111%20PANEL%20REDONDO%20INCRUSTAR%20TIPO%20FRAMELESS%209W%20LUZ%20BLA.png"
+    },
+    {
+      "index": 5,
+      "file_name": "05_1330__REF A111 ARBOL ENTRADA BOCCHERINI.png",
+      "file_path": "/data/alumas_runtime/statuses/20260825/130000_3962b99d/05_1330__REF A111 ARBOL ENTRADA BOCCHERINI.png",
+      "promo": "⚡ ¡Últimas unidades!",
+      "product": {
+        "id_producto": 1330,
+        "nombre": "REF A111 ARBOL ENTRADA BOCCHERINI",
+        "precio_final": 20000.0,
+        "precio_mayorista": 13000.0,
+        "stock": 6,
+        "imagen": "1330_REF A111 ARBOL ENTRADA BOCCHERINI.png",
+        "fecha_actualizacion": "2026-07-27T21:36:20"
+      },
+      "relative_path": "20260825/130000_3962b99d/05_1330__REF A111 ARBOL ENTRADA BOCCHERINI.png",
+      "public_url": "http://72.62.166.253:8000/generated/20260825/130000_3962b99d/05_1330__REF%20A111%20ARBOL%20ENTRADA%20BOCCHERINI.png"
+    },
+    {
+      "index": 6,
+      "file_name": "06_297__REF  11281 Broca de Concreto Sistema Inserción 1_2.png",
+      "file_path": "/data/alumas_runtime/statuses/20260825/130000_3962b99d/06_297__REF  11281 Broca de Concreto Sistema Inserción 1_2.png",
+      "promo": "🛒 Pídalo HOY mismo",
+      "product": {
+        "id_producto": 297,
+        "nombre": "REF  11281 Broca de Concreto Sistema Inserción 1/2",
+        "precio_final": 23000.0,
+        "precio_mayorista": 19000.0,
+        "stock": 3,
+        "imagen": "297_REF  11281 Broca de Concreto Sistema Inserción 12.png",
+        "fecha_actualizacion": "2026-07-23T04:34:28"
+      },
+      "relative_path": "20260825/130000_3962b99d/06_297__REF  11281 Broca de Concreto Sistema Inserción 1_2.png",
+      "public_url": "http://72.62.166.253:8000/generated/20260825/130000_3962b99d/06_297__REF%20%2011281%20Broca%20de%20Concreto%20Sistema%20Inserci%C3%B3n%201_2.png"
+    },
+    {
+      "index": 7,
+      "file_name": "07_1347__REF 061233000 VALVULA PEDAL LAVAMANOS-LAVAPLATOS MARCA TAUMM.png",
+      "file_path": "/data/alumas_runtime/statuses/20260825/130000_3962b99d/07_1347__REF 061233000 VALVULA PEDAL LAVAMANOS-LAVAPLATOS MARCA TAUMM.png",
+      "promo": "💎 Calidad ALUMAS garantizada",
+      "product": {
+        "id_producto": 1347,
+        "nombre": "REF 061233000 VALVULA PEDAL LAVAMANOS-LAVAPLATOS MARCA TAUMM",
+        "precio_final": 79000.0,
+        "precio_mayorista": 60975.0,
+        "stock": 40,
+        "imagen": "1347_REF 061233000 VALVULA PEDAL LAVAMANOS-LAVAPLATOS MARCA TAUMM.png",
+        "fecha_actualizacion": "2026-07-31T12:25:57"
+      },
+      "relative_path": "20260825/130000_3962b99d/07_1347__REF 061233000 VALVULA PEDAL LAVAMANOS-LAVAPLATOS MARCA TAUMM.png",
+      "public_url": "http://72.62.166.253:8000/generated/20260825/130000_3962b99d/07_1347__REF%20061233000%20VALVULA%20PEDAL%20LAVAMANOS-LAVAPLATOS%20MARCA%20TAUMM.png"
+    },
+    {
+      "index": 8,
+      "file_name": "08_968__REF YW011-E DUCHA BIDET EN ABS CROMADA CON MANGUERA ACERO IN.png",
+      "file_path": "/data/alumas_runtime/statuses/20260825/130000_3962b99d/08_968__REF YW011-E DUCHA BIDET EN ABS CROMADA CON MANGUERA ACERO IN.png",
+      "promo": "✅ Disponible inmediato",
+      "product": {
+        "id_producto": 968,
+        "nombre": "REF YW011-E DUCHA BIDET EN ABS CROMADA CON MANGUERA ACERO INOXIDABLE 1.2 METROS MARCA BOCCHERINI",
+        "precio_final": 40000.0,
+        "precio_mayorista": 26000.0,
+        "stock": 6,
+        "imagen": "968_REF YW011-E DUCHA BIDET EN ABS CROMADA CON MANGUERA ACERO INOXIDABLE 12 METROS MARCA BOCCHERINI.png",
+        "fecha_actualizacion": "2026-07-23T04:36:47"
+      },
+      "relative_path": "20260825/130000_3962b99d/08_968__REF YW011-E DUCHA BIDET EN ABS CROMADA CON MANGUERA ACERO IN.png",
+      "public_url": "http://72.62.166.253:8000/generated/20260825/130000_3962b99d/08_968__REF%20YW011-E%20DUCHA%20BIDET%20EN%20ABS%20CROMADA%20CON%20MANGUERA%20ACERO%20IN.png"
+    },
+    {
+      "index": 9,
+      "file_name": "09_1076__REF 20528 CINTA DUCTO GRIS PRETUL 10M.png",
+      "file_path": "/data/alumas_runtime/statuses/20260825/130000_3962b99d/09_1076__REF 20528 CINTA DUCTO GRIS PRETUL 10M.png",
+      "promo": "🥇 El mejor precio del mercado",
+      "product": {
+        "id_producto": 1076,
+        "nombre": "REF 20528 CINTA DUCTO GRIS PRETUL 10M",
+        "precio_final": 7000.0,
+        "precio_mayorista": 5500.0,
+        "stock": 6,
+        "imagen": "1076_REF 20528 CINTA DUCTO GRIS PRETUL 10M.png",
+        "fecha_actualizacion": "2026-07-23T04:37:10"
+      },
+      "relative_path": "20260825/130000_3962b99d/09_1076__REF 20528 CINTA DUCTO GRIS PRETUL 10M.png",
+      "public_url": "http://72.62.166.253:8000/generated/20260825/130000_3962b99d/09_1076__REF%2020528%20CINTA%20DUCTO%20GRIS%20PRETUL%2010M.png"
+    },
+    {
+      "index": 10,
+      "file_name": "10_1059__REF ACR1 BOLSA DE ACRONAL PEQUEÑA.png",
+      "file_path": "/data/alumas_runtime/statuses/20260825/130000_3962b99d/10_1059__REF ACR1 BOLSA DE ACRONAL PEQUEÑA.png",
+      "promo": "✨ ¡Productos NUEVOS!",
+      "product": {
+        "id_producto": 1059,
+        "nombre": "REF ACR1 BOLSA DE ACRONAL PEQUEÑA",
+        "precio_final": 13000.0,
+        "precio_mayorista": 10500.0,
+        "stock": 9,
+        "imagen": "1059_REF ACR1 BOLSA DE ACRONAL PEQUEÑA.png",
+        "fecha_actualizacion": "2026-07-23T04:37:06"
+      },
+      "relative_path": "20260825/130000_3962b99d/10_1059__REF ACR1 BOLSA DE ACRONAL PEQUEÑA.png",
+      "public_url": "http://72.62.166.253:8000/generated/20260825/130000_3962b99d/10_1059__REF%20ACR1%20BOLSA%20DE%20ACRONAL%20PEQUE%C3%91A.png"
+    },
+    {
+      "index": 11,
+      "file_name": "11_1011__REF 008-2 CAJA PERNO 1_.png",
+      "file_path": "/data/alumas_runtime/statuses/20260825/130000_3962b99d/11_1011__REF 008-2 CAJA PERNO 1_.png",
+      "promo": "🎯 Ahorre hoy con nosotros",
+      "product": {
+        "id_producto": 1011,
+        "nombre": "REF 008-2 CAJA PERNO 1\"",
+        "precio_final": 12000.0,
+        "precio_mayorista": 9000.0,
+        "stock": 39,
+        "imagen": "1011_REF 008-2 CAJA PERNO 1.png",
+        "fecha_actualizacion": "2026-08-05T18:06:17"
+      },
+      "relative_path": "20260825/130000_3962b99d/11_1011__REF 008-2 CAJA PERNO 1_.png",
+      "public_url": "http://72.62.166.253:8000/generated/20260825/130000_3962b99d/11_1011__REF%20008-2%20CAJA%20PERNO%201_.png"
+    },
+    {
+      "index": 12,
+      "file_name": "12_1401__REF TL12 TERMINAL DE 1_2 CONDUIT PVC.png",
+      "file_path": "/data/alumas_runtime/statuses/20260825/130000_3962b99d/12_1401__REF TL12 TERMINAL DE 1_2 CONDUIT PVC.png",
+      "promo": "💥 ¡Oferta limitada!",
+      "product": {
+        "id_producto": 1401,
+        "nombre": "REF TL12 TERMINAL DE 1/2 CONDUIT PVC",
+        "precio_final": 450.0,
+        "precio_mayorista": 350.0,
+        "stock": 459,
+        "imagen": "1401_REF TL12 TERMINAL DE 12 CONDUIT PVC.png",
+        "fecha_actualizacion": "2026-08-06T12:22:24"
+      },
+      "relative_path": "20260825/130000_3962b99d/12_1401__REF TL12 TERMINAL DE 1_2 CONDUIT PVC.png",
+      "public_url": "http://72.62.166.253:8000/generated/20260825/130000_3962b99d/12_1401__REF%20TL12%20TERMINAL%20DE%201_2%20CONDUIT%20PVC.png"
+    },
+    {
+      "index": 13,
+      "file_name": "13_1100__REF 680104 LIJA 120 OMEGA.png",
+      "file_path": "/data/alumas_runtime/statuses/20260825/130000_3962b99d/13_1100__REF 680104 LIJA 120 OMEGA.png",
+      "promo": "🚚 Entrega hoy mismo",
+      "product": {
+        "id_producto": 1100,
+        "nombre": "REF 680104 LIJA 120 OMEGA",
+        "precio_final": 1800.0,
+        "precio_mayorista": 1400.0,
+        "stock": 35,
+        "imagen": "1100_REF 680104 LIJA 120 OMEGA.png",
+        "fecha_actualizacion": "2026-07-23T04:37:15"
+      },
+      "relative_path": "20260825/130000_3962b99d/13_1100__REF 680104 LIJA 120 OMEGA.png",
+      "public_url": "http://72.62.166.253:8000/generated/20260825/130000_3962b99d/13_1100__REF%20680104%20LIJA%20120%20OMEGA.png"
+    },
+    {
+      "index": 14,
+      "file_name": "14_1134__REF 3000152 ASIENTO SANITARIO VERDE CLARO.png",
+      "file_path": "/data/alumas_runtime/statuses/20260825/130000_3962b99d/14_1134__REF 3000152 ASIENTO SANITARIO VERDE CLARO.png",
+      "promo": "🔥 ¡HOY GRAN PROMO!",
+      "product": {
+        "id_producto": 1134,
+        "nombre": "REF 3000152 ASIENTO SANITARIO VERDE CLARO",
+        "precio_final": 35000.0,
+        "precio_mayorista": 30000.0,
+        "stock": 2,
+        "imagen": "1134_REF 3000152 ASIENTO SANITARIO VERDE CLARO.png",
+        "fecha_actualizacion": "2026-07-23T04:37:22"
+      },
+      "relative_path": "20260825/130000_3962b99d/14_1134__REF 3000152 ASIENTO SANITARIO VERDE CLARO.png",
+      "public_url": "http://72.62.166.253:8000/generated/20260825/130000_3962b99d/14_1134__REF%203000152%20ASIENTO%20SANITARIO%20VERDE%20CLARO.png"
+    },
+    {
+      "index": 15,
+      "file_name": "15_674__REF BCH-137 LLAVE IND LVM GUATAVITA.png",
+      "file_path": "/data/alumas_runtime/statuses/20260825/130000_3962b99d/15_674__REF BCH-137 LLAVE IND LVM GUATAVITA.png",
+      "promo": "⚡ ¡Últimas unidades!",
+      "product": {
+        "id_producto": 674,
+        "nombre": "REF BCH-137 LLAVE IND LVM GUATAVITA",
+        "precio_final": 40000.0,
+        "precio_mayorista": 36000.0,
+        "stock": 2,
+        "imagen": "674_REF BCH-137 LLAVE IND LVM GUATAVITA.png",
+        "fecha_actualizacion": "2026-07-23T04:35:47"
+      },
+      "relative_path": "20260825/130000_3962b99d/15_674__REF BCH-137 LLAVE IND LVM GUATAVITA.png",
+      "public_url": "http://72.62.166.253:8000/generated/20260825/130000_3962b99d/15_674__REF%20BCH-137%20LLAVE%20IND%20LVM%20GUATAVITA.png"
+    }
+  ]
+}
