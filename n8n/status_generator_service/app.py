@@ -31,6 +31,7 @@ DEFAULT_IMAGE_URL = os.environ.get("PRODUCT_IMAGES_URL", "").strip()
 DEFAULT_LOGO_PATH = os.environ.get("STATUS_GENERATOR_LOGO_PATH", str(REPO_ROOT / "img" / "LOGO3.png")).strip()
 DEFAULT_RETENTION_DAYS = int(os.environ.get("STATUS_RETENTION_DAYS", "5"))
 BOGOTA_TZ = ZoneInfo("America/Bogota")
+DEBUG_ENV_PATH = REPO_ROOT / ".dbg" / "damaged-statuses-8am.env"
 REPORT_POINTS = ("ferreteria", "bodega")
 POINT_LABELS = {
     "ferreteria": "Ferreteria",
@@ -46,6 +47,46 @@ import generar_estados_v3 as generator  # noqa: E402
 
 
 app = Flask(__name__)
+
+
+def _debug_config() -> tuple[str, str]:
+    url = "http://127.0.0.1:7777/event"
+    session = "damaged-statuses-8am"
+    try:
+        content = DEBUG_ENV_PATH.read_text(encoding="utf-8")
+        for line in content.splitlines():
+            if line.startswith("DEBUG_SERVER_URL="):
+                url = line.split("=", 1)[1].strip() or url
+            elif line.startswith("DEBUG_SESSION_ID="):
+                session = line.split("=", 1)[1].strip() or session
+    except Exception:
+        pass
+    return url, session
+
+
+def _report_debug_event(hypothesis_id: str, location: str, msg: str, data: dict, trace_id: str | None = None) -> None:
+    try:
+        import urllib.request
+
+        url, session = _debug_config()
+        body = json.dumps(
+            {
+                "sessionId": session,
+                "runId": "pre-fix",
+                "hypothesisId": hypothesis_id,
+                "location": location,
+                "msg": msg,
+                "data": data,
+                "traceId": trace_id,
+                "ts": int(dt.datetime.now(dt.timezone.utc).timestamp() * 1000),
+            }
+        ).encode("utf-8")
+        urllib.request.urlopen(
+            urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"}),
+            timeout=2,
+        ).read()
+    except Exception:
+        pass
 
 
 def _safe_within(base: Path, target: Path) -> Path:
@@ -527,6 +568,7 @@ def generate():
 
     _cleanup_old_runs(RUNTIME_ROOT, retention_days)
     output_dir = _resolve_output_dir(payload.get("output_subdir"))
+    trace_id = output_dir.name
 
     try:
         result = generator.generar_estados_lote(
@@ -547,6 +589,39 @@ def generate():
         relative_path = original_path.relative_to(RUNTIME_ROOT)
         delivery_path, delivery_name = _build_delivery_image(original_path, int(item.get("index") or len(enriched_files) + 1))
         delivery_relative_path = delivery_path.resolve().relative_to(RUNTIME_ROOT)
+        with Image.open(original_path) as original_image:
+            original_format = original_image.format
+            original_mode = original_image.mode
+            original_size = original_image.size
+        with Image.open(delivery_path) as delivery_image:
+            delivery_format = delivery_image.format
+            delivery_mode = delivery_image.mode
+            delivery_size = delivery_image.size
+        # #region debug-point D:generated-delivery-file
+        _report_debug_event(
+            "D",
+            "app.py:generate",
+            "[DEBUG] Generated delivery image for status publication",
+            {
+                "index": int(item.get("index") or len(enriched_files) + 1),
+                "original_file_name": item.get("file_name"),
+                "original_relative_path": relative_path.as_posix(),
+                "original_size_bytes": original_path.stat().st_size,
+                "original_format": original_format,
+                "original_mode": original_mode,
+                "original_dimensions": list(original_size),
+                "delivery_file_name": delivery_name,
+                "delivery_relative_path": delivery_relative_path.as_posix(),
+                "delivery_size_bytes": delivery_path.stat().st_size,
+                "delivery_format": delivery_format,
+                "delivery_mode": delivery_mode,
+                "delivery_dimensions": list(delivery_size),
+                "internal_url": _internal_url_for(delivery_relative_path),
+                "public_url": _public_url_for(delivery_relative_path),
+            },
+            trace_id=trace_id,
+        )
+        # #endregion
         enriched_files.append(
             {
                 **item,

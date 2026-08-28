@@ -1,5 +1,5 @@
 ﻿{
-    "updatedAt":  "2026-08-28T03:24:01.723Z",
+    "updatedAt":  "2026-08-26T15:07:12.492Z",
     "createdAt":  "2026-08-22T09:13:27.252Z",
     "id":  "3Fj5HTz7S7ux1ekd",
     "name":  "ALUMAS - Estados diarios 8AM Evolution",
@@ -56,7 +56,7 @@
                   },
                   {
                       "id":  "prepare-status-items",
-                      "name":  "Preparar imagenes para envio",
+                      "name":  "Preparar publicaciones",
                       "type":  "n8n-nodes-base.code",
                       "typeVersion":  2,
                       "position":  [
@@ -66,12 +66,12 @@
                       "parameters":  {
                                          "mode":  "runOnceForAllItems",
                                          "language":  "javaScript",
-                                         "jsCode":  "const source = $input.first().json || {};\nconst generatedFiles = Array.isArray(source.generated_files) ? source.generated_files : [];\n\nif (!generatedFiles.length) {\n  return [{ json: { should_send: false, status: \u0027no_generated_files\u0027, generated_count: 0 } }];\n}\n\nreturn generatedFiles.map((file, index) =\u003e ({\n  json: {\n    should_send: true,\n    status: \u0027ready_to_send\u0027,\n    generated_count: generatedFiles.length,\n    send_index: index + 1,\n    number: \u0027573227329097\u0027,\n    media: file.public_url || file.internal_url,\n    caption: \u0027\u0027,\n    file_name: file.delivery_file_name || file.file_name || `status_${String(index + 1).padStart(2, \u00270\u0027)}.jpg`,\n    product_name: file.product?.nombre || \u0027\u0027,\n  }\n}));"
+                                         "jsCode":  "const source = $input.first().json;\nconst generatedFiles = Array.isArray(source.generated_files) ? source.generated_files : [];\n\nif (!generatedFiles.length) {\n  return [{ json: { should_publish: false, status: \u0027no_generated_files\u0027, generated_count: 0 } }];\n}\n\nreturn generatedFiles.map((file, index) =\u003e ({\n  json: {\n    should_publish: true,\n    status: \u0027ready_to_publish\u0027,\n    generated_count: generatedFiles.length,\n    publish_index: index + 1,\n    content: file.internal_url || file.public_url,\n    caption: \u0027\u0027,\n    relative_path: file.delivery_relative_path || file.relative_path,\n    file_name: file.delivery_file_name || file.file_name,\n    product_name: file.product?.nombre || \u0027\u0027,\n  }\n}));"
                                      }
                   },
                   {
                       "id":  "should-publish",
-                      "name":  "¿Hay imagenes para enviar?",
+                      "name":  "?Hay estados para publicar?",
                       "type":  "n8n-nodes-base.if",
                       "typeVersion":  2.3,
                       "position":  [
@@ -89,7 +89,7 @@
                                                                         },
                                                             "conditions":  [
                                                                                {
-                                                                                   "leftValue":  "={{ $json.should_send }}",
+                                                                                   "leftValue":  "={{ $json.should_publish }}",
                                                                                    "rightValue":  true,
                                                                                    "operator":  {
                                                                                                     "type":  "boolean",
@@ -103,7 +103,7 @@
                   },
                   {
                       "id":  "publish-status",
-                      "name":  "Enviar imagen al 3227329097",
+                      "name":  "Publicar estado en Evolution",
                       "type":  "n8n-nodes-base.httpRequest",
                       "typeVersion":  4.5,
                       "position":  [
@@ -112,7 +112,7 @@
                                    ],
                       "parameters":  {
                                          "method":  "POST",
-                                         "url":  "http://evolution_api:8080/message/sendMedia/alumas",
+                                         "url":  "http://evolution_api:8080/message/sendStatus/alumas",
                                          "authentication":  "genericCredentialType",
                                          "genericAuthType":  "httpHeaderAuth",
                                          "sendBody":  true,
@@ -121,24 +121,20 @@
                                          "bodyParameters":  {
                                                                 "parameters":  [
                                                                                    {
-                                                                                       "name":  "number",
-                                                                                       "value":  "={{ $json.number }}"
-                                                                                   },
-                                                                                   {
-                                                                                       "name":  "mediatype",
+                                                                                       "name":  "type",
                                                                                        "value":  "image"
                                                                                    },
                                                                                    {
-                                                                                       "name":  "media",
-                                                                                       "value":  "={{ $json.media }}"
-                                                                                   },
-                                                                                   {
-                                                                                       "name":  "fileName",
-                                                                                       "value":  "={{ $json.file_name }}"
+                                                                                       "name":  "content",
+                                                                                       "value":  "={{ $json.content }}"
                                                                                    },
                                                                                    {
                                                                                        "name":  "caption",
                                                                                        "value":  "={{ $json.caption }}"
+                                                                                   },
+                                                                                   {
+                                                                                       "name":  "allContacts",
+                                                                                       "value":  "={{ true }}"
                                                                                    }
                                                                                ]
                                                             },
@@ -146,13 +142,13 @@
                                                          "batching":  {
                                                                           "batch":  {
                                                                                         "batchSize":  1,
-                                                                                        "batchInterval":  2000
+                                                                                        "batchInterval":  3000
                                                                                     }
                                                                       },
                                                          "response":  {
                                                                           "response":  {
                                                                                            "fullResponse":  true,
-                                                                                           "neverError":  false,
+                                                                                           "neverError":  true,
                                                                                            "responseFormat":  "json"
                                                                                        }
                                                                       },
@@ -168,7 +164,7 @@
                   },
                   {
                       "id":  "no-statuses",
-                      "name":  "Sin imagenes generadas",
+                      "name":  "Sin estados generados",
                       "type":  "n8n-nodes-base.set",
                       "typeVersion":  3.5,
                       "position":  [
@@ -197,42 +193,42 @@
                                                    "main":  [
                                                                 [
                                                                     {
-                                                                        "node":  "Preparar imagenes para envio",
+                                                                        "node":  "Preparar publicaciones",
                                                                         "type":  "main",
                                                                         "index":  0
                                                                     }
                                                                 ]
                                                             ]
                                                },
-                        "Preparar imagenes para envio":  {
-                                                             "main":  [
-                                                                          [
-                                                                              {
-                                                                                  "node":  "¿Hay imagenes para enviar?",
-                                                                                  "type":  "main",
-                                                                                  "index":  0
-                                                                              }
-                                                                          ]
-                                                                      ]
-                                                         },
-                        "¿Hay imagenes para enviar?":  {
-                                                           "main":  [
-                                                                        [
-                                                                            {
-                                                                                "node":  "Enviar imagen al 3227329097",
-                                                                                "type":  "main",
-                                                                                "index":  0
-                                                                            }
-                                                                        ],
-                                                                        [
-                                                                            {
-                                                                                "node":  "Sin imagenes generadas",
-                                                                                "type":  "main",
-                                                                                "index":  0
-                                                                            }
-                                                                        ]
+                        "Preparar publicaciones":  {
+                                                       "main":  [
+                                                                    [
+                                                                        {
+                                                                            "node":  "?Hay estados para publicar?",
+                                                                            "type":  "main",
+                                                                            "index":  0
+                                                                        }
                                                                     ]
-                                                       }
+                                                                ]
+                                                   },
+                        "?Hay estados para publicar?":  {
+                                                            "main":  [
+                                                                         [
+                                                                             {
+                                                                                 "node":  "Publicar estado en Evolution",
+                                                                                 "type":  "main",
+                                                                                 "index":  0
+                                                                             }
+                                                                         ],
+                                                                         [
+                                                                             {
+                                                                                 "node":  "Sin estados generados",
+                                                                                 "type":  "main",
+                                                                                 "index":  0
+                                                                             }
+                                                                         ]
+                                                                     ]
+                                                        }
                     },
     "settings":  {
                      "timezone":  "America/Bogota",
@@ -253,9 +249,9 @@
 
                    ],
     "pinData":  null,
-    "versionId":  "7e6dd6be-24da-4c51-a4c5-c294342d15fd",
-    "activeVersionId":  "7e6dd6be-24da-4c51-a4c5-c294342d15fd",
-    "versionCounter":  5,
+    "versionId":  "6281cb22-e35a-4ac7-933a-2e3d7ed546b9",
+    "activeVersionId":  "6281cb22-e35a-4ac7-933a-2e3d7ed546b9",
+    "versionCounter":  4,
     "triggerCount":  1,
     "sourceWorkflowId":  null,
     "shared":  [
@@ -284,9 +280,9 @@
 
              ],
     "activeVersion":  {
-                          "updatedAt":  "2026-08-28T03:24:01.726Z",
-                          "createdAt":  "2026-08-28T03:24:01.726Z",
-                          "versionId":  "7e6dd6be-24da-4c51-a4c5-c294342d15fd",
+                          "updatedAt":  "2026-08-26T15:07:12.493Z",
+                          "createdAt":  "2026-08-26T15:07:12.493Z",
+                          "versionId":  "6281cb22-e35a-4ac7-933a-2e3d7ed546b9",
                           "workflowId":  "3Fj5HTz7S7ux1ekd",
                           "nodes":  [
                                         {
@@ -338,7 +334,7 @@
                                         },
                                         {
                                             "id":  "prepare-status-items",
-                                            "name":  "Preparar imagenes para envio",
+                                            "name":  "Preparar publicaciones",
                                             "type":  "n8n-nodes-base.code",
                                             "typeVersion":  2,
                                             "position":  [
@@ -348,12 +344,12 @@
                                             "parameters":  {
                                                                "mode":  "runOnceForAllItems",
                                                                "language":  "javaScript",
-                                                               "jsCode":  "const source = $input.first().json || {};\nconst generatedFiles = Array.isArray(source.generated_files) ? source.generated_files : [];\n\nif (!generatedFiles.length) {\n  return [{ json: { should_send: false, status: \u0027no_generated_files\u0027, generated_count: 0 } }];\n}\n\nreturn generatedFiles.map((file, index) =\u003e ({\n  json: {\n    should_send: true,\n    status: \u0027ready_to_send\u0027,\n    generated_count: generatedFiles.length,\n    send_index: index + 1,\n    number: \u0027573227329097\u0027,\n    media: file.public_url || file.internal_url,\n    caption: \u0027\u0027,\n    file_name: file.delivery_file_name || file.file_name || `status_${String(index + 1).padStart(2, \u00270\u0027)}.jpg`,\n    product_name: file.product?.nombre || \u0027\u0027,\n  }\n}));"
+                                                               "jsCode":  "const source = $input.first().json;\nconst generatedFiles = Array.isArray(source.generated_files) ? source.generated_files : [];\n\nif (!generatedFiles.length) {\n  return [{ json: { should_publish: false, status: \u0027no_generated_files\u0027, generated_count: 0 } }];\n}\n\nreturn generatedFiles.map((file, index) =\u003e ({\n  json: {\n    should_publish: true,\n    status: \u0027ready_to_publish\u0027,\n    generated_count: generatedFiles.length,\n    publish_index: index + 1,\n    content: file.internal_url || file.public_url,\n    caption: \u0027\u0027,\n    relative_path: file.delivery_relative_path || file.relative_path,\n    file_name: file.delivery_file_name || file.file_name,\n    product_name: file.product?.nombre || \u0027\u0027,\n  }\n}));"
                                                            }
                                         },
                                         {
                                             "id":  "should-publish",
-                                            "name":  "¿Hay imagenes para enviar?",
+                                            "name":  "?Hay estados para publicar?",
                                             "type":  "n8n-nodes-base.if",
                                             "typeVersion":  2.3,
                                             "position":  [
@@ -371,7 +367,7 @@
                                                                                               },
                                                                                   "conditions":  [
                                                                                                      {
-                                                                                                         "leftValue":  "={{ $json.should_send }}",
+                                                                                                         "leftValue":  "={{ $json.should_publish }}",
                                                                                                          "rightValue":  true,
                                                                                                          "operator":  {
                                                                                                                           "type":  "boolean",
@@ -385,7 +381,7 @@
                                         },
                                         {
                                             "id":  "publish-status",
-                                            "name":  "Enviar imagen al 3227329097",
+                                            "name":  "Publicar estado en Evolution",
                                             "type":  "n8n-nodes-base.httpRequest",
                                             "typeVersion":  4.5,
                                             "position":  [
@@ -394,7 +390,7 @@
                                                          ],
                                             "parameters":  {
                                                                "method":  "POST",
-                                                               "url":  "http://evolution_api:8080/message/sendMedia/alumas",
+                                                               "url":  "http://evolution_api:8080/message/sendStatus/alumas",
                                                                "authentication":  "genericCredentialType",
                                                                "genericAuthType":  "httpHeaderAuth",
                                                                "sendBody":  true,
@@ -403,24 +399,20 @@
                                                                "bodyParameters":  {
                                                                                       "parameters":  [
                                                                                                          {
-                                                                                                             "name":  "number",
-                                                                                                             "value":  "={{ $json.number }}"
-                                                                                                         },
-                                                                                                         {
-                                                                                                             "name":  "mediatype",
+                                                                                                             "name":  "type",
                                                                                                              "value":  "image"
                                                                                                          },
                                                                                                          {
-                                                                                                             "name":  "media",
-                                                                                                             "value":  "={{ $json.media }}"
-                                                                                                         },
-                                                                                                         {
-                                                                                                             "name":  "fileName",
-                                                                                                             "value":  "={{ $json.file_name }}"
+                                                                                                             "name":  "content",
+                                                                                                             "value":  "={{ $json.content }}"
                                                                                                          },
                                                                                                          {
                                                                                                              "name":  "caption",
                                                                                                              "value":  "={{ $json.caption }}"
+                                                                                                         },
+                                                                                                         {
+                                                                                                             "name":  "allContacts",
+                                                                                                             "value":  "={{ true }}"
                                                                                                          }
                                                                                                      ]
                                                                                   },
@@ -428,13 +420,13 @@
                                                                                "batching":  {
                                                                                                 "batch":  {
                                                                                                               "batchSize":  1,
-                                                                                                              "batchInterval":  2000
+                                                                                                              "batchInterval":  3000
                                                                                                           }
                                                                                             },
                                                                                "response":  {
                                                                                                 "response":  {
                                                                                                                  "fullResponse":  true,
-                                                                                                                 "neverError":  false,
+                                                                                                                 "neverError":  true,
                                                                                                                  "responseFormat":  "json"
                                                                                                              }
                                                                                             },
@@ -450,7 +442,7 @@
                                         },
                                         {
                                             "id":  "no-statuses",
-                                            "name":  "Sin imagenes generadas",
+                                            "name":  "Sin estados generados",
                                             "type":  "n8n-nodes-base.set",
                                             "typeVersion":  3.5,
                                             "position":  [
@@ -479,42 +471,42 @@
                                                                          "main":  [
                                                                                       [
                                                                                           {
-                                                                                              "node":  "Preparar imagenes para envio",
+                                                                                              "node":  "Preparar publicaciones",
                                                                                               "type":  "main",
                                                                                               "index":  0
                                                                                           }
                                                                                       ]
                                                                                   ]
                                                                      },
-                                              "Preparar imagenes para envio":  {
-                                                                                   "main":  [
-                                                                                                [
-                                                                                                    {
-                                                                                                        "node":  "¿Hay imagenes para enviar?",
-                                                                                                        "type":  "main",
-                                                                                                        "index":  0
-                                                                                                    }
-                                                                                                ]
-                                                                                            ]
-                                                                               },
-                                              "¿Hay imagenes para enviar?":  {
-                                                                                 "main":  [
-                                                                                              [
-                                                                                                  {
-                                                                                                      "node":  "Enviar imagen al 3227329097",
-                                                                                                      "type":  "main",
-                                                                                                      "index":  0
-                                                                                                  }
-                                                                                              ],
-                                                                                              [
-                                                                                                  {
-                                                                                                      "node":  "Sin imagenes generadas",
-                                                                                                      "type":  "main",
-                                                                                                      "index":  0
-                                                                                                  }
-                                                                                              ]
+                                              "Preparar publicaciones":  {
+                                                                             "main":  [
+                                                                                          [
+                                                                                              {
+                                                                                                  "node":  "?Hay estados para publicar?",
+                                                                                                  "type":  "main",
+                                                                                                  "index":  0
+                                                                                              }
                                                                                           ]
-                                                                             }
+                                                                                      ]
+                                                                         },
+                                              "?Hay estados para publicar?":  {
+                                                                                  "main":  [
+                                                                                               [
+                                                                                                   {
+                                                                                                       "node":  "Publicar estado en Evolution",
+                                                                                                       "type":  "main",
+                                                                                                       "index":  0
+                                                                                                   }
+                                                                                               ],
+                                                                                               [
+                                                                                                   {
+                                                                                                       "node":  "Sin estados generados",
+                                                                                                       "type":  "main",
+                                                                                                       "index":  0
+                                                                                                   }
+                                                                                               ]
+                                                                                           ]
+                                                                              }
                                           },
                           "nodeGroups":  [
 
@@ -525,10 +517,10 @@
                           "autosaved":  false,
                           "workflowPublishHistory":  [
                                                          {
-                                                             "createdAt":  "2026-08-28T03:24:01.810Z",
-                                                             "id":  27,
+                                                             "createdAt":  "2026-08-26T15:07:12.539Z",
+                                                             "id":  25,
                                                              "workflowId":  "3Fj5HTz7S7ux1ekd",
-                                                             "versionId":  "7e6dd6be-24da-4c51-a4c5-c294342d15fd",
+                                                             "versionId":  "6281cb22-e35a-4ac7-933a-2e3d7ed546b9",
                                                              "event":  "activated",
                                                              "userId":  "c65d4909-4f3d-4a6d-b5ae-bd3544ca478a"
                                                          }
