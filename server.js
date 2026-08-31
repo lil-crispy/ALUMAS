@@ -4195,7 +4195,38 @@ function inferMercadoLibrePowerSupplyType(producto, draft = {}, description = ''
   return ''
 }
 
-function resolveMercadoLibreCategoryAttributeValue(categoryAttribute, desiredValueName) {
+function inferMercadoLibreCuttingBladesNumber(producto, draft = {}, description = '') {
+  const text = normalizeMercadoLibreComparableText([
+    producto?.nombre,
+    producto?.descripcion,
+    producto?.ml_marketplace_description,
+    draft?.title,
+    draft?.family_name,
+    description
+  ].filter(Boolean).join(' '))
+
+  if (!text) return ''
+
+  const explicitCountMatch = text.match(/\b(\d+)\s*(cuchillas?|cuchilla|blades?|blade|hojas?|hoja)\b/)
+  if (explicitCountMatch?.[1]) {
+    const explicitCount = Number(explicitCountMatch[1])
+    if (Number.isFinite(explicitCount) && explicitCount > 0) {
+      return String(Math.trunc(explicitCount))
+    }
+  }
+
+  if (
+    /\b(cortador(?:es)? de vidrio|glass cutter|cortavidrio(?:s)?|corta vidrio)\b/.test(text) ||
+    (/\b(cuchilla|blade|hoja)\b/.test(text) && !/\b(cuchillas|blades|hojas)\b/.test(text))
+  ) {
+    return '1'
+  }
+
+  return ''
+}
+
+function resolveMercadoLibreCategoryAttributeValue(categoryAttribute, desiredValueName, options = {}) {
+  const allowRawValueName = parseBooleanLike(options?.allowRawValueName ?? false)
   const normalizedDesired = normalizeMercadoLibreComparableText(desiredValueName)
   const rawDesired = normalizeMercadoLibreStringValue(desiredValueName, 120)
   if (!normalizedDesired && !rawDesired) return null
@@ -4215,7 +4246,15 @@ function resolveMercadoLibreCategoryAttributeValue(categoryAttribute, desiredVal
       : false
   })
 
-  if (!matchedValue) return null
+  if (!matchedValue) {
+    if (allowRawValueName) {
+      return removeEmptyObjectFields({
+        id: normalizeMercadoLibreStringValue(categoryAttribute?.id, 80).toUpperCase(),
+        value_name: rawDesired || null
+      })
+    }
+    return null
+  }
 
   return removeEmptyObjectFields({
     id: normalizeMercadoLibreStringValue(categoryAttribute?.id, 80).toUpperCase(),
@@ -4262,6 +4301,34 @@ function enrichMercadoLibreDraftAttributes(producto, draft, categoryAttributes, 
         source: resolvedExistingPowerSupplyAttribute ? 'existing_attribute_resolved' : 'inferred_from_text',
         value_name: resolvedPowerSupplyAttribute.value_name || null,
         value_id: resolvedPowerSupplyAttribute.value_id || null
+      })
+    }
+  }
+
+  const cuttingBladesAttributeId = 'CUTTING_BLADES_NUMBER'
+  const cuttingBladesCategoryAttribute = categoryAttributeMap.get(cuttingBladesAttributeId)
+  if (cuttingBladesCategoryAttribute) {
+    const existingCuttingBladesAttribute = attributeMap.get(cuttingBladesAttributeId)
+    const inferredCuttingBladesValue = inferMercadoLibreCuttingBladesNumber(producto, draft, description)
+    const resolvedExistingCuttingBladesAttribute = resolveMercadoLibreCategoryAttributeValue(
+      cuttingBladesCategoryAttribute,
+      existingCuttingBladesAttribute?.value_name || existingCuttingBladesAttribute?.value_id,
+      { allowRawValueName: true }
+    )
+    const resolvedInferredCuttingBladesAttribute = resolveMercadoLibreCategoryAttributeValue(
+      cuttingBladesCategoryAttribute,
+      inferredCuttingBladesValue,
+      { allowRawValueName: true }
+    )
+    const resolvedCuttingBladesAttribute = resolvedExistingCuttingBladesAttribute || resolvedInferredCuttingBladesAttribute
+
+    if (resolvedCuttingBladesAttribute) {
+      attributeMap.set(cuttingBladesAttributeId, resolvedCuttingBladesAttribute)
+      inferredAttributes.push({
+        id: cuttingBladesAttributeId,
+        source: resolvedExistingCuttingBladesAttribute ? 'existing_attribute_resolved' : 'inferred_from_text',
+        value_name: resolvedCuttingBladesAttribute.value_name || null,
+        value_id: resolvedCuttingBladesAttribute.value_id || null
       })
     }
   }
