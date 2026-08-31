@@ -3837,6 +3837,81 @@ async function updateMercadoLibreItemPrice(producto, publication, nextPrice, acc
   }
 }
 
+async function updateMercadoLibreItemStatus(producto, publication, nextStatus, account, accessToken, conn = pool) {
+  const itemId = normalizeMercadoLibreStringValue(publication?.item_id, 32)
+  const normalizedStatus = normalizeMercadoLibreStringValue(nextStatus, 32).toLowerCase()
+  const allowedStatuses = new Set(['active', 'paused'])
+
+  if (!itemId) {
+    const error = new Error('El producto no tiene una publicación de Mercado Libre vinculada.')
+    error.statusCode = 404
+    throw error
+  }
+
+  if (!allowedStatuses.has(normalizedStatus)) {
+    const error = new Error('Debes enviar un status valido para la publicación de Mercado Libre.')
+    error.statusCode = 400
+    throw error
+  }
+
+  const remoteItemBefore = await getMercadoLibreItemDetail(accessToken, itemId)
+  const currentStatus = normalizeMercadoLibreStringValue(remoteItemBefore?.status, 32).toLowerCase()
+
+  let updatedItem = remoteItemBefore
+  let changed = false
+  if (currentStatus !== normalizedStatus) {
+    try {
+      updatedItem = await mercadolibreAuthenticatedRequest(accessToken, `/items/${itemId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          status: normalizedStatus
+        }),
+        operation: `item_status_update_${itemId}`
+      })
+      changed = true
+    } catch (err) {
+      err.remoteItemBefore = removeEmptyObjectFields({
+        id: remoteItemBefore?.id,
+        status: remoteItemBefore?.status,
+        sub_status: remoteItemBefore?.sub_status,
+        price: remoteItemBefore?.price,
+        permalink: remoteItemBefore?.permalink
+      })
+      throw err
+    }
+  }
+
+  await upsertMercadoLibrePublication({
+    meliUserId: account.meli_user_id,
+    itemId,
+    productoId: publication?.producto_id || producto?.id_producto || null,
+    sellerSku: extractMercadoLibreSellerSku(updatedItem),
+    categoryId: updatedItem.category_id || publication?.category_id || null,
+    title: updatedItem.title || updatedItem.family_name || publication?.title || null,
+    status: updatedItem.status || normalizedStatus || publication?.status || null,
+    price: updatedItem.price ?? publication?.price ?? null,
+    availableQuantity: updatedItem.available_quantity ?? publication?.available_quantity ?? null,
+    permalink: updatedItem.permalink || publication?.permalink || null,
+    rawJson: updatedItem
+  }, conn)
+
+  return {
+    item: updatedItem,
+    changed,
+    requestedStatus: normalizedStatus,
+    remoteItemBefore: removeEmptyObjectFields({
+      id: remoteItemBefore?.id,
+      status: remoteItemBefore?.status,
+      sub_status: remoteItemBefore?.sub_status,
+      price: remoteItemBefore?.price,
+      permalink: remoteItemBefore?.permalink
+    })
+  }
+}
+
 function normalizeMercadoLibreLimitQuery(value, fallback) {
   return Math.max(1, Math.min(200, normalizeMercadoLibreInteger(value, fallback)))
 }
@@ -7099,6 +7174,85 @@ app.post('/api/mercadolibre/publicacion/actualizar-precio', async (req, res) => 
     return res.status(Number(err?.statusCode || 500)).json({
       ok: false,
       error: err?.message || 'No se pudo actualizar el precio de la publicación en Mercado Libre.',
+      details: err?.payload || undefined,
+      cause: Array.isArray(err?.payload?.cause) ? err.payload.cause : undefined,
+      remote_item_before: err?.remoteItemBefore || undefined
+    })
+  }
+})
+
+app.post('/api/mercadolibre/publicacion/actualizar-estado', async (req, res) => {
+  try {
+    if (!requireMercadoLibreApiAuthorization(req, res)) {
+      return
+    }
+
+    const productoId = Number(req.body?.producto_id)
+    const requestedStatus = normalizeMercadoLibreStringValue(req.body?.status, 32).toLowerCase()
+    if (!Number.isFinite(productoId) || productoId <= 0) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Debes enviar producto_id valido para actualizar el estado en Mercado Libre.'
+      })
+    }
+
+    if (!['active', 'paused'].includes(requestedStatus)) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Debes enviar un status valido para actualizar la publicación de Mercado Libre.'
+      })
+    }
+
+    const producto = await getProductoByIdProducto(productoId)
+    if (!producto) {
+      return res.status(404).json({
+        ok: false,
+        error: 'El producto indicado no existe en ALUMAS.'
+      })
+    }
+
+    const publication = await getMercadoLibreExistingPublicationForProduct(productoId)
+    if (!publication || !String(publication.item_id || '').trim()) {
+      return res.status(404).json({
+        ok: false,
+        error: 'El producto no tiene una publicación de Mercado Libre vinculada.'
+      })
+    }
+
+    const { account, accessToken } = await getValidMercadoLibreAccessToken()
+    const updateResult = await updateMercadoLibreItemStatus(
+      producto,
+      publication,
+      requestedStatus,
+      account,
+      accessToken
+    )
+
+    const finalStatus = updateResult.item?.status || requestedStatus || publication.status || null
+    const actionLabel = requestedStatus === 'active' ? 'reactivada' : 'pausada'
+    const message = updateResult.changed
+      ? `Publicación ${actionLabel} correctamente`
+      : `La publicación ya estaba en estado ${finalStatus || requestedStatus}`
+
+    return res.json({
+      ok: true,
+      message,
+      producto_id: productoId,
+      item_id: updateResult.item?.id || String(publication.item_id || '').trim() || null,
+      status: finalStatus,
+      permalink: updateResult.item?.permalink || publication.permalink || null,
+      price: updateResult.item?.price ?? publication.price ?? null,
+      available_quantity: updateResult.item?.available_quantity ?? publication.available_quantity ?? null,
+      details: {
+        requested_status: requestedStatus,
+        changed: updateResult.changed,
+        remote_item_before: updateResult.remoteItemBefore
+      }
+    })
+  } catch (err) {
+    return res.status(Number(err?.statusCode || 500)).json({
+      ok: false,
+      error: err?.message || 'No se pudo actualizar el estado de la publicación en Mercado Libre.',
       details: err?.payload || undefined,
       cause: Array.isArray(err?.payload?.cause) ? err.payload.cause : undefined,
       remote_item_before: err?.remoteItemBefore || undefined
