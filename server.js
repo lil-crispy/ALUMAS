@@ -4073,6 +4073,133 @@ function normalizeMercadoLibrePublicationAttributes(attributes) {
   return [...normalizedMap.values()]
 }
 
+function normalizeMercadoLibreComparableText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function inferMercadoLibrePowerSupplyType(producto, draft = {}, description = '') {
+  const text = normalizeMercadoLibreComparableText([
+    producto?.nombre,
+    producto?.descripcion,
+    producto?.ml_marketplace_description,
+    draft?.title,
+    draft?.family_name,
+    description
+  ].filter(Boolean).join(' '))
+
+  if (!text) return ''
+
+  if (
+    /\b(bateria|inalambric[oa]s?|inalambrico|inalambrica|recargable|cordless)\b/.test(text)
+  ) {
+    return 'Batería'
+  }
+
+  if (/\b(pila|pilas)\b/.test(text)) {
+    return 'Pila'
+  }
+
+  if (/\b(manual|manivela)\b/.test(text)) {
+    return 'Operación manual'
+  }
+
+  const hasElectricalSignal =
+    /\b\d+(?:[.,]\d+)?\s*(w|kw|v|kv|watts?|volt(?:s|ios?)?)\b/.test(text) ||
+    /\b(voltaje|electrica|electrico|corriente)\b/.test(text)
+
+  if (hasElectricalSignal) {
+    return 'Corriente doméstica'
+  }
+
+  return ''
+}
+
+function resolveMercadoLibreCategoryAttributeValue(categoryAttribute, desiredValueName) {
+  const normalizedDesired = normalizeMercadoLibreComparableText(desiredValueName)
+  const rawDesired = normalizeMercadoLibreStringValue(desiredValueName, 120)
+  if (!normalizedDesired && !rawDesired) return null
+
+  const allowedValues = Array.isArray(categoryAttribute?.values) ? categoryAttribute.values : []
+  const matchedValue = allowedValues.find((value) => {
+    if (rawDesired && normalizeMercadoLibreStringValue(value?.id, 120) === rawDesired) {
+      return true
+    }
+    const candidates = [
+      value?.name,
+      value?.value_name,
+      value?.label
+    ]
+    return normalizedDesired
+      ? candidates.some((candidate) => normalizeMercadoLibreComparableText(candidate) === normalizedDesired)
+      : false
+  })
+
+  if (!matchedValue) return null
+
+  return removeEmptyObjectFields({
+    id: normalizeMercadoLibreStringValue(categoryAttribute?.id, 80).toUpperCase(),
+    value_id: normalizeMercadoLibreStringValue(matchedValue?.id, 120) || null,
+    value_name: normalizeMercadoLibreStringValue(
+      matchedValue?.name || matchedValue?.value_name || desiredValueName,
+      255
+    ) || null
+  })
+}
+
+function enrichMercadoLibreDraftAttributes(producto, draft, categoryAttributes, description = '') {
+  const categoryAttributeMap = new Map(
+    (Array.isArray(categoryAttributes) ? categoryAttributes : [])
+      .map((attribute) => [
+        normalizeMercadoLibreStringValue(attribute?.id, 80).toUpperCase(),
+        attribute
+      ])
+      .filter(([id]) => Boolean(id))
+  )
+
+  const attributeMap = getMercadoLibreAttributeMap(draft?.attributes || [])
+  const inferredAttributes = []
+
+  const powerSupplyAttributeId = 'POWER_SUPPLY_TYPE'
+  const powerSupplyCategoryAttribute = categoryAttributeMap.get(powerSupplyAttributeId)
+  if (powerSupplyCategoryAttribute) {
+    const existingPowerSupplyAttribute = attributeMap.get(powerSupplyAttributeId)
+    const inferredPowerSupplyValue = inferMercadoLibrePowerSupplyType(producto, draft, description)
+    const resolvedExistingPowerSupplyAttribute = resolveMercadoLibreCategoryAttributeValue(
+      powerSupplyCategoryAttribute,
+      existingPowerSupplyAttribute?.value_name || existingPowerSupplyAttribute?.value_id
+    )
+    const resolvedInferredPowerSupplyAttribute = resolveMercadoLibreCategoryAttributeValue(
+      powerSupplyCategoryAttribute,
+      inferredPowerSupplyValue
+    )
+    const resolvedPowerSupplyAttribute = resolvedExistingPowerSupplyAttribute || resolvedInferredPowerSupplyAttribute
+
+    if (resolvedPowerSupplyAttribute) {
+      attributeMap.set(powerSupplyAttributeId, resolvedPowerSupplyAttribute)
+      inferredAttributes.push({
+        id: powerSupplyAttributeId,
+        source: resolvedExistingPowerSupplyAttribute ? 'existing_attribute_resolved' : 'inferred_from_text',
+        value_name: resolvedPowerSupplyAttribute.value_name || null,
+        value_id: resolvedPowerSupplyAttribute.value_id || null
+      })
+    }
+  }
+
+  return {
+    draft: {
+      ...draft,
+      attributes: normalizeMercadoLibrePublicationAttributes([...attributeMap.values()])
+    },
+    inferredAttributes
+  }
+}
+
 function getMercadoLibreAttributeMap(attributes) {
   const attributeMap = new Map()
   for (const attribute of normalizeMercadoLibrePublicationAttributes(attributes)) {
@@ -4231,17 +4358,27 @@ async function buildMercadoLibrePublicationDraft(producto, options = {}, req = n
     attributes
   }
 
+  const {
+    draft: enrichedDraft,
+    inferredAttributes
+  } = enrichMercadoLibreDraftAttributes(
+    producto,
+    draft,
+    options.categoryAttributes,
+    description
+  )
+
   if (saleTerms.length > 0) {
-    draft.sale_terms = saleTerms
+    enrichedDraft.sale_terms = saleTerms
   }
 
   if (!isUserProductSeller) {
-    draft.title = title
+    enrichedDraft.title = title
   }
 
   return {
     producto,
-    draft,
+    draft: enrichedDraft,
     description,
     metadata: {
       user_product_seller: isUserProductSeller,
@@ -4271,7 +4408,8 @@ async function buildMercadoLibrePublicationDraft(producto, options = {}, req = n
       package_length_cm: packageMetrics.lengthCm || null,
       weight_kg: packageMetrics.weightKg || null,
       weight_grams: packageMetrics.weightGrams || null,
-      stored_attributes_count: Array.isArray(producto?._ml_stored_attributes) ? producto._ml_stored_attributes.length : 0
+      stored_attributes_count: Array.isArray(producto?._ml_stored_attributes) ? producto._ml_stored_attributes.length : 0,
+      inferred_attributes: inferredAttributes
     },
     missing
   }
@@ -6684,6 +6822,7 @@ app.get('/api/mercadolibre/producto/:id/preparar-publicacion', async (req, res) 
     const listingTypes = await getMercadoLibreListingTypes(siteId, accessToken)
     const draftInfo = await buildMercadoLibrePublicationDraft(producto, {
       categoryId: suggestedCategoryId,
+      categoryAttributes,
       isUserProductSeller: isMercadoLibreUserProductSeller(sellerProfile)
     }, req)
     const requiredAttributesMissing = getMercadoLibreRequiredAttributesMissing(categoryAttributes, draftInfo.draft.attributes)
@@ -6820,6 +6959,10 @@ app.post('/api/mercadolibre/publicar', async (req, res) => {
     const { account, accessToken } = await getValidMercadoLibreAccessToken()
     const sellerProfile = await getMercadoLibreAuthenticatedUser(accessToken)
     const isUserProductSeller = isMercadoLibreUserProductSeller(sellerProfile)
+    const requestedCategoryId = normalizeMercadoLibreStringValue(req.body?.category_id || producto.ml_category_id, 64)
+    const categoryAttributes = requestedCategoryId
+      ? await getMercadoLibreCategoryAttributes(requestedCategoryId, accessToken)
+      : []
     const draftInfo = await buildMercadoLibrePublicationDraft(producto, {
       categoryId: req.body?.category_id,
       title: req.body?.title,
@@ -6830,14 +6973,12 @@ app.post('/api/mercadolibre/publicar', async (req, res) => {
       condition: req.body?.condition,
       imageUrl: req.body?.image_url,
       attributes: req.body?.attributes,
+      categoryAttributes,
       isUserProductSeller
     }, req)
     const finalPayload = buildMercadoLibrePublicationPayload(draftInfo.draft, {
       userProductSeller: isUserProductSeller
     })
-    const categoryAttributes = draftInfo.draft.category_id
-      ? await getMercadoLibreCategoryAttributes(draftInfo.draft.category_id, accessToken)
-      : []
     const requiredAttributesMissing = getMercadoLibreRequiredAttributesMissing(categoryAttributes, draftInfo.draft.attributes)
     const completeMissing = [...draftInfo.missing]
     if (requiredAttributesMissing.length > 0) {
