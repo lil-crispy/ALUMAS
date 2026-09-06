@@ -3724,6 +3724,69 @@ try {
       if (overlay) overlay.style.display = 'none'
       document.body.classList.remove('login-active')
     }
+    function normalizarUsuarioRemision(valor) {
+      return String(valor || '').trim().toLowerCase()
+    }
+
+    function getUsuarioLoginActual() {
+      return normalizarUsuarioRemision(
+        localStorage.getItem('USUARIO_LOGIN') || localStorage.getItem('USUARIO_NOMBRE') || ''
+      )
+    }
+
+    function esUsuarioKarenRemision() {
+      return getUsuarioLoginActual() === 'karen@alumas'
+    }
+
+    function esAdminRemision() {
+      const rol = normalizarUsuarioRemision(localStorage.getItem('USUARIO_ROL') || '')
+      return rol === 'admin' || getUsuarioLoginActual() === 'admin'
+    }
+
+    function debePredeterminarBodegaPorUsuario() {
+      return esAdminRemision() || esUsuarioKarenRemision()
+    }
+
+    function aplicarRestriccionesUsuarioRemision(forzarPredeterminado = false) {
+      const soloBodega = esUsuarioKarenRemision()
+      const usarBodegaPorDefecto = debePredeterminarBodegaPorUsuario()
+
+      const selectPV = document.getElementById('select-punto-venta')
+      const opcionFerreteria = selectPV?.querySelector('option[value="ferreteria"]')
+      const opcionBodega = selectPV?.querySelector('option[value="bodega"]')
+
+      if (opcionFerreteria) {
+        opcionFerreteria.disabled = soloBodega
+        opcionFerreteria.hidden = soloBodega
+      }
+      if (opcionBodega) {
+        opcionBodega.disabled = false
+        opcionBodega.hidden = false
+      }
+      if (selectPV) {
+        if (soloBodega || (forzarPredeterminado && usarBodegaPorDefecto)) {
+          selectPV.value = 'bodega'
+          actualizarPuntoVenta('bodega')
+        }
+        selectPV.disabled = soloBodega
+      }
+
+      const btnF = document.getElementById('tab-ferreteria')
+      const btnB = document.getElementById('tab-bodega')
+      if (btnF) {
+        btnF.style.display = soloBodega ? 'none' : ''
+        btnF.disabled = soloBodega
+      }
+      if (btnB) {
+        btnB.style.display = ''
+        btnB.disabled = false
+      }
+
+      if (soloBodega || (forzarPredeterminado && usarBodegaPorDefecto)) {
+        setFiltroPuntoVenta('bodega')
+      }
+    }
+
     function actualizarUserBar() {
       const bar = document.getElementById('user-bar')
       const nameEl = document.getElementById('user-name')
@@ -3745,12 +3808,14 @@ try {
         nameEl.textContent = ''
         bar.style.display = 'none'
       }
+      aplicarRestriccionesUsuarioRemision()
       actualizarCajaAdminVisibilidad()
     }
     function logoutUsuario() {
       localStorage.removeItem('USUARIO_ID')
       localStorage.removeItem('USUARIO_NOMBRE')
       localStorage.removeItem('USUARIO_ROL')
+      localStorage.removeItem('USUARIO_LOGIN')
       detenerCajaAdmin()
       actualizarUserBar()
       mostrarLogin()
@@ -3796,7 +3861,9 @@ try {
         localStorage.setItem('USUARIO_ID', String(data.usuario_id))
         if (data.usuario) localStorage.setItem('USUARIO_NOMBRE', data.usuario)
         localStorage.setItem('USUARIO_ROL', data.rol || 'vendedor')
+        localStorage.setItem('USUARIO_LOGIN', normalizarUsuarioRemision(usuario))
         actualizarUserBar()
+        aplicarRestriccionesUsuarioRemision(true)
         if (errorEl) {
           errorEl.style.color = '#16a34a'
           errorEl.textContent = 'BIENVENIDO ' + (data.usuario || usuario)
@@ -3861,6 +3928,7 @@ try {
         ocultarLogin()
       }
       actualizarUserBar()
+      aplicarRestriccionesUsuarioRemision(true)
       actualizarCajaAdminVisibilidad()
       solicitarConsecutivo().catch(() => {})
       ;['click','keydown','mousemove','touchstart'].forEach(ev => {
@@ -3882,6 +3950,9 @@ try {
     let filtroPuntoVenta = 'ferreteria'; // Default
 
     function setFiltroPuntoVenta(pv) {
+      if (esUsuarioKarenRemision() && pv !== 'bodega') {
+        pv = 'bodega';
+      }
       filtroPuntoVenta = pv;
       const btnF = document.getElementById('tab-ferreteria');
       const btnB = document.getElementById('tab-bodega');
@@ -5350,6 +5421,12 @@ try {
     }
     
     function actualizarPuntoVenta(valor) {
+      const select = document.getElementById('select-punto-venta');
+      const valorFinal = esUsuarioKarenRemision() ? 'bodega' : (valor || select?.value || 'ferreteria');
+      if (select && select.value !== valorFinal) {
+        select.value = valorFinal;
+      }
+
       // Para impresión correcta en Bodega, necesitamos activar la clase en el BODY
       // pero el usuario NO quiere ver cambios visuales en PANTALLA.
       // La solución es usar la clase solo durante la impresión (manejado por @media print)
@@ -6767,17 +6844,5 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(fetchPedidosProgramados, 30000);
 });
 </script>
-  <script>
-      window.addEventListener('beforeprint', () => {
-        if (getPuntoVenta() === 'bodega') {
-           document.body.classList.add('formato-bodega');
-           prepararDatosPDF(); // Asegurar datos actualizados
-        }
-      });
-
-      window.addEventListener('afterprint', () => {
-         document.body.classList.remove('formato-bodega');
-      });
-  </script>
 </body>
 </html>
