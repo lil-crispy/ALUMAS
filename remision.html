@@ -3757,6 +3757,9 @@ try {
     function aplicarRestriccionesUsuarioRemision(forzarPredeterminado = false) {
       const soloBodega = esUsuarioKarenRemision()
       const puntoVentaPredeterminado = getPuntoVentaPredeterminadoPorUsuario()
+      // #region debug-point A:restricciones-entrada
+      fetch("http://127.0.0.1:7777/event",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sessionId:"login-db-timeout",runId:"post-fix",hypothesisId:"A",location:"remision.html:3757",msg:"[DEBUG] aplicarRestriccionesUsuarioRemision entrada",data:{forzarPredeterminado,soloBodega,puntoVentaPredeterminado,usuario:getUsuarioLoginActual(),rol:(localStorage.getItem('USUARIO_ROL')||'')},ts:Date.now()})}).catch(()=>{})
+      // #endregion
 
       const selectPV = document.getElementById('select-punto-venta')
       const opcionFerreteria = selectPV?.querySelector('option[value="ferreteria"]')
@@ -3788,9 +3791,12 @@ try {
         btnB.style.display = ''
         btnB.disabled = false
       }
+      // #region debug-point A:filtro-predeterminado
+      fetch("http://127.0.0.1:7777/event",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sessionId:"login-db-timeout",runId:"post-fix",hypothesisId:"A",location:"remision.html:3792",msg:"[DEBUG] evaluar filtro predeterminado",data:{soloBodega,forzarPredeterminado,puntoVentaPredeterminado,legacyFlagType:typeof usarBodegaPorDefecto},ts:Date.now()})}).catch(()=>{})
+      // #endregion
 
-      if (soloBodega || (forzarPredeterminado && usarBodegaPorDefecto)) {
-        setFiltroPuntoVenta('bodega')
+      if (soloBodega || (forzarPredeterminado && puntoVentaPredeterminado)) {
+        setFiltroPuntoVenta(soloBodega ? 'bodega' : puntoVentaPredeterminado)
       }
     }
 
@@ -3842,6 +3848,9 @@ try {
       const usuario = document.getElementById('login-usuario')?.value.trim() || ''
       const contrasena = document.getElementById('login-contrasena')?.value || ''
       const errorEl = document.getElementById('login-error')
+      // #region debug-point B:login-intento
+      fetch("http://127.0.0.1:7777/event",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sessionId:"login-db-timeout",runId:"post-fix",hypothesisId:"B",location:"remision.html:3841",msg:"[DEBUG] intento de login",data:{usuario,apiBase:getApiBase()},ts:Date.now()})}).catch(()=>{})
+      // #endregion
       if (errorEl) {
         errorEl.textContent = ''
         errorEl.style.color = ''
@@ -3893,7 +3902,16 @@ try {
           actualizarCajaAdminVisibilidad()
         }, 900)
       } catch (e) {
-        if (errorEl) errorEl.textContent = 'Error de conexión con el servidor'
+        // #region debug-point B:login-error
+        fetch("http://127.0.0.1:7777/event",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sessionId:"login-db-timeout",runId:"post-fix",hypothesisId:"B",location:"remision.html:3895",msg:"[DEBUG] login catch",data:{name:e?.name||'',message:e?.message||'',stack:String(e?.stack||'').slice(0,500)},ts:Date.now()})}).catch(()=>{})
+        // #endregion
+        if (errorEl) {
+          const mensaje = String(e?.message || '')
+          const pareceErrorConexion = e?.name === 'TypeError' || /fetch|network|load failed/i.test(mensaje)
+          errorEl.textContent = pareceErrorConexion
+            ? 'Error de conexión con el servidor'
+            : ('Error interno de la página' + (mensaje ? ': ' + mensaje : ''))
+        }
       }
     }
     document.addEventListener('DOMContentLoaded', () => {
