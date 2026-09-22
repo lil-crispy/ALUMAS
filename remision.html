@@ -3738,18 +3738,25 @@ try {
       return getUsuarioLoginActual() === 'karen@alumas'
     }
 
+    function esUsuarioSantyRemision() {
+      return getUsuarioLoginActual() === 'santy@alumas'
+    }
+
     function esAdminRemision() {
       const rol = normalizarUsuarioRemision(localStorage.getItem('USUARIO_ROL') || '')
       return rol === 'admin' || getUsuarioLoginActual() === 'admin'
     }
 
-    function debePredeterminarBodegaPorUsuario() {
-      return esAdminRemision() || esUsuarioKarenRemision()
+    function getPuntoVentaPredeterminadoPorUsuario() {
+      if (esUsuarioKarenRemision()) return 'bodega'
+      if (esUsuarioSantyRemision()) return 'ferreteria'
+      if (esAdminRemision()) return 'bodega'
+      return ''
     }
 
     function aplicarRestriccionesUsuarioRemision(forzarPredeterminado = false) {
       const soloBodega = esUsuarioKarenRemision()
-      const usarBodegaPorDefecto = debePredeterminarBodegaPorUsuario()
+      const puntoVentaPredeterminado = getPuntoVentaPredeterminadoPorUsuario()
 
       const selectPV = document.getElementById('select-punto-venta')
       const opcionFerreteria = selectPV?.querySelector('option[value="ferreteria"]')
@@ -3764,9 +3771,9 @@ try {
         opcionBodega.hidden = false
       }
       if (selectPV) {
-        if (soloBodega || (forzarPredeterminado && usarBodegaPorDefecto)) {
-          selectPV.value = 'bodega'
-          actualizarPuntoVenta('bodega')
+        if (soloBodega || (forzarPredeterminado && puntoVentaPredeterminado)) {
+          selectPV.value = soloBodega ? 'bodega' : puntoVentaPredeterminado
+          actualizarPuntoVenta(selectPV.value)
         }
         selectPV.disabled = soloBodega
       }
@@ -3850,7 +3857,16 @@ try {
           body: JSON.stringify({ usuario, contrasena })
         })
         if (!resp.ok) {
-          if (errorEl) errorEl.textContent = 'Credenciales inválidas'
+          let serverError = ''
+          try {
+            const errData = await resp.json()
+            serverError = String(errData?.error || '').trim()
+          } catch {}
+          if (errorEl) {
+            errorEl.textContent = resp.status >= 500
+              ? ('Error del servidor' + (serverError ? ': ' + serverError : ''))
+              : 'Credenciales inválidas'
+          }
           return
         }
         const data = await resp.json()
@@ -3881,7 +3897,6 @@ try {
       }
     }
     document.addEventListener('DOMContentLoaded', () => {
-      try { cargarReporte(); } catch (e) {}
       inicializarAutocompletadoCliente();
       inicializarModalClienteRapido();
       inicializarFacturacionElectronica();

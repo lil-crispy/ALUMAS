@@ -9,7 +9,7 @@ const fs = require('fs')
 
 const app = express()
 app.set('trust proxy', 1)
-const USER_ACCESS_LOG_PATH = path.resolve(__dirname, 'lista de usuarios.json')
+const USER_ACCESS_LOG_PATH = path.resolve(__dirname, '.logs', 'user-access-log.json')
 
 const DB_CONFIG = {
   host: process.env.DB_HOST || 'localhost',
@@ -6216,17 +6216,24 @@ function buildProductoSelectFields(columns) {
 
 async function appendUserAccessLog(entry) {
   let currentEntries = []
+  await fs.promises.mkdir(path.dirname(USER_ACCESS_LOG_PATH), { recursive: true })
 
   try {
     const fileContent = await fs.promises.readFile(USER_ACCESS_LOG_PATH, 'utf8')
-    const parsed = JSON.parse(fileContent)
-    if (Array.isArray(parsed)) {
-      currentEntries = parsed
+    if (fileContent.trim()) {
+      const parsed = JSON.parse(fileContent)
+      if (Array.isArray(parsed)) {
+        currentEntries = parsed
+      }
     }
   } catch (err) {
     const missingFile = err?.code === 'ENOENT'
-    if (!missingFile) {
+    const invalidJson = err instanceof SyntaxError
+    if (!missingFile && !invalidJson) {
       throw err
+    }
+    if (invalidJson) {
+      console.warn('No se pudo leer el log de accesos, se recreará el archivo:', err.message)
     }
   }
 
@@ -6236,6 +6243,14 @@ async function appendUserAccessLog(entry) {
     JSON.stringify(currentEntries, null, 2),
     'utf8'
   )
+}
+
+async function safeAppendUserAccessLog(entry) {
+  try {
+    await appendUserAccessLog(entry)
+  } catch (err) {
+    console.warn('No se pudo registrar el acceso de usuario:', err.message)
+  }
 }
 
 async function getCajaResumen(conn = pool) {
@@ -7791,7 +7806,7 @@ app.post('/api/login', async (req, res) => {
     }
 
     if (!usuario || !contrasena) {
-      await appendUserAccessLog({
+      await safeAppendUserAccessLog({
         ...accessBaseLog,
         estado: 'rechazado',
         motivo: 'datos_invalidos'
@@ -7803,7 +7818,7 @@ app.post('/api/login', async (req, res) => {
       [usuarioLimpio]
     )
     if (!rows || rows.length === 0) {
-      await appendUserAccessLog({
+      await safeAppendUserAccessLog({
         ...accessBaseLog,
         estado: 'rechazado',
         motivo: 'usuario_no_encontrado'
@@ -7813,7 +7828,7 @@ app.post('/api/login', async (req, res) => {
     const user = rows[0]
     const okPass = await passwordMatchesUser(user, contrasena)
     if (!okPass) {
-      await appendUserAccessLog({
+      await safeAppendUserAccessLog({
         ...accessBaseLog,
         estado: 'rechazado',
         motivo: 'contrasena_invalida'
@@ -7823,7 +7838,7 @@ app.post('/api/login', async (req, res) => {
     const idUsuario = user.id_usuario || user.id || user.usuario_id
     const nombreUsuario = user.nombre || user.usuario || user.nombre_usuario || usuario
     if (!idUsuario) {
-      await appendUserAccessLog({
+      await safeAppendUserAccessLog({
         ...accessBaseLog,
         estado: 'error',
         motivo: 'id_usuario_invalido'
@@ -7831,7 +7846,7 @@ app.post('/api/login', async (req, res) => {
       return res.status(500).json({ ok: false, error: 'id_usuario_invalido' })
     }
     const rol = user.rol || 'vendedor'
-    await appendUserAccessLog({
+    await safeAppendUserAccessLog({
       ...accessBaseLog,
       estado: 'exitoso',
       motivo: 'login_ok',
@@ -7846,7 +7861,7 @@ app.post('/api/login', async (req, res) => {
     })
   } catch (err) {
     try {
-      await appendUserAccessLog({
+      await safeAppendUserAccessLog({
         fecha: new Date().toISOString(),
         usuario: String(req.body?.usuario || '').trim(),
         ip: req.ip || req.socket?.remoteAddress || '',
