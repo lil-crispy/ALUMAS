@@ -401,7 +401,7 @@ async function ensureSchema() {
   }
 }
 
-let pool
+let pool = null
 async function createAndTestPool(config, label) {
   const testPool = mysql.createPool(config)
   try {
@@ -422,12 +422,15 @@ async function createAndTestPool(config, label) {
 }
 
 async function initPool() {
+  pool = null
   const okPrimary = await createAndTestPool(DB_CONFIG, 'config principal')
   if (okPrimary) return
   if (DB_CONFIG.host !== 'localhost' && DB_CONFIG.host !== '127.0.0.1') {
     const fallbackConfig = { ...DB_CONFIG, host: 'localhost' }
-    await createAndTestPool(fallbackConfig, 'fallback localhost')
+    const okFallback = await createAndTestPool(fallbackConfig, 'fallback localhost')
+    if (okFallback) return
   }
+  throw new Error('No se pudo inicializar la conexión MySQL para arrancar el servidor')
 }
 
 function getStoredPassword(user) {
