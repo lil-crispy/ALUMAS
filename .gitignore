@@ -36,6 +36,7 @@ credentials*
 
 # Datos operativos que no deben versionarse
 lista de usuarios.json
+.logs/
 
 # Datos internos de runtime de n8n
 n8n/.env
