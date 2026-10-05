@@ -438,6 +438,43 @@
       display: flex;
       flex-direction: column;
       box-sizing: border-box;
+      overflow: visible;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    #dashboard-programacion.dashboard-colapsado {
+      transform: translateX(calc(-100% + 28px));
+      box-shadow: none;
+    }
+
+    .dashboard-programacion-body {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .dashboard-toggle {
+      position: absolute;
+      top: 50%;
+      right: -28px;
+      transform: translateY(-50%);
+      width: 28px;
+      height: 72px;
+      border: 1px solid #cfd8dc;
+      border-left: none;
+      border-radius: 0 10px 10px 0;
+      background: #00acc1;
+      color: #fff;
+      cursor: pointer;
+      font-size: 18px;
+      font-weight: bold;
+      box-shadow: 3px 0 8px rgba(0, 0, 0, 0.18);
+      z-index: 1001;
+    }
+
+    .dashboard-toggle:hover {
+      background: #0097a7;
     }
 
     /* MODO TRANSPORTADOR: Dashboard pantalla completa y exclusivo */
@@ -448,6 +485,14 @@
        border-right: none;
        left: 0;
        top: 0;
+     }
+
+     body.transportador-mode #dashboard-programacion.dashboard-colapsado {
+       transform: none !important;
+     }
+
+     body.transportador-mode .dashboard-toggle {
+       display: none !important;
      }
 
      body.transportador-mode #contenido-factura,
@@ -695,6 +740,7 @@
       border-radius: 4px;
       transition: all 0.2s;
       font-size: 0.9em;
+      position: relative;
     }
 
     .pedido-item:hover {
@@ -706,6 +752,34 @@
       border-color: #00acc1;
       background: #b2ebf2;
       box-shadow: 0 0 5px rgba(0,172,193,0.5);
+    }
+
+    .pedido-item.selected-primary {
+      box-shadow: 0 0 0 2px rgba(0, 121, 107, 0.35), 0 0 5px rgba(0,172,193,0.5);
+    }
+
+    .pedido-check {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid #90a4ae;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: bold;
+      color: transparent;
+      background: #fff;
+      transition: all 0.2s;
+    }
+
+    .pedido-item.selected .pedido-check {
+      border-color: #00796b;
+      background: #00796b;
+      color: #fff;
     }
 
     .pedido-info {
@@ -762,6 +836,30 @@
       border-radius: 4px;
     }
     .btn-cancelar-pedido:hover { background: #d32f2f; }
+
+    .dashboard-selection-info {
+      margin-bottom: 10px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      background: #e0f7fa;
+      color: #006064;
+      font-size: 0.85em;
+      line-height: 1.35;
+    }
+
+    .dashboard-selection-info[data-has-selection="false"] {
+      background: #f1f5f9;
+      color: #64748b;
+    }
+
+    .dashboard-acciones {
+      margin-top: auto;
+    }
+
+    .dashboard-acciones button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
 
     /* Modal Programación */
     .modal-programacion {
@@ -6048,27 +6146,41 @@ document.addEventListener('DOMContentLoaded', () => {
   </script>
     <!-- Dashboard Programación -->
   <div id="dashboard-programacion">
-    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #00acc1; margin-bottom: 10px; padding-bottom: 5px;">
-        <h3 style="margin:0; border:none; padding:0;">Pedidos Programados</h3>
-        <button id="btn-logout-transportador" onclick="logoutUsuario()" style="display:none; background:#d32f2f; color:white; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; font-weight:bold; font-size: 0.9em;">Cerrar Sesión</button>
-    </div>
-    
-    <div class="nav-controles" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; background:#f1f1f1; padding:5px; border-radius:5px;">
-        <button onclick="cambiarDia(-1)" style="border:none; background:transparent; font-weight:bold; cursor:pointer; font-size:1.4em; color:#00acc1;">&#9664;</button>
-        <div style="text-align:center;">
-            <span id="current-date-display" style="display:block; font-size:0.85em; font-weight:bold; color:#555; margin-bottom:2px;">HOY</span>
-            <input type="number" id="day-input" min="1" max="31" placeholder="Día" 
-                   style="width:60px; text-align:center; border:1px solid #ccc; border-radius:4px; padding:4px;"
-                   onchange="irADia(this.value)">
-        </div>
-        <button onclick="cambiarDia(1)" style="border:none; background:transparent; font-weight:bold; cursor:pointer; font-size:1.4em; color:#00acc1;">&#9654;</button>
-    </div>
+    <button
+      id="dashboard-toggle-programacion"
+      class="dashboard-toggle"
+      type="button"
+      onclick="toggleDashboardProgramacion()"
+      aria-label="Ocultar tablero"
+      title="Ocultar tablero"
+    >&#10094;</button>
+    <div class="dashboard-programacion-body">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #00acc1; margin-bottom: 10px; padding-bottom: 5px;">
+          <h3 style="margin:0; border:none; padding:0;">Pedidos Programados</h3>
+          <button id="btn-logout-transportador" onclick="logoutUsuario()" style="display:none; background:#d32f2f; color:white; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; font-weight:bold; font-size: 0.9em;">Cerrar Sesión</button>
+      </div>
 
-    <div id="lista-pedidos"></div>
-    <div style="margin-top: auto;">
-        <button class="btn-despachado" onclick="despacharPedido()">DESPACHADO</button>
-        <button class="btn-reprogramar" onclick="iniciarReprogramacion()">REPROGRAMAR</button>
-        <button class="btn-cancelar-pedido" onclick="cancelarPedido()">CANCELAR</button>
+      <div class="nav-controles" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; background:#f1f1f1; padding:5px; border-radius:5px;">
+          <button onclick="cambiarDia(-1)" style="border:none; background:transparent; font-weight:bold; cursor:pointer; font-size:1.4em; color:#00acc1;">&#9664;</button>
+          <div style="text-align:center;">
+              <span id="current-date-display" style="display:block; font-size:0.85em; font-weight:bold; color:#555; margin-bottom:2px;">HOY</span>
+              <input type="number" id="day-input" min="1" max="31" placeholder="Día"
+                     style="width:60px; text-align:center; border:1px solid #ccc; border-radius:4px; padding:4px;"
+                     onchange="irADia(this.value)">
+          </div>
+          <button onclick="cambiarDia(1)" style="border:none; background:transparent; font-weight:bold; cursor:pointer; font-size:1.4em; color:#00acc1;">&#9654;</button>
+      </div>
+
+      <div id="programacion-selection-info" class="dashboard-selection-info" data-has-selection="false">
+        Toca los pedidos que quieras marcar. Puedes seleccionar varios y luego oprimir DESPACHADO una sola vez.
+      </div>
+
+      <div id="lista-pedidos"></div>
+      <div class="dashboard-acciones">
+          <button id="btn-despachar-pedidos" class="btn-despachado" onclick="despacharPedido()">DESPACHADO</button>
+          <button id="btn-reprogramar-pedido" class="btn-reprogramar" onclick="iniciarReprogramacion()">REPROGRAMAR</button>
+          <button id="btn-cancelar-pedido-dashboard" class="btn-cancelar-pedido" onclick="cancelarPedido()">CANCELAR</button>
+      </div>
     </div>
   </div>
 
@@ -6261,6 +6373,86 @@ let pedidoSeleccionadoId = null;
 let globalPedidos = [];
 let modoReprogramacion = false;
 let currentViewDate = new Date();
+let pedidosSeleccionadosIds = new Set();
+let dashboardProgramacionColapsado = false;
+
+function normalizarPedidoProgramadoId(id) {
+  return String(id);
+}
+
+function actualizarControlesSeleccionProgramacion() {
+  const info = document.getElementById('programacion-selection-info');
+  const btnDespachar = document.getElementById('btn-despachar-pedidos');
+  const btnReprogramar = document.getElementById('btn-reprogramar-pedido');
+  const btnCancelar = document.getElementById('btn-cancelar-pedido-dashboard');
+  const total = pedidosSeleccionadosIds.size;
+
+  if (info) {
+    if (total === 0) {
+      info.dataset.hasSelection = 'false';
+      info.textContent = 'Toca los pedidos que quieras marcar. Puedes seleccionar varios y luego oprimir DESPACHADO una sola vez.';
+    } else if (total === 1) {
+      info.dataset.hasSelection = 'true';
+      info.textContent = '1 pedido seleccionado. Puedes despacharlo, reprogramarlo o cancelarlo.';
+    } else {
+      info.dataset.hasSelection = 'true';
+      info.textContent = `${total} pedidos seleccionados. Puedes despacharlos juntos. Para reprogramar o cancelar, deja solo uno seleccionado.`;
+    }
+  }
+
+  if (btnDespachar) {
+    btnDespachar.disabled = total === 0;
+    btnDespachar.textContent = total > 1 ? `DESPACHADO (${total})` : 'DESPACHADO';
+  }
+
+  if (btnReprogramar) btnReprogramar.disabled = total !== 1;
+  if (btnCancelar) btnCancelar.disabled = total !== 1;
+}
+
+function sincronizarSeleccionProgramacion() {
+  const idsExistentes = new Set(globalPedidos.map(p => normalizarPedidoProgramadoId(p.id)));
+  pedidosSeleccionadosIds = new Set(
+    Array.from(pedidosSeleccionadosIds).filter(id => idsExistentes.has(id))
+  );
+
+  if (pedidoSeleccionadoId && !pedidosSeleccionadosIds.has(normalizarPedidoProgramadoId(pedidoSeleccionadoId))) {
+    const restantes = Array.from(pedidosSeleccionadosIds);
+    pedidoSeleccionadoId = restantes.length > 0 ? restantes[restantes.length - 1] : null;
+  }
+
+  if (!pedidoSeleccionadoId && pedidosSeleccionadosIds.size > 0) {
+    const restantes = Array.from(pedidosSeleccionadosIds);
+    pedidoSeleccionadoId = restantes[restantes.length - 1];
+  }
+
+  actualizarControlesSeleccionProgramacion();
+}
+
+function toggleDashboardProgramacion() {
+  const dashboard = document.getElementById('dashboard-programacion');
+  const toggle = document.getElementById('dashboard-toggle-programacion');
+  if (!dashboard || !toggle || document.body.classList.contains('transportador-mode')) return;
+
+  dashboardProgramacionColapsado = !dashboardProgramacionColapsado;
+  dashboard.classList.toggle('dashboard-colapsado', dashboardProgramacionColapsado);
+  toggle.innerHTML = dashboardProgramacionColapsado ? '&#10095;' : '&#10094;';
+  toggle.setAttribute('aria-label', dashboardProgramacionColapsado ? 'Mostrar tablero' : 'Ocultar tablero');
+  toggle.setAttribute('title', dashboardProgramacionColapsado ? 'Mostrar tablero' : 'Ocultar tablero');
+}
+
+function obtenerPedidoSeleccionadoUnico(mensajeBase) {
+  const seleccionados = Array.from(pedidosSeleccionadosIds);
+  if (seleccionados.length === 0) {
+    alert(mensajeBase);
+    return null;
+  }
+  if (seleccionados.length > 1) {
+    alert('Hay varios pedidos seleccionados. Deja solo uno marcado para continuar con esta acción.');
+    return null;
+  }
+  pedidoSeleccionadoId = seleccionados[0];
+  return globalPedidos.find(p => normalizarPedidoProgramadoId(p.id) === pedidoSeleccionadoId) || null;
+}
 
 function cambiarDia(delta) {
     currentViewDate.setDate(currentViewDate.getDate() + delta);
@@ -6295,6 +6487,7 @@ async function fetchPedidosProgramados() {
     if (!resp.ok) throw new Error('Error API');
     const data = await resp.json();
     globalPedidos = data.pedidos || [];
+    sincronizarSeleccionProgramacion();
     
     await reprogramarVencidos(globalPedidos);
 
@@ -6346,6 +6539,7 @@ async function reprogramarVencidos(pedidos) {
 function renderDashboard() {
   const lista = document.getElementById('lista-pedidos');
   if (!lista) return;
+  sincronizarSeleccionProgramacion();
   
   // Actualizar display de fecha
   const opcionesFecha = { weekday: 'short', day: 'numeric', month: 'short' };
@@ -6376,6 +6570,15 @@ function renderDashboard() {
   
   // Filtrar
   const pedidosFiltrados = pedidos.filter(p => p.fecha === fechaFiltro);
+  const idsVisibles = new Set(pedidosFiltrados.map(p => normalizarPedidoProgramadoId(p.id)));
+  pedidosSeleccionadosIds = new Set(
+    Array.from(pedidosSeleccionadosIds).filter(id => idsVisibles.has(id))
+  );
+  if (pedidoSeleccionadoId && !pedidosSeleccionadosIds.has(normalizarPedidoProgramadoId(pedidoSeleccionadoId))) {
+    const restantes = Array.from(pedidosSeleccionadosIds);
+    pedidoSeleccionadoId = restantes.length > 0 ? restantes[restantes.length - 1] : null;
+  }
+  actualizarControlesSeleccionProgramacion();
 
   lista.innerHTML = '';
   
@@ -6387,7 +6590,11 @@ function renderDashboard() {
   pedidosFiltrados.forEach(p => {
     const item = document.createElement('div');
     item.className = 'pedido-item';
-    if (pedidoSeleccionadoId === p.id) item.classList.add('selected');
+    const pedidoId = normalizarPedidoProgramadoId(p.id);
+    if (pedidosSeleccionadosIds.has(pedidoId)) item.classList.add('selected');
+    if (pedidoSeleccionadoId && normalizarPedidoProgramadoId(pedidoSeleccionadoId) === pedidoId) {
+      item.classList.add('selected-primary');
+    }
     
     // Formato fecha amigable
     const dateObj = new Date(p.fecha + 'T' + p.hora);
@@ -6404,23 +6611,35 @@ function renderDashboard() {
     } catch(e) {}
 
     item.innerHTML = `
+      <div class="pedido-check">✓</div>
       <div class="pedido-info"><strong>${p.consecutivo ? 'REM ' + p.consecutivo : 'ID: ' + p.id.substr(0,4)}</strong></div>
       <div class="pedido-info">${p.cliente_nombre || 'Cliente General'}</div>
       <div class="pedido-info" style="color:#555;">📅 ${fechaStr} ⏰ ${horaShow}</div>
       <div class="pedido-status">${p.estado}</div>
     `;
     
-    item.onclick = () => selectPedidoDashboard(p.id, item);
+    item.onclick = () => selectPedidoDashboard(p.id);
     item.ondblclick = () => abrirPdfPedido(p.id);
     
     lista.appendChild(item);
   });
 }
 
-function selectPedidoDashboard(id, elem) {
-  pedidoSeleccionadoId = id;
-  document.querySelectorAll('.pedido-item').forEach(el => el.classList.remove('selected'));
-  elem.classList.add('selected');
+function selectPedidoDashboard(id) {
+  const pedidoId = normalizarPedidoProgramadoId(id);
+
+  if (pedidosSeleccionadosIds.has(pedidoId)) {
+    pedidosSeleccionadosIds.delete(pedidoId);
+    if (pedidoSeleccionadoId && normalizarPedidoProgramadoId(pedidoSeleccionadoId) === pedidoId) {
+      const restantes = Array.from(pedidosSeleccionadosIds);
+      pedidoSeleccionadoId = restantes.length > 0 ? restantes[restantes.length - 1] : null;
+    }
+  } else {
+    pedidosSeleccionadosIds.add(pedidoId);
+    pedidoSeleccionadoId = pedidoId;
+  }
+
+  renderDashboard();
 }
 
 function actualizarHorasDisponibles() {
@@ -6524,7 +6743,7 @@ async function abrirModalProgramacion(esReprogramacion = false) {
 
    } else {
        // Si es REprogramación, cargar datos actuales del pedido seleccionado
-       const pedido = globalPedidos.find(p => p.id === pedidoSeleccionadoId);
+       const pedido = globalPedidos.find(p => normalizarPedidoProgramadoId(p.id) === normalizarPedidoProgramadoId(pedidoSeleccionadoId));
        if (pedido) {
            document.getElementById('prog-fecha').value = pedido.fecha;
            document.getElementById('prog-hora').value = pedido.hora;
@@ -6642,7 +6861,7 @@ async function guardarProgramacion() {
   
   if (modoReprogramacion && pedidoSeleccionadoId) {
       // ACTUALIZAR PEDIDO EXISTENTE
-      const pedidoExistente = globalPedidos.find(p => p.id === pedidoSeleccionadoId);
+      const pedidoExistente = globalPedidos.find(p => normalizarPedidoProgramadoId(p.id) === normalizarPedidoProgramadoId(pedidoSeleccionadoId));
       if (!pedidoExistente) return;
       
       pedidoExistente.fecha = fecha;
@@ -6810,25 +7029,19 @@ function cargarPedidoProgramado(id) {
 }
 
 function iniciarReprogramacion() {
-  if (!pedidoSeleccionadoId) {
-      alert("Seleccione un pedido para reprogramar.");
-      return;
-  }
+  const pedido = obtenerPedidoSeleccionadoUnico("Seleccione un pedido para reprogramar.");
+  if (!pedido) return;
+  pedidoSeleccionadoId = normalizarPedidoProgramadoId(pedido.id);
   abrirModalProgramacion(true); // true = modo reprogramación
 }
 
 async function cancelarPedido() {
-  if (!pedidoSeleccionadoId) {
-    alert("Seleccione un pedido para CANCELAR.");
-    return;
-  }
+  const pedido = obtenerPedidoSeleccionadoUnico("Seleccione un pedido para CANCELAR.");
+  if (!pedido) return;
   
   if (!confirm("⚠️ ¿Está seguro de CANCELAR este pedido definitivamente?\n\nEsta acción:\n1. Eliminará el pedido del tablero de programación.\n2. ELIMINARÁ la venta correspondiente de la Base de Datos.\n\nEsta acción NO se puede deshacer.")) {
       return;
   }
-  
-  const pedido = globalPedidos.find(p => p.id === pedidoSeleccionadoId);
-  if (!pedido) return;
   
   try {
       // 1. Eliminar de Programados
@@ -6842,7 +7055,9 @@ async function cancelarPedido() {
       }
       
       alert("Pedido CANCELADO y venta eliminada correctamente.");
+      pedidosSeleccionadosIds.delete(normalizarPedidoProgramadoId(pedidoSeleccionadoId));
       pedidoSeleccionadoId = null;
+      actualizarControlesSeleccionProgramacion();
       await fetchPedidosProgramados();
       
   } catch(e) {
@@ -6851,20 +7066,41 @@ async function cancelarPedido() {
 }
 
 async function despacharPedido() {
-  if (!pedidoSeleccionadoId) {
+  const idsSeleccionados = Array.from(pedidosSeleccionadosIds);
+  if (idsSeleccionados.length === 0) {
     alert("Seleccione un pedido del tablero para despachar.");
     return;
   }
   
-  if (!confirm("¿Marcar pedido como DESPACHADO? Se eliminará del tablero.")) return;
+  const mensajeConfirmacion = idsSeleccionados.length === 1
+    ? "¿Marcar pedido como DESPACHADO? Se eliminará del tablero."
+    : `¿Marcar ${idsSeleccionados.length} pedidos como DESPACHADOS? Se eliminarán del tablero.`;
+
+  if (!confirm(mensajeConfirmacion)) return;
   
   try {
-      const resp = await fetch(getApiBase() + '/api/programados/' + pedidoSeleccionadoId, {
-          method: 'DELETE'
-      });
-      if (!resp.ok) throw new Error('Error al eliminar');
+      const errores = [];
+
+      for (const id of idsSeleccionados) {
+          const resp = await fetch(getApiBase() + '/api/programados/' + id, {
+              method: 'DELETE'
+          });
+          if (!resp.ok) {
+              errores.push(id);
+          }
+      }
       
+      if (errores.length === idsSeleccionados.length) {
+          throw new Error('No fue posible despachar los pedidos seleccionados.');
+      }
+
+      if (errores.length > 0) {
+          alert(`Se despacharon ${idsSeleccionados.length - errores.length} pedidos, pero ${errores.length} no se pudieron actualizar.`);
+      }
+
+      pedidosSeleccionadosIds = new Set();
       pedidoSeleccionadoId = null;
+      actualizarControlesSeleccionProgramacion();
       await fetchPedidosProgramados(); // Recargar
   } catch (e) {
       alert("Error despachando pedido: " + e.message);
@@ -6873,6 +7109,7 @@ async function despacharPedido() {
 
 document.addEventListener('DOMContentLoaded', () => {
     initDashboard();
+    actualizarControlesSeleccionProgramacion();
     // Auto-recargar cada 30 segundos para ver cambios de otros PCs
     setInterval(fetchPedidosProgramados, 30000);
 });
