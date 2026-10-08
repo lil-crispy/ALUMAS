@@ -260,17 +260,24 @@
     @media print {
       @page {
         margin: 0; /* Eliminar márgenes del navegador/impresora */
-        size: auto; /* Adaptarse al papel seleccionado */
+        size: 80mm auto; /* Ajuste preferido para POS 80 */
+      }
+
+      html,
+      body {
+        width: 80mm !important;
+        min-width: 80mm !important;
+        max-width: 80mm !important;
+        height: auto !important;
+        overflow: visible !important;
       }
 
       body {
-        width: 100%;
-        max-width: 100%;
-        min-width: 100%;
         margin: 0;
         padding: 0;
         background: white;
         font-size: 11px; /* Ajuste para legibilidad */
+        display: block !important;
       }
 
       /* Ocultar TODO lo que no sea la factura */
@@ -299,11 +306,34 @@
       }
 
       .contenedor-principal {
-        width: 100%;
-        max-width: 100%;
+        width: 80mm !important;
+        min-width: 80mm !important;
+        max-width: 80mm !important;
         margin: 0;
-        padding: 2mm; /* Pequeño margen interno de seguridad */
+        padding: 1.5mm 1.5mm 2mm;
         box-sizing: border-box;
+        break-after: avoid-page;
+        page-break-after: avoid;
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+
+      .encabezado,
+      .info,
+      .contenedor-tabla,
+      table,
+      thead,
+      tbody,
+      tr,
+      td,
+      .total,
+      .aviso-transporte,
+      .logo-grande,
+      .mensaje,
+      .mensaje p,
+      .mensaje small {
+        break-inside: avoid;
+        page-break-inside: avoid;
       }
 
       .encabezado .titulo { font-size: 1.4em; }
@@ -479,7 +509,7 @@
 
     #report-panel {
       position: fixed;
-      left: 0;
+      left: 250px;
       top: 0;
       width: 320px;
       height: 100%;
@@ -487,7 +517,7 @@
       border-right: 2px solid #ddd;
       box-shadow: 2px 0 5px rgba(0,0,0,0.1);
       padding: 10px;
-      z-index: 999;
+      z-index: 1002;
       display: flex;
       flex-direction: column;
       box-sizing: border-box;
@@ -502,6 +532,7 @@
 
     .dashboard-toggle-reportes {
       top: calc(50% - 92px);
+      z-index: 1003;
     }
 
     .report-header {
@@ -1107,6 +1138,17 @@
     .detalle-programacion-tabla td:nth-child(3),
     .detalle-programacion-tabla td:nth-child(4) {
       text-align: center;
+    }
+
+    .detalle-programacion-tabla tbody tr {
+      cursor: pointer;
+      transition: background-color 0.18s ease;
+    }
+
+    .detalle-programacion-tabla tbody tr.detalle-programacion-item-alistado td {
+      background: #dcfce7;
+      color: #166534;
+      font-weight: 700;
     }
 
     .detalle-programacion-acciones {
@@ -3587,6 +3629,26 @@ try {
         limpiarCotizacionesAntiguas();
     });
 
+    let postVentaPrintConfig = null;
+
+    function programarPostVentaPrint(config = {}) {
+      postVentaPrintConfig = {
+        limpiar: true,
+        recargar: true,
+        limpiarDelayMs: 120,
+        recargarDelayMs: 420,
+        ...config
+      };
+    }
+
+    function imprimirComprobanteInmediato() {
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          window.print();
+        }, 0);
+      });
+    }
+
     async function imprimirVenta() {
       const transporteProgramado = await validarProgramacionObligatoriaDeTransporte();
       if (!transporteProgramado) {
@@ -3630,7 +3692,7 @@ try {
         alert(mensajeFactura)
         const metodoReporte = metodo || (tipo === 'CREDITO' ? 'credito' : null);
         if (metodoReporte) agregarVentaReporte(metodoReporte);
-        const confirmarImpresion = window.confirm('La factura electrónica se generó correctamente. ¿Desea previsualizar e imprimir el comprobante POS?')
+        const confirmarImpresion = window.confirm('La factura electrónica se generó correctamente. ¿Desea imprimir inmediatamente el comprobante POS?')
         if (confirmarImpresion) {
           await prepararImpresionPosFacturaElectronica()
           // #region debug-point D:before-print-fe
@@ -3641,7 +3703,12 @@ try {
             qrImageCount: obtenerImagenesQrPos().length
           })
           // #endregion
-          window.print()
+          programarPostVentaPrint({
+            limpiarDelayMs: 180,
+            recargarDelayMs: 600
+          })
+          imprimirComprobanteInmediato()
+          return
         }
         setTimeout(limpiarTabla, 1000);
         setTimeout(() => window.location.reload(), confirmarImpresion ? 1500 : 1200);
@@ -3655,7 +3722,9 @@ try {
       if (confirmar) {
         const metodoReporte = metodo || (tipo === 'CREDITO' ? 'credito' : null);
         if (metodoReporte) agregarVentaReporte(metodoReporte);
-        window.print();
+        programarPostVentaPrint()
+        imprimirComprobanteInmediato();
+        return;
       }
       // Limpiar datos después de imprimir/guardar
       setTimeout(limpiarTabla, 1000);
@@ -3676,6 +3745,17 @@ try {
         if (el) el.checked = false;
       });
       actualizarEstadoMetodosPagoUI()
+
+      const config = postVentaPrintConfig
+      postVentaPrintConfig = null
+      if (config) {
+        if (config.limpiar) {
+          setTimeout(limpiarTabla, Number(config.limpiarDelayMs || 0))
+        }
+        if (config.recargar) {
+          setTimeout(() => window.location.reload(), Number(config.recargarDelayMs || 0))
+        }
+      }
     });
 
     window.addEventListener('keydown', (e) => {
@@ -6717,6 +6797,17 @@ function copiarDireccionDetalleProgramacion() {
   prompt('Copie la dirección manualmente:', direccion);
 }
 
+function habilitarResaltadoDetalleProgramacion() {
+  const tabla = document.querySelector('#detalle-programacion-body .detalle-programacion-tabla tbody');
+  if (!tabla) return;
+
+  tabla.querySelectorAll('tr').forEach((fila) => {
+    fila.ondblclick = () => {
+      fila.classList.toggle('detalle-programacion-item-alistado');
+    };
+  });
+}
+
 function abrirDetallePedidoProgramado(id) {
   const pedidoId = normalizarPedidoProgramadoId(id);
   const pedido = globalPedidos.find(p => normalizarPedidoProgramadoId(p.id) === pedidoId);
@@ -6783,6 +6874,8 @@ function abrirDetallePedidoProgramado(id) {
       </div>
     </div>
   `;
+
+  habilitarResaltadoDetalleProgramacion();
 
   const modal = document.getElementById('modal-detalle-programacion');
   if (modal) modal.style.display = 'flex';
@@ -7396,13 +7489,6 @@ async function guardarProgramacion() {
       });
       
       if (!resp.ok) throw new Error('Error guardando');
-      
-      // Descargar PDF con los datos actualizados (transporte, etc.)
-      try {
-        await descargarPDF(true); 
-      } catch (error) {
-        console.error("Error generando PDF automático:", error);
-      }
 
       await fetchPedidosProgramados(); // Recargar lista
       marcarTransporteProgramado(nuevoPedido.id);
