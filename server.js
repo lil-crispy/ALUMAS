@@ -23,64 +23,6 @@ const DB_CONFIG = {
 }
 
 const CAJA_BASE_INICIAL = 100000
-const FACTUS_DEBUG_ENV_PATH = path.resolve(__dirname, '.dbg', 'factus-intermittent.env')
-
-function getFactusDebugConfig() {
-  let debugServerUrl = 'http://127.0.0.1:7777/event'
-  let debugSessionId = 'factus-intermittent'
-  try {
-    const content = fs.readFileSync(FACTUS_DEBUG_ENV_PATH, 'utf8')
-    for (const line of content.split(/\r?\n/)) {
-      if (line.startsWith('DEBUG_SERVER_URL=')) {
-        debugServerUrl = line.slice('DEBUG_SERVER_URL='.length).trim() || debugServerUrl
-      } else if (line.startsWith('DEBUG_SESSION_ID=')) {
-        debugSessionId = line.slice('DEBUG_SESSION_ID='.length).trim() || debugSessionId
-      }
-    }
-  } catch {}
-  return { debugServerUrl, debugSessionId }
-}
-
-function buildFactusDebugBogotaTimestamp() {
-  const formatter = new Intl.DateTimeFormat('sv-SE', {
-    timeZone: 'America/Bogota',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false
-  })
-  return formatter.format(new Date()).replace(' ', 'T')
-}
-
-function reportFactusDebugEvent({
-  runId = 'pre-fix',
-  hypothesisId,
-  location,
-  msg,
-  data,
-  traceId
-}) {
-  try {
-    const { debugServerUrl, debugSessionId } = getFactusDebugConfig()
-    fetch(debugServerUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sessionId: debugSessionId,
-        runId,
-        hypothesisId,
-        location,
-        msg,
-        data,
-        traceId,
-        ts: Date.now()
-      })
-    }).catch(() => {})
-  } catch {}
-}
 
 async function ensureSchema() {
   const createVentas = `
@@ -109,6 +51,7 @@ async function ensureSchema() {
       cliente_nombre VARCHAR(255),
       cliente_data TEXT,
       items TEXT,
+      detalle_interno LONGTEXT,
       total INT,
       fecha VARCHAR(20),
       hora VARCHAR(20),
@@ -342,6 +285,21 @@ async function ensureSchema() {
 
   for (const column of missingVentasColumns) {
     if (!ventasColumnSet.has(column.name.toLowerCase())) {
+      await pool.query(column.sql)
+    }
+  }
+
+  const programadosColumns = await getTableColumns('pedidos_programados')
+  const programadosColumnSet = new Set(programadosColumns.map((column) => String(column || '').toLowerCase()))
+  const missingProgramadosColumns = [
+    {
+      name: 'detalle_interno',
+      sql: 'ALTER TABLE pedidos_programados ADD COLUMN detalle_interno LONGTEXT NULL DEFAULT NULL AFTER items'
+    }
+  ]
+
+  for (const column of missingProgramadosColumns) {
+    if (!programadosColumnSet.has(column.name.toLowerCase())) {
       await pool.query(column.sql)
     }
   }
@@ -925,25 +883,25 @@ function getSafeFactusCreatedTime() {
 }
 
 function formatFactusDecimal(value, decimals = 2) {
-  return normalizeVentaNumeric(value, 0).toFixed(decimals)
+  return roundFactusPrecision(value, decimals).toFixed(decimals)
 }
 
 function roundFactusPrecision(value, decimals = 6) {
   const numericValue = normalizeVentaNumeric(value, 0)
-  return Number(numericValue.toFixed(decimals))
+  const factor = 10 ** decimals
+  return Math.round((numericValue + Number.EPSILON) * factor) / factor
 }
 
 function roundFactusMoney(value) {
-  const numericValue = normalizeVentaNumeric(value, 0)
-  return Number(numericValue.toFixed(2))
+  return roundFactusPrecision(value, 2)
 }
 
 function factusMoneyToCents(value) {
-  return Math.round(normalizeVentaNumeric(value, 0) * 100)
+  return Math.round((normalizeVentaNumeric(value, 0) + Number.EPSILON) * 100)
 }
 
 function centsToFactusMoney(value) {
-  return Number((Number(value || 0) / 100).toFixed(2))
+  return roundFactusMoney(Number(value || 0) / 100)
 }
 
 function calculateFactusLineFinancials(item) {
@@ -4703,6 +4661,32 @@ function extractFactusErrorMessage(payload, fallback = 'No se pudo procesar la s
   return fallback
 }
 
+function isFactusPendingDianConflict(error) {
+  if (Number(error?.statusCode || 0) !== 409) {
+    return false
+  }
+
+  const errorTexts = [
+    error?.message,
+    typeof error?.payload === 'string' ? error.payload : null,
+    error?.payload?.message,
+    typeof error?.payload?.error === 'string' ? error.payload.error : null
+  ]
+
+  const validationEntries = getFactusValidationEntries(error?.payload)
+  for (const [, message] of validationEntries) {
+    errorTexts.push(message)
+  }
+
+  const normalized = errorTexts
+    .map((value) => String(value || '').trim())
+    .filter(Boolean)
+    .join(' | ')
+    .toLowerCase()
+
+  return normalized.includes('pendiente por enviar a la dian')
+}
+
 function sanitizeFactusAuthResponse(data) {
   return removeEmptyObjectFields({
     token_type: data?.token_type,
@@ -4772,30 +4756,6 @@ async function factusApiRequest(pathname, options = {}) {
   } = options
 
   const token = await getFactusAccessToken(false)
-  // #region debug-point D:factus-request-dispatch
-  if (pathname === '/v2/bills/validate' && body) {
-    reportFactusDebugEvent({
-      runId: 'pre-fix',
-      hypothesisId: 'D',
-      location: 'server.js:factusApiRequest',
-      traceId: debugContext?.traceId || null,
-      msg: '[DEBUG] Dispatching Factus validate request',
-      data: {
-        pathname,
-        method,
-        venta_id: debugContext?.ventaId || null,
-        created_time: body?.created_time || null,
-        payment_details_sum: roundFactusMoney(
-          Array.isArray(body?.payment_details)
-            ? body.payment_details.reduce((acc, pago) => acc + normalizeVentaNumeric(pago?.amount, 0), 0)
-            : 0
-        ),
-        payment_details_count: Array.isArray(body?.payment_details) ? body.payment_details.length : 0,
-        items_count: Array.isArray(body?.items) ? body.items.length : 0
-      }
-    })
-  }
-  // #endregion
   const response = await fetch(`${getFactusApiBase()}${pathname}`, {
     method,
     headers: {
@@ -4818,47 +4778,30 @@ async function factusApiRequest(pathname, options = {}) {
   }
 
   if (!response.ok) {
-    // #region debug-point E:factus-response-error
-    if (pathname === '/v2/bills/validate') {
-      reportFactusDebugEvent({
-        runId: 'pre-fix',
-        hypothesisId: 'E',
-        location: 'server.js:factusApiRequest',
-        traceId: debugContext?.traceId || null,
-        msg: '[DEBUG] Factus validate request failed',
-        data: {
-          venta_id: debugContext?.ventaId || null,
-          status_code: response.status,
-          payload
-        }
-      })
-    }
-    // #endregion
     const error = new Error(extractFactusErrorMessage(payload))
     error.statusCode = response.status
     error.payload = payload
     throw error
   }
 
-  // #region debug-point E:factus-response-success
-  if (pathname === '/v2/bills/validate') {
-    reportFactusDebugEvent({
-      runId: 'pre-fix',
-      hypothesisId: 'E',
-      location: 'server.js:factusApiRequest',
-      traceId: debugContext?.traceId || null,
-      msg: '[DEBUG] Factus validate request succeeded',
-      data: {
-        venta_id: debugContext?.ventaId || null,
-        status_code: response.status,
-        number: payload?.data?.number || payload?.number || null,
-        reference_code: payload?.data?.reference_code || payload?.reference_code || null
-      }
-    })
-  }
-  // #endregion
-
   return payload
+}
+
+async function deleteFactusBillByReferenceCode(referenceCode, debugContext = null) {
+  const safeReferenceCode = String(referenceCode || '').trim()
+  if (!safeReferenceCode) {
+    throw new Error('Reference code inválido para eliminar la factura pendiente en Factus.')
+  }
+
+  try {
+    const response = await factusApiRequest(`/v2/bills/destroy/reference/${encodeURIComponent(safeReferenceCode)}`, {
+      method: 'DELETE'
+    })
+
+    return response
+  } catch (error) {
+    throw error
+  }
 }
 
 function parseFactusNumberingResponse(payload) {
@@ -5263,41 +5206,15 @@ async function buildFactusItemsPayload(items, options = {}) {
     return removeEmptyObjectFields({
       code_reference: String(sourceItem.factus_code_reference || '').trim(),
       name: String(sourceItem.nombre || sourceItem.descripcion || FACTUS_FALLBACK_PRODUCT_NAME).trim(),
-      // Factus v2 está validando estos campos como numéricos reales.
-      quantity: roundFactusPrecision(quantity, 6),
+      quantity: formatFactusDecimal(quantity, 2),
       discount_rate: roundFactusPrecision(item.discount_rate ?? 0, 2),
-      price: roundFactusPrecision(unitPrice, 6),
+      price: formatFactusDecimal(unitPrice, 2),
       unit_measure_code: String(sourceItem.factus_unit_measure_code || '').trim(),
       standard_code: String(sourceItem.factus_standard_code || '').trim(),
       taxes,
       withholding_taxes: []
     })
   })
-
-  // #region debug-point C:factus-items-payload
-  reportFactusDebugEvent({
-    runId: 'pre-fix',
-    hypothesisId: 'C',
-    location: 'server.js:buildFactusItemsPayload',
-    traceId: options.referenceCode || `venta-${Number(options.ventaId || 0)}`,
-    msg: '[DEBUG] Factus items payload built',
-    data: {
-      venta_id: Number(options.ventaId || 0) || null,
-      replacements_count: replacements.length,
-      items: factusItems.map((item, index) => ({
-        line: index + 1,
-        quantity: item.quantity,
-        quantity_type: typeof item.quantity,
-        price: item.price,
-        price_type: typeof item.price,
-        discount_rate: item.discount_rate,
-        discount_rate_type: typeof item.discount_rate,
-        taxes_count: Array.isArray(item.taxes) ? item.taxes.length : 0,
-        code_reference: item.code_reference
-      }))
-    }
-  })
-  // #endregion
 
   return {
     factusItems,
@@ -5310,22 +5227,27 @@ async function buildFactusBillPayload({ body, ventaId, cliente, items, paymentDe
   const { factusItems, replacements } = await buildFactusItemsPayload(items, { fallbackProduct, conn, ventaId, referenceCode })
   const canonicalTotal = calculateFactusItemsTotal(factusItems)
   const canonicalTotalCents = factusMoneyToCents(canonicalTotal)
-  const paymentForm = mapFactusPaymentForm(paymentDetails[0]?.payment_form || body?.tipo_pago)
-  const factusPaymentDetails = paymentDetails.map((pago, index, pagos) => removeEmptyObjectFields({
-    payment_form: mapFactusPaymentForm(pago.payment_form || body?.tipo_pago),
-    payment_method_code: mapFactusPaymentMethodCode(pago.payment_method_code || body?.forma_pago, paymentForm),
-    amount: formatFactusDecimal(
-      pagos.length === 1
-        ? centsToFactusMoney(canonicalTotalCents)
-        : (index === pagos.length - 1
-          ? centsToFactusMoney(canonicalTotalCents - pagos.slice(0, -1).reduce((acc, current) => acc + factusMoneyToCents(current?.amount), 0))
-          : centsToFactusMoney(factusMoneyToCents(pago.amount ?? 0)))
-    ),
-    due_date: mapFactusPaymentForm(pago.payment_form || body?.tipo_pago) === '2'
-      ? (normalizeVentaDate(pago.due_date || body?.fecha) || normalizeVentaDate(body?.fecha))
-      : undefined,
-    reference_code: pago.reference_code ? String(pago.reference_code).trim() : undefined
-  }))
+  let assignedPaymentCents = 0
+  const factusPaymentDetails = paymentDetails.map((pago, index, pagos) => {
+    const currentPaymentForm = mapFactusPaymentForm(pago.payment_form || body?.tipo_pago)
+    const remainingCents = Math.max(0, canonicalTotalCents - assignedPaymentCents)
+    const amountCents = pagos.length === 1
+      ? canonicalTotalCents
+      : (index === pagos.length - 1
+        ? remainingCents
+        : Math.max(0, Math.min(remainingCents, factusMoneyToCents(pago.amount ?? 0))))
+    assignedPaymentCents += amountCents
+
+    return removeEmptyObjectFields({
+      payment_form: currentPaymentForm,
+      payment_method_code: mapFactusPaymentMethodCode(pago.payment_method_code || body?.forma_pago, currentPaymentForm),
+      amount: formatFactusDecimal(centsToFactusMoney(amountCents)),
+      due_date: currentPaymentForm === '2'
+        ? (normalizeVentaDate(pago.due_date || body?.fecha) || normalizeVentaDate(body?.fecha))
+        : undefined,
+      reference_code: pago.reference_code ? String(pago.reference_code).trim() : undefined
+    })
+  })
 
   const payload = removeEmptyObjectFields({
     reference_code: referenceCode,
@@ -5344,53 +5266,9 @@ async function buildFactusBillPayload({ body, ventaId, cliente, items, paymentDe
     throw new Error('La venta no tiene métodos de pago válidos para Factus.')
   }
 
-  // #region debug-point A:factus-created-time
-  reportFactusDebugEvent({
-    runId: 'pre-fix',
-    hypothesisId: 'A',
-    location: 'server.js:buildFactusBillPayload',
-    traceId: referenceCode || `venta-${Number(ventaId || 0)}`,
-    msg: '[DEBUG] Factus created_time prepared',
-    data: {
-      venta_id: Number(ventaId || 0) || null,
-      created_time: payload.created_time,
-      bogota_now: buildFactusDebugBogotaTimestamp(),
-      document: payload.document,
-      numbering_range_id: payload.numbering_range_id || null
-    }
-  })
-  // #endregion
-
-  // #region debug-point B:factus-payment-details
-  reportFactusDebugEvent({
-    runId: 'pre-fix',
-    hypothesisId: 'B',
-    location: 'server.js:buildFactusBillPayload',
-    traceId: referenceCode || `venta-${Number(ventaId || 0)}`,
-    msg: '[DEBUG] Factus payment details prepared',
-    data: {
-      venta_id: Number(ventaId || 0) || null,
-      canonical_total: canonicalTotal,
-      payment_details_sum: roundFactusMoney(
-        factusPaymentDetails.reduce((acc, pago) => acc + normalizeVentaNumeric(pago?.amount, 0), 0)
-      ),
-      payment_details_count: factusPaymentDetails.length,
-      payment_details: factusPaymentDetails.map((pago, index) => ({
-        line: index + 1,
-        payment_form: pago.payment_form,
-        payment_method_code: pago.payment_method_code,
-        amount: pago.amount,
-        due_date: pago.due_date || null
-      })),
-      source_payment_details: (Array.isArray(paymentDetails) ? paymentDetails : []).map((pago, index) => ({
-        line: index + 1,
-        payment_form: pago?.payment_form || null,
-        payment_method_code: pago?.payment_method_code || null,
-        amount: pago?.amount ?? null
-      }))
-    }
-  })
-  // #endregion
+  if (factusMoneyToCents(factusPaymentDetails.reduce((acc, pago) => acc + normalizeVentaNumeric(pago?.amount, 0), 0)) !== canonicalTotalCents) {
+    throw new Error('No fue posible cuadrar los medios de pago con el total canónico de Factus.')
+  }
 
   return {
     payload,
@@ -5979,14 +5857,30 @@ async function processVentaWithExistingLogic(conn, body, options = {}) {
   }
 
   if (esFacturaElectronica) {
-    const factusResponse = await factusApiRequest('/v2/bills/validate', {
-      method: 'POST',
-      body: factusPayload,
-      debugContext: {
-        traceId: factusReferenceCode || `venta-${Number(resolvedConsecutivo)}`,
-        ventaId: Number(resolvedConsecutivo)
+    const factusDebugContext = {
+      traceId: factusReferenceCode || `venta-${Number(resolvedConsecutivo)}`,
+      ventaId: Number(resolvedConsecutivo)
+    }
+
+    let factusResponse
+    try {
+      factusResponse = await factusApiRequest('/v2/bills/validate', {
+        method: 'POST',
+        body: factusPayload,
+        debugContext: factusDebugContext
+      })
+    } catch (error) {
+      if (!isFactusPendingDianConflict(error) || !factusReferenceCode) {
+        throw error
       }
-    })
+
+      await deleteFactusBillByReferenceCode(factusReferenceCode, factusDebugContext)
+      factusResponse = await factusApiRequest('/v2/bills/validate', {
+        method: 'POST',
+        body: factusPayload,
+        debugContext: factusDebugContext
+      })
+    }
     console.log('[Factus] Respuesta recibida:', JSON.stringify({
       venta_id: Number(resolvedConsecutivo),
       reference_code: factusReferenceCode,
@@ -8332,6 +8226,7 @@ app.get('/api/programados', async (req, res) => {
       ...r,
       cliente_data: r.cliente_data ? JSON.parse(r.cliente_data) : null,
       items: r.items ? JSON.parse(r.items) : [],
+      detalle_interno: r.detalle_interno ? JSON.parse(r.detalle_interno) : null,
       transporte: r.transporte ? JSON.parse(r.transporte) : null
     }));
     res.json({ ok: true, pedidos });
@@ -8349,11 +8244,11 @@ app.post('/api/programados', async (req, res) => {
     // Dado que el ID lo genera el front, usaremos INSERT ON DUPLICATE KEY UPDATE
     const sql = `
       INSERT INTO pedidos_programados 
-      (id, consecutivo, cliente_nombre, cliente_data, items, total, fecha, hora, estado, transporte, tipo_pago, metodo_pago, punto_venta)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (id, consecutivo, cliente_nombre, cliente_data, items, detalle_interno, total, fecha, hora, estado, transporte, tipo_pago, metodo_pago, punto_venta)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE
       consecutivo=VALUES(consecutivo), cliente_nombre=VALUES(cliente_nombre), cliente_data=VALUES(cliente_data),
-      items=VALUES(items), total=VALUES(total), fecha=VALUES(fecha), hora=VALUES(hora), estado=VALUES(estado),
+      items=VALUES(items), detalle_interno=VALUES(detalle_interno), total=VALUES(total), fecha=VALUES(fecha), hora=VALUES(hora), estado=VALUES(estado),
       transporte=VALUES(transporte), tipo_pago=VALUES(tipo_pago), metodo_pago=VALUES(metodo_pago), punto_venta=VALUES(punto_venta)
     `;
     
@@ -8363,6 +8258,7 @@ app.post('/api/programados', async (req, res) => {
       p.cliente_nombre || '',
       JSON.stringify(p.cliente_data || {}),
       JSON.stringify(p.items || []),
+      JSON.stringify(p.detalle_interno || null),
       Number(p.total || 0),
       p.fecha,
       p.hora,

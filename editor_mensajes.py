@@ -350,13 +350,30 @@ class EditorMensajesApp:
         self.txt_message.delete("1.0", tk.END)
         self.current_contact_index = None
 
+    def build_contact_display_name(self, nombre=""):
+        nombre_limpio = re.sub(r"\s+", " ", str(nombre or "").strip()) or "cliente"
+        if re.match(r"(?i)^ferre", nombre_limpio):
+            return nombre_limpio
+
+        primer_nombre = nombre_limpio.split(" ", 1)[0].lower()
+        female_names = {
+            "adiela", "adriana", "alcira", "alma", "alicia", "ana", "andrea", "araminta",
+            "blanca", "claudia", "crisanta", "deysi", "diana", "dora", "esperanza",
+            "gloria", "johana", "laura", "liana", "libia", "luz", "margarita", "maria",
+            "maribel", "mariela", "martha", "nancy", "natalia", "nidia", "nubia",
+            "odilia", "ofelia", "olga", "rosa", "romilsa", "rosalba", "sandra",
+            "tatiana", "victoria", "xiomara", "yaneth", "yanira", "yenny", "yolanda"
+        }
+        prefix = "SRA" if primer_nombre in female_names else "SR"
+        return f"{prefix} {nombre_limpio}"
+
     def build_default_message(self, nombre=""):
-        saludo = f"{nombre.strip()}, " if nombre and str(nombre).strip() else ""
+        nombre_limpio = self.build_contact_display_name(nombre)
         return (
-            f"{saludo}muy buenas tardes. Le enviamos un cordial saludo desde ALUMAS. "
-            "Solo queríamos recordarle que estamos a su disposición para lo que necesite. "
-            "Si requiere algún producto o mercancía, no dude en escribirnos. "
-            "¡Con mucho gusto le atendemos! Dios le bendiga siempre."
+            f"Buenos dias {nombre_limpio} , le escribe cristian de Alumas queria preguntarle si necesita mercancia para esta semana\n\n"
+            "Quedo atento tengo buenos precios en Aluminio y Ferreteria en General\n\n"
+            "cualquier cosa puede ver nuestro catalogo en este link https://ferredistribucionesalumas.com/distribucion.html\n\n"
+            "Bendiciones"
         )
 
     def normalize_phone(self, raw_phone):

@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 
 from flask import Flask, jsonify, request, send_from_directory
 import mysql.connector
-from PIL import Image
+from PIL import Image, ImageDraw
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
@@ -33,12 +33,27 @@ DEFAULT_RETENTION_DAYS = int(os.environ.get("STATUS_RETENTION_DAYS", "5"))
 BOGOTA_TZ = ZoneInfo("America/Bogota")
 DEBUG_ENV_PATH = REPO_ROOT / ".dbg" / "damaged-statuses-8am.env"
 REPORT_POINTS = ("ferreteria", "bodega")
+REPORT_RECIPIENTS = ["3232818874", "3028379185", "3015827791"]
 POINT_LABELS = {
     "ferreteria": "Ferreteria",
     "bodega": "Bodega",
 }
 PAYMENT_TOTAL_KEYS = ("efectivo", "qr", "tarjeta")
 MONEY_QUANT = Decimal("0.01")
+MONTH_LABELS = {
+    1: "ENE",
+    2: "FEB",
+    3: "MAR",
+    4: "ABR",
+    5: "MAY",
+    6: "JUN",
+    7: "JUL",
+    8: "AGO",
+    9: "SEP",
+    10: "OCT",
+    11: "NOV",
+    12: "DIC",
+}
 
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
@@ -197,6 +212,43 @@ def _build_report_message(total_general: Decimal) -> str:
     )
 
 
+def _build_monthly_closure_message(reference_date: dt.date, monthly_total: Decimal) -> str:
+    month_label = MONTH_LABELS.get(reference_date.month, reference_date.strftime("%m"))
+    return (
+        f"CIERRE DE MES ALUMAS - {month_label} {reference_date.year}\n"
+        f"TOTAL VENDIDO: {_format_currency(monthly_total)}\n"
+        "ADJUNTO COMPARATIVO DEL TOTAL VENDIDO DE LA EMPRESA POR MES."
+    )
+
+
+def _build_year_end_message(year_total: Decimal) -> str:
+    return (
+        f"FELICITACIONES EQUIPO ALUMAS ESTE AÑO VENDIMOS {_format_currency(year_total)}\n"
+        "FELIZ AÑO"
+    )
+
+
+def _month_start(target_date: dt.date) -> dt.date:
+    return target_date.replace(day=1)
+
+
+def _last_day_of_month(target_date: dt.date) -> dt.date:
+    if target_date.month == 12:
+        return target_date.replace(day=31)
+    return target_date.replace(month=target_date.month + 1, day=1) - dt.timedelta(days=1)
+
+
+def _is_monthly_closure_date(target_date: dt.date) -> bool:
+    last_day = _last_day_of_month(target_date).day
+    if last_day >= 30:
+        return target_date.day == 30
+    return target_date.day == last_day
+
+
+def _is_year_end_date(target_date: dt.date) -> bool:
+    return target_date.month == 12 and target_date.day == 31
+
+
 def _get_db_connection():
     cfg = generator._db_config()
     return mysql.connector.connect(
@@ -266,6 +318,219 @@ def _query_sales_rows(report_date: dt.date, point_sale: str) -> list[dict]:
     finally:
         cursor.close()
         conn.close()
+
+
+def _query_sales_rows_between(start_dt: dt.datetime, end_dt: dt.datetime) -> list[dict]:
+    query = """
+        SELECT
+            v.id_consecutivo,
+            v.fecha,
+            v.total,
+            LOWER(TRIM(COALESCE(v.punto_venta, 'ferreteria'))) AS punto_venta
+        FROM ventas v
+        LEFT JOIN (
+            SELECT id_consecutivo, SUM(monto_abono) AS total_abonos
+            FROM cartera
+            GROUP BY id_consecutivo
+        ) ab
+            ON ab.id_consecutivo = v.id_consecutivo
+        WHERE v.fecha >= %s
+          AND v.fecha <= %s
+          AND (
+              UPPER(TRIM(COALESCE(v.tipo_pago, ''))) = 'CONTADO'
+              OR (
+                  UPPER(TRIM(COALESCE(v.tipo_pago, ''))) = 'CREDITO'
+                  AND COALESCE(ab.total_abonos, 0) >= COALESCE(v.total, 0)
+              )
+          )
+        ORDER BY v.fecha ASC, v.id_consecutivo ASC
+    """
+    conn = _get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute(
+            query,
+            (
+                start_dt.strftime("%Y-%m-%d %H:%M:%S"),
+                end_dt.strftime("%Y-%m-%d %H:%M:%S"),
+            ),
+        )
+        return cursor.fetchall()
+    finally:
+        cursor.close()
+        conn.close()
+
+
+def _query_monthly_sales_summary_rows(reference_date: dt.date) -> list[dict]:
+    query = """
+        SELECT
+            anio,
+            mes,
+            total
+        FROM ventas_mes
+        WHERE anio = %s
+          AND mes <= %s
+        ORDER BY mes ASC
+    """
+    conn = _get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute(query, (reference_date.year, reference_date.month))
+        return cursor.fetchall()
+    finally:
+        cursor.close()
+        conn.close()
+
+
+def _query_live_monthly_totals_between(start_dt: dt.datetime, end_dt: dt.datetime) -> dict[str, Decimal]:
+    query = """
+        SELECT
+            DATE_FORMAT(fecha, '%Y-%m') AS month_key,
+            SUM(COALESCE(total, 0)) AS total
+        FROM ventas
+        WHERE fecha >= %s
+          AND fecha <= %s
+        GROUP BY DATE_FORMAT(fecha, '%Y-%m')
+        ORDER BY month_key ASC
+    """
+    conn = _get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute(
+            query,
+            (
+                start_dt.strftime("%Y-%m-%d %H:%M:%S"),
+                end_dt.strftime("%Y-%m-%d %H:%M:%S"),
+            ),
+        )
+        return {
+            str(row.get("month_key") or ""): _money(row.get("total"))
+            for row in cursor.fetchall()
+            if str(row.get("month_key") or "").strip()
+        }
+    finally:
+        cursor.close()
+        conn.close()
+
+
+def _build_monthly_sales_summary(reference_date: dt.date) -> dict:
+    summary_rows = _query_monthly_sales_summary_rows(reference_date)
+    if summary_rows:
+        summary_month_totals: dict[str, Decimal] = {}
+        for row in summary_rows:
+            year = int(row.get("anio") or 0)
+            month = int(row.get("mes") or 0)
+            if year <= 0 or month <= 0 or month > 12:
+                continue
+            month_key = f"{year}-{month:02d}"
+            summary_month_totals[month_key] = _money(row.get("total"))
+
+        live_month_totals = _query_live_monthly_totals_between(
+            dt.datetime(reference_date.year, 1, 1, 0, 0, 0),
+            dt.datetime.combine(reference_date, dt.time.max.replace(microsecond=0)),
+        )
+        ordered_months = []
+        for month_number in range(1, reference_date.month + 1):
+            month_key = f"{reference_date.year}-{month_number:02d}"
+            ordered_months.append(
+                {
+                    "month_key": month_key,
+                    "label": f"{MONTH_LABELS[month_number]} {reference_date.year}",
+                    "total": _money(summary_month_totals.get(month_key, live_month_totals.get(month_key, Decimal("0")))),
+                }
+            )
+    else:
+        monthly_totals = _query_live_monthly_totals_between(
+            dt.datetime(reference_date.year, 1, 1, 0, 0, 0),
+            dt.datetime.combine(reference_date, dt.time.max.replace(microsecond=0)),
+        )
+        ordered_months = []
+        for month_number in range(1, reference_date.month + 1):
+            month_key = f"{reference_date.year}-{month_number:02d}"
+            ordered_months.append(
+                {
+                    "month_key": month_key,
+                    "label": f"{MONTH_LABELS[month_number]} {reference_date.year}",
+                    "total": _money(monthly_totals.get(month_key, Decimal("0"))),
+                }
+            )
+
+    current_month_key = f"{reference_date.year}-{reference_date.month:02d}"
+    current_month = next((item for item in ordered_months if item["month_key"] == current_month_key), None)
+    year_total = sum(
+        (
+            item["total"]
+            for item in ordered_months
+            if str(item["month_key"]).startswith(f"{reference_date.year}-")
+        ),
+        Decimal("0"),
+    )
+    return {
+        "months": ordered_months,
+        "current_month_key": current_month_key,
+        "current_month_total": current_month["total"] if current_month else Decimal("0"),
+        "year_total": _money(year_total),
+    }
+
+
+def _create_monthly_comparison_chart(file_path: Path, *, title: str, subtitle: str, months: list[dict]) -> None:
+    width = 1400
+    height = 900
+    margin_left = 110
+    margin_right = 60
+    margin_top = 120
+    margin_bottom = 140
+    chart_width = width - margin_left - margin_right
+    chart_height = height - margin_top - margin_bottom
+    bar_gap = 24
+
+    image = Image.new("RGB", (width, height), (255, 255, 255))
+    draw = ImageDraw.Draw(image)
+    font = None
+
+    draw.text((margin_left, 30), title, fill=(26, 32, 44), font=font)
+    draw.text((margin_left, 62), subtitle, fill=(92, 107, 128), font=font)
+
+    max_total = max((item["total"] for item in months), default=Decimal("0"))
+    safe_max = max(max_total, Decimal("1"))
+
+    draw.line((margin_left, margin_top, margin_left, margin_top + chart_height), fill=(120, 130, 145), width=3)
+    draw.line((margin_left, margin_top + chart_height, margin_left + chart_width, margin_top + chart_height), fill=(120, 130, 145), width=3)
+
+    if months:
+        bar_width = max(30, int((chart_width - bar_gap * (len(months) - 1)) / len(months)))
+    else:
+        bar_width = 60
+
+    for index, month in enumerate(months):
+        x0 = margin_left + index * (bar_width + bar_gap)
+        x1 = x0 + bar_width
+        bar_height = int((float(month["total"]) / float(safe_max)) * (chart_height - 40)) if safe_max > 0 else 0
+        y0 = margin_top + chart_height - bar_height
+        y1 = margin_top + chart_height
+        draw.rectangle((x0, y0, x1, y1), fill=(47, 128, 237), outline=(31, 93, 182))
+        value_text = _format_currency_compact(month["total"])
+        label_text = month["label"]
+        draw.text((x0, y0 - 22), value_text, fill=(26, 32, 44), font=font)
+        draw.text((x0 + 6, y1 + 18), label_text, fill=(26, 32, 44), font=font)
+
+    image.save(file_path, "PNG")
+
+
+def _build_closure_chart_asset(reference_date: dt.date, *, summary: dict, output_dir: Path, kind: str) -> dict:
+    file_name = f"{kind}_ventas_{reference_date.strftime('%Y%m%d')}.png"
+    chart_path = output_dir / file_name
+    title = "Comparativo de ventas por mes"
+    subtitle = f"Ano {reference_date.year} - acumulado hasta {reference_date.strftime('%d/%m/%Y')}"
+    _create_monthly_comparison_chart(chart_path, title=title, subtitle=subtitle, months=summary["months"])
+    relative_path = chart_path.resolve().relative_to(RUNTIME_ROOT)
+    return {
+        "file_name": file_name,
+        "file_path": str(chart_path),
+        "relative_path": relative_path.as_posix(),
+        "public_url": _public_url_for(relative_path),
+        "internal_url": _internal_url_for(relative_path),
+    }
 
 
 def _query_abono_breakdown(sale_ids: list[int]) -> dict[int, dict[str, Decimal]]:
@@ -688,10 +953,123 @@ def generate_sales_reports():
         "reports": report_files,
         "total_general": float(_money(total_general)),
         "message_text": _build_report_message(_money(total_general)),
-        "recipients": ["3232818874", "3028379185", "3015827791"],
+        "recipients": REPORT_RECIPIENTS,
     }
     (output_dir / "metadata.json").write_text(json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8")
     (RUNTIME_ROOT / "latest_sales_reports.json").write_text(json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8")
+    return jsonify(metadata)
+
+
+@app.post("/generate-sales-closing-summary")
+def generate_sales_closing_summary():
+    payload = request.get_json(silent=True) or {}
+    date_value = str(payload.get("date") or "").strip()
+    execution_mode = str(payload.get("execution_mode") or "").strip() or "scheduled"
+    retention_days = int(payload.get("retention_days") or DEFAULT_RETENTION_DAYS)
+    force_monthly = bool(payload.get("force_monthly"))
+    force_annual = bool(payload.get("force_annual"))
+
+    try:
+        reference_date = dt.datetime.strptime(date_value, "%Y-%m-%d").date() if date_value else dt.datetime.now(BOGOTA_TZ).date()
+    except ValueError:
+        return jsonify({"status": "error", "message": "La fecha debe estar en formato YYYY-MM-DD."}), 400
+
+    monthly_due = force_monthly or _is_monthly_closure_date(reference_date)
+    annual_due = force_annual or _is_year_end_date(reference_date)
+
+    _cleanup_old_runs(RUNTIME_ROOT, retention_days)
+    output_dir = _resolve_output_dir(payload.get("output_subdir") or f"sales_closing_{reference_date.strftime('%Y%m%d')}")
+    generated_at = dt.datetime.now(BOGOTA_TZ)
+    summary = _build_monthly_sales_summary(reference_date)
+
+    deliveries: list[dict] = []
+    monthly_payload = None
+    annual_payload = None
+
+    if monthly_due:
+        monthly_chart = _build_closure_chart_asset(reference_date, summary=summary, output_dir=output_dir, kind="cierre_mensual")
+        monthly_message = _build_monthly_closure_message(
+            reference_date,
+            summary["current_month_total"],
+        )
+        deliveries.extend(
+            [
+                {
+                    "campaign": "monthly_closure",
+                    "order": 1,
+                    "type": "image",
+                    "caption": "Comparativo de ventas por mes",
+                    "media_url": monthly_chart["public_url"],
+                    "file_name": monthly_chart["file_name"],
+                    "mime_type": "image/png",
+                },
+                {
+                    "campaign": "monthly_closure",
+                    "order": 2,
+                    "type": "text",
+                    "text": monthly_message,
+                },
+            ]
+        )
+        monthly_payload = {
+            "reference_date": reference_date.isoformat(),
+            "total_general": float(_money(summary["current_month_total"])),
+            "chart": monthly_chart,
+            "message_text": monthly_message,
+        }
+
+    if annual_due:
+        annual_chart = _build_closure_chart_asset(reference_date, summary=summary, output_dir=output_dir, kind="cierre_anual")
+        annual_message = _build_year_end_message(summary["year_total"])
+        deliveries.extend(
+            [
+                {
+                    "campaign": "year_end",
+                    "order": 1,
+                    "type": "image",
+                    "caption": "Comparativo anual de ventas por mes",
+                    "media_url": annual_chart["public_url"],
+                    "file_name": annual_chart["file_name"],
+                    "mime_type": "image/png",
+                },
+                {
+                    "campaign": "year_end",
+                    "order": 2,
+                    "type": "text",
+                    "text": annual_message,
+                },
+            ]
+        )
+        annual_payload = {
+            "reference_date": reference_date.isoformat(),
+            "total_general": float(_money(summary["year_total"])),
+            "chart": annual_chart,
+            "message_text": annual_message,
+        }
+
+    months_payload = [
+        {
+            "month_key": item["month_key"],
+            "label": item["label"],
+            "total": float(_money(item["total"])),
+        }
+        for item in summary["months"]
+    ]
+    metadata = {
+        "status": "ok",
+        "generated_at": generated_at.isoformat(),
+        "reference_date": reference_date.isoformat(),
+        "execution_mode": execution_mode,
+        "monthly_due": monthly_due,
+        "annual_due": annual_due,
+        "recipients": REPORT_RECIPIENTS,
+        "deliveries": deliveries,
+        "months": months_payload,
+        "monthly_summary": monthly_payload,
+        "annual_summary": annual_payload,
+    }
+    (output_dir / "metadata.json").write_text(json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8")
+    (RUNTIME_ROOT / "latest_sales_closing_summary.json").write_text(json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8")
     return jsonify(metadata)
 
 

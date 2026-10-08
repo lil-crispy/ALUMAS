@@ -477,6 +477,55 @@
       background: #0097a7;
     }
 
+    #report-panel {
+      position: fixed;
+      left: 0;
+      top: 0;
+      width: 320px;
+      height: 100%;
+      background: #f8f9fa;
+      border-right: 2px solid #ddd;
+      box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+      padding: 10px;
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
+      overflow: visible;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    #report-panel.report-panel-colapsado {
+      transform: translateX(calc(-100% + 28px));
+      box-shadow: none;
+    }
+
+    .dashboard-toggle-reportes {
+      top: calc(50% - 92px);
+    }
+
+    .report-header {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #00acc1;
+    }
+
+    .report-list {
+      flex: 1;
+      overflow-y: auto;
+      padding-right: 2px;
+    }
+
+    .report-total {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #d1d5db;
+      background: #f8f9fa;
+    }
+
     /* MODO TRANSPORTADOR: Dashboard pantalla completa y exclusivo */
      body.transportador-mode #dashboard-programacion {
        width: 100% !important;
@@ -497,6 +546,7 @@
 
      body.transportador-mode #contenido-factura,
      body.transportador-mode .report-toggle,
+     body.transportador-mode #report-panel,
      body.transportador-mode #panel-sugerencias,
      body.transportador-mode .boton-imprimir {
         display: none !important;
@@ -841,8 +891,8 @@
       margin-bottom: 10px;
       padding: 8px 10px;
       border-radius: 6px;
-      background: #e0f7fa;
-      color: #006064;
+      background: #f8fafc;
+      color: #334155;
       font-size: 0.85em;
       line-height: 1.35;
     }
@@ -850,6 +900,49 @@
     .dashboard-selection-info[data-has-selection="false"] {
       background: #f1f5f9;
       color: #64748b;
+    }
+
+    .programacion-filtros-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .programacion-filtros-label {
+      font-size: 0.82em;
+      font-weight: bold;
+      color: #475569;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
+    .programacion-filtros {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .programacion-filtro-btn {
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      color: #0f172a;
+      border-radius: 6px;
+      padding: 9px 8px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .programacion-filtro-btn:hover {
+      border-color: #00acc1;
+      background: #ecfeff;
+    }
+
+    .programacion-filtro-btn.active {
+      background: #00acc1;
+      border-color: #00acc1;
+      color: #fff;
+      box-shadow: 0 0 0 2px rgba(0, 172, 193, 0.18);
     }
 
     .dashboard-acciones {
@@ -926,6 +1019,129 @@
     }
     
     .btn-cancelar-prog:hover { background: #bbb; }
+
+    .modal-detalle-programacion .modal-content {
+      width: min(720px, 92vw);
+      max-height: 90vh;
+      overflow-y: auto;
+      text-align: left;
+      padding: 18px;
+    }
+
+    .detalle-programacion-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 10px;
+    }
+
+    .detalle-programacion-header h3 {
+      margin: 0;
+      color: #0f172a;
+    }
+
+    .detalle-programacion-close {
+      border: none;
+      background: transparent;
+      font-size: 24px;
+      line-height: 1;
+      cursor: pointer;
+      color: #475569;
+    }
+
+    .detalle-programacion-seccion {
+      margin-bottom: 16px;
+      padding: 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: #f8fafc;
+    }
+
+    .detalle-programacion-seccion h4 {
+      margin: 0 0 10px;
+      font-size: 1em;
+      color: #0f766e;
+    }
+
+    .detalle-programacion-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px 14px;
+    }
+
+    .detalle-programacion-dato {
+      font-size: 0.95em;
+      color: #0f172a;
+      text-transform: none;
+      word-break: break-word;
+    }
+
+    .detalle-programacion-dato strong {
+      display: block;
+      margin-bottom: 2px;
+      color: #334155;
+    }
+
+    .detalle-programacion-tabla {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+    }
+
+    .detalle-programacion-tabla th,
+    .detalle-programacion-tabla td {
+      border: 1px solid #cbd5e1;
+      padding: 8px;
+      font-size: 0.9em;
+      text-transform: none;
+    }
+
+    .detalle-programacion-tabla th {
+      background: #e2e8f0;
+    }
+
+    .detalle-programacion-tabla td:nth-child(1),
+    .detalle-programacion-tabla td:nth-child(3),
+    .detalle-programacion-tabla td:nth-child(4) {
+      text-align: center;
+    }
+
+    .detalle-programacion-acciones {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+
+    .btn-copiar-direccion-detalle {
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 9px 14px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .btn-copiar-direccion-detalle:hover {
+      background: #1d4ed8;
+    }
+
+    .detalle-programacion-vacio {
+      color: #64748b;
+      font-size: 0.92em;
+      text-transform: none;
+    }
+
+    @media screen and (max-width: 640px) {
+      .detalle-programacion-grid {
+        grid-template-columns: 1fr;
+      }
+    }
 
     /* Botones nuevos */
     .btn-aux {
@@ -1251,8 +1467,6 @@
   </div>
   <div class="conn-spacer"></div>
 
-  <div class="report-toggle" onclick="toggleReportePanel()">Reporte ▼</div>
-
   <div class="panel-sugerencias" id="panel-sugerencias">
     <div class="panel-header">
       <span>Sugerencias de productos</span>
@@ -1557,7 +1771,15 @@
       <!-- <button class="btn btn-aux" onclick="descargarPDF(true)">⚡ PDF Rápido</button> -->
       <button class="btn btn-programar" onclick="abrirModalProgramacion()">📅 Programar</button>
     </div>
-    <div id="report-panel" class="report-panel">
+    <div id="report-panel" class="report-panel report-panel-colapsado">
+      <button
+        id="report-toggle-button"
+        class="dashboard-toggle dashboard-toggle-reportes"
+        type="button"
+        onclick="toggleReportePanel()"
+        aria-label="Mostrar reportes"
+        title="Mostrar reportes"
+      >&#10095;</button>
       <div class="report-header">
         <div style="display:flex; flex-direction:column; width:100%;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
@@ -2429,8 +2651,7 @@
   
     function prepararDatosPDF() {
       // Check context
-      const consecutivoDisplay = document.getElementById('consecutivo-display');
-      const isCotizacion = consecutivoDisplay && consecutivoDisplay.style.visibility === 'hidden';
+      const isCotizacion = !!modoCotizacionActiva;
       const facturaElectronicaActiva = facturaElectronicaCheckboxActivo()
       const resultadoFactus = ultimaFacturaElectronicaEmitida || null
       const template = document.getElementById('pdf-template');
@@ -2448,7 +2669,7 @@
       const elRem = document.getElementById('pdf-header-rem');
       if (elRem) {
           if (isCotizacion) {
-              elRem.textContent = 'COTIZACIÓN';
+              elRem.textContent = 'COTIZACION';
           } else if (facturaElectronicaActiva && resultadoFactus?.number) {
               elRem.textContent = `FE ${resultadoFactus.number}`;
           } else {
@@ -3229,20 +3450,15 @@ try {
     });
 
     function aplicarCotizacionUI() {
-      const mensajeDiv = document.querySelector('.mensaje');
-      if (mensajeDiv) {
-        mensajeDiv.innerHTML = `
-          <p style="font-size: 22px; font-weight: bold; text-align: center; margin-top: 40px;">
-            COTIZACIÓN - NO VÁLIDO COMO COMPROBANTE DE COMPRA
-          </p>
-        `;
-      }
+      modoCotizacionActiva = true;
       document.querySelectorAll('.logo-grande').forEach(logo => logo.style.display = 'none');
       const consecutivoDisplay = document.getElementById('consecutivo-display');
-      if (consecutivoDisplay) consecutivoDisplay.style.visibility = 'hidden';
+      if (consecutivoDisplay) consecutivoDisplay.style.visibility = 'visible';
+      actualizarVisualConsecutivo();
     }
 
     function aplicarVentaUI() {
+      modoCotizacionActiva = false;
       const mensajeDiv = document.querySelector('.mensaje');
       if (mensajeDiv && originalMensajeHTML) {
         mensajeDiv.innerHTML = originalMensajeHTML;
@@ -3250,6 +3466,7 @@ try {
       document.querySelectorAll('.logo-grande').forEach(logo => logo.style.display = 'block');
       const consecutivoDisplay = document.getElementById('consecutivo-display');
       if (consecutivoDisplay) consecutivoDisplay.style.visibility = 'visible';
+      actualizarVisualConsecutivo();
     }
 
     // --- NUEVA FUNCIONALIDAD: COTIZACIÓN CON CÓDIGO DE BARRAS ---
@@ -3589,42 +3806,22 @@ try {
         cajaAdminTimer = null
       }
     }
+    function actualizarToggleReportePanel() {
+      const panel = document.getElementById('report-panel')
+      const toggle = document.getElementById('report-toggle-button')
+      if (!panel || !toggle) return
+      const colapsado = panel.classList.contains('report-panel-colapsado')
+      toggle.innerHTML = colapsado ? '&#10095;' : '&#10094;'
+      toggle.setAttribute('aria-label', colapsado ? 'Mostrar reportes' : 'Ocultar reportes')
+      toggle.setAttribute('title', colapsado ? 'Mostrar reportes' : 'Ocultar reportes')
+    }
     function posicionarBotonReporte() {
-      const toggle = document.querySelector('.report-toggle')
-      if (!toggle) return
-      const widget = document.getElementById('caja-admin-widget')
-      const widgetVisible = widget && window.getComputedStyle(widget).display !== 'none'
-      const margen = window.innerWidth <= 700 ? 8 : 10
-
-      toggle.style.left = 'auto'
-      toggle.style.right = `${margen}px`
-
-      if (widgetVisible) {
-        const rect = widget.getBoundingClientRect()
-        toggle.style.top = `${Math.max(rect.bottom + 12, 92)}px`
-      } else {
-        toggle.style.top = '48px'
-      }
-      posicionarPanelReporte()
+      actualizarToggleReportePanel()
     }
     function posicionarPanelReporte() {
-      const toggle = document.querySelector('.report-toggle')
       const panel = document.getElementById('report-panel')
-      if (!toggle || !panel) return
-      const rect = toggle.getBoundingClientRect()
-      const margen = window.innerWidth <= 700 ? 8 : 10
-
-      panel.style.left = 'auto'
-      panel.style.right = `${margen}px`
-      panel.style.top = `${rect.bottom + 8}px`
-
-      if (window.innerWidth <= 700) {
-        panel.style.width = `calc(100vw - ${margen * 2}px)`
-        panel.style.maxHeight = '58vh'
-      } else {
-        panel.style.width = '340px'
-        panel.style.maxHeight = '70vh'
-      }
+      if (!panel) return
+      actualizarToggleReportePanel()
     }
     async function cargarCajaAdmin() {
       if (!esAdminActual()) return
@@ -4132,9 +4329,9 @@ try {
     function toggleReportePanel() {
       const p = document.getElementById('report-panel');
       if (!p) return;
-      posicionarPanelReporte();
-      p.classList.toggle('open');
-      if (p.classList.contains('open')) {
+      p.classList.toggle('report-panel-colapsado');
+      actualizarToggleReportePanel();
+      if (!p.classList.contains('report-panel-colapsado')) {
         cargarReporte()
       }
     }
@@ -5585,6 +5782,7 @@ try {
     let lastConsecutivoInterno = null
     let factusNumberingPreviewActual = null
     let ultimaFacturaElectronicaEmitida = null
+    let modoCotizacionActiva = false
     let clienteSeleccionado = null
     let clienteSearchTimer = null
     let remisionTransporteProgramada = false
@@ -5663,6 +5861,13 @@ try {
           || factusNumberingPreviewActual?.preview_number
           || (getConsecutivoInterno() ? `PENDIENTE ${getConsecutivoInterno()}` : 'CONSULTANDO...')
         )
+        if (edit) edit.style.display = 'none'
+        return
+      }
+
+      if (modoCotizacionActiva) {
+        label.textContent = 'COTIZACION'
+        el.textContent = ''
         if (edit) edit.style.display = 'none'
         return
       }
@@ -6172,7 +6377,13 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>
 
       <div id="programacion-selection-info" class="dashboard-selection-info" data-has-selection="false">
-        Toca los pedidos que quieras marcar. Puedes seleccionar varios y luego oprimir DESPACHADO una sola vez.
+        <div class="programacion-filtros-wrap">
+          <div class="programacion-filtros-label">Punto de venta</div>
+          <div class="programacion-filtros">
+            <button type="button" id="filtro-programacion-ferreteria" class="programacion-filtro-btn active" onclick="setFiltroPuntoVentaProgramacion('ferreteria')">Ferretería</button>
+            <button type="button" id="filtro-programacion-bodega" class="programacion-filtro-btn" onclick="setFiltroPuntoVentaProgramacion('bodega')">Bodega</button>
+          </div>
+        </div>
       </div>
 
       <div id="lista-pedidos"></div>
@@ -6366,6 +6577,20 @@ document.addEventListener('DOMContentLoaded', () => {
     </div>
   </div>
 
+  <div id="modal-detalle-programacion" class="modal-programacion modal-detalle-programacion" onclick="if (event.target === this) cerrarModalDetalleProgramacion()">
+    <div class="modal-content">
+      <div class="detalle-programacion-header">
+        <h3>Detalle interno del pedido</h3>
+        <button type="button" class="detalle-programacion-close" onclick="cerrarModalDetalleProgramacion()" aria-label="Cerrar detalle">&times;</button>
+      </div>
+      <div id="detalle-programacion-body" class="detalle-programacion-vacio">Sin detalle disponible.</div>
+      <div class="detalle-programacion-acciones">
+        <button type="button" class="btn-copiar-direccion-detalle" onclick="copiarDireccionDetalleProgramacion()">Copiar dirección</button>
+        <button type="button" class="btn-cancelar-prog" onclick="cerrarModalDetalleProgramacion()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
 <script>
 // --- LÓGICA DE PROGRAMACIÓN DE PEDIDOS ---
 
@@ -6375,9 +6600,229 @@ let modoReprogramacion = false;
 let currentViewDate = new Date();
 let pedidosSeleccionadosIds = new Set();
 let dashboardProgramacionColapsado = false;
+let filtroPuntoVentaProgramacion = 'ferreteria';
+let detalleProgramacionPedidoIdActual = null;
+let direccionDetalleProgramacionActual = '';
+let pedidoDashboardClickId = null;
+let pedidoDashboardClickCount = 0;
+let pedidoDashboardClickTimer = null;
 
 function normalizarPedidoProgramadoId(id) {
   return String(id);
+}
+
+function normalizarFiltroPuntoVentaProgramacion(valor) {
+  const normalizado = String(valor || '').trim().toLowerCase();
+  return normalizado === 'bodega' ? 'bodega' : 'ferreteria';
+}
+
+function setFiltroPuntoVentaProgramacion(valor) {
+  filtroPuntoVentaProgramacion = normalizarFiltroPuntoVentaProgramacion(valor);
+  renderDashboard();
+}
+
+function formatearHoraProgramacionAmPm(hora) {
+  const valor = String(hora || '').trim();
+  if (!valor) return '';
+  try {
+    const [hh, mm] = valor.split(':');
+    const hVal = parseInt(hh, 10);
+    if (!Number.isFinite(hVal)) return valor;
+    const ampm = hVal >= 12 ? 'PM' : 'AM';
+    const h12 = hVal % 12 || 12;
+    return `${String(h12).padStart(2, '0')}:${mm || '00'} ${ampm}`;
+  } catch (e) {
+    return valor;
+  }
+}
+
+function construirDetalleInternoProgramacion({ consecutivo, clienteNombre, clienteData, transporteData, items, total, fecha, hora }) {
+  const transporte = transporteData && typeof transporteData === 'object' ? transporteData : {};
+  const cliente = clienteData && typeof clienteData === 'object' ? clienteData : {};
+  const nombreCliente = String(clienteNombre || cliente.nombre || transporte.nombre || '').trim();
+  const celular = String(transporte.telefono || cliente.telefono || '').trim();
+  const direccion = String(transporte.direccion || cliente.direccion || '').trim();
+  const sector = String(transporte.sector || cliente.sector || '').trim();
+
+  return {
+    consecutivo: consecutivo || null,
+    entrega: {
+      fecha: fecha || '',
+      hora: hora || '',
+      nombre: String(transporte.nombre || nombreCliente || '').trim(),
+      celular,
+      direccion,
+      sector
+    },
+    cliente: nombreCliente,
+    numero_celular: celular,
+    direccion,
+    sector,
+    items: Array.isArray(items) ? items.map((item) => ({
+      cantidad: Number(item?.cantidad || 0),
+      descripcion: String(item?.descripcion || '').trim(),
+      valor_u: Number(item?.valor_unitario || 0),
+      valor_t: Number(item?.valor_total || 0)
+    })) : [],
+    total_final: Number(total || 0)
+  };
+}
+
+function obtenerDetalleInternoPedidoProgramado(pedido) {
+  if (pedido?.detalle_interno && typeof pedido.detalle_interno === 'object') {
+    return pedido.detalle_interno;
+  }
+
+  return construirDetalleInternoProgramacion({
+    consecutivo: pedido?.consecutivo,
+    clienteNombre: pedido?.cliente_nombre,
+    clienteData: pedido?.cliente_data,
+    transporteData: pedido?.transporte,
+    items: pedido?.items,
+    total: pedido?.total,
+    fecha: pedido?.fecha,
+    hora: pedido?.hora
+  });
+}
+
+function cerrarModalDetalleProgramacion() {
+  const modal = document.getElementById('modal-detalle-programacion');
+  if (modal) modal.style.display = 'none';
+  detalleProgramacionPedidoIdActual = null;
+  direccionDetalleProgramacionActual = '';
+}
+
+function cerrarModalDetalleProgramacionSiCorresponde(ids = []) {
+  if (!detalleProgramacionPedidoIdActual) return;
+  const idsNormalizados = new Set((Array.isArray(ids) ? ids : [ids]).map(normalizarPedidoProgramadoId));
+  if (idsNormalizados.has(normalizarPedidoProgramadoId(detalleProgramacionPedidoIdActual))) {
+    cerrarModalDetalleProgramacion();
+  }
+}
+
+function copiarDireccionDetalleProgramacion() {
+  const direccion = String(direccionDetalleProgramacionActual || '').trim();
+  if (!direccion) {
+    alert('Este pedido no tiene dirección para copiar.');
+    return;
+  }
+
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(direccion)
+      .then(() => alert('Dirección copiada al portapapeles.'))
+      .catch(() => prompt('Copie la dirección manualmente:', direccion));
+    return;
+  }
+
+  prompt('Copie la dirección manualmente:', direccion);
+}
+
+function abrirDetallePedidoProgramado(id) {
+  const pedidoId = normalizarPedidoProgramadoId(id);
+  const pedido = globalPedidos.find(p => normalizarPedidoProgramadoId(p.id) === pedidoId);
+  if (!pedido) return;
+
+  pedidosSeleccionadosIds = new Set([pedidoId]);
+  pedidoSeleccionadoId = pedidoId;
+  renderDashboard();
+
+  const detalle = obtenerDetalleInternoPedidoProgramado(pedido);
+  const entrega = detalle?.entrega || {};
+  const items = Array.isArray(detalle?.items) ? detalle.items : [];
+  const body = document.getElementById('detalle-programacion-body');
+  if (!body) return;
+
+  direccionDetalleProgramacionActual = String(detalle?.direccion || entrega?.direccion || '').trim();
+  detalleProgramacionPedidoIdActual = pedidoId;
+
+  body.innerHTML = `
+    <div class="detalle-programacion-seccion">
+      <h4>Resumen</h4>
+      <div class="detalle-programacion-grid">
+        <div class="detalle-programacion-dato"><strong>Consecutivo</strong>${escaparHtmlProducto(detalle?.consecutivo || pedido?.consecutivo || 'Sin consecutivo')}</div>
+        <div class="detalle-programacion-dato"><strong>Cliente</strong>${escaparHtmlProducto(detalle?.cliente || pedido?.cliente_nombre || 'Cliente general')}</div>
+      </div>
+    </div>
+    <div class="detalle-programacion-seccion">
+      <h4>Entrega</h4>
+      <div class="detalle-programacion-grid">
+        <div class="detalle-programacion-dato"><strong>Fecha programada</strong>${escaparHtmlProducto(entrega?.fecha || pedido?.fecha || 'Sin fecha')}</div>
+        <div class="detalle-programacion-dato"><strong>Hora programada</strong>${escaparHtmlProducto(formatearHoraProgramacionAmPm(entrega?.hora || pedido?.hora) || 'Sin hora')}</div>
+        <div class="detalle-programacion-dato"><strong>Recibe</strong>${escaparHtmlProducto(entrega?.nombre || pedido?.transporte?.nombre || pedido?.cliente_nombre || 'Sin nombre')}</div>
+        <div class="detalle-programacion-dato"><strong>Número de celular</strong>${escaparHtmlProducto(detalle?.numero_celular || entrega?.celular || 'Sin celular')}</div>
+        <div class="detalle-programacion-dato"><strong>Dirección</strong>${escaparHtmlProducto(detalle?.direccion || entrega?.direccion || 'Sin dirección')}</div>
+        <div class="detalle-programacion-dato"><strong>Sector</strong>${escaparHtmlProducto(detalle?.sector || entrega?.sector || 'Sin sector')}</div>
+      </div>
+    </div>
+    <div class="detalle-programacion-seccion">
+      <h4>Detalle de la venta</h4>
+      ${items.length > 0 ? `
+        <table class="detalle-programacion-tabla">
+          <thead>
+            <tr>
+              <th>Cantidad</th>
+              <th>Descripción</th>
+              <th>Valor U</th>
+              <th>Valor T</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${items.map((item) => `
+              <tr>
+                <td>${escaparHtmlProducto(item?.cantidad ?? '')}</td>
+                <td>${escaparHtmlProducto(item?.descripcion || '')}</td>
+                <td>${escaparHtmlProducto(formatearPesos(item?.valor_u || 0))}</td>
+                <td>${escaparHtmlProducto(formatearPesos(item?.valor_t || 0))}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      ` : '<div class="detalle-programacion-vacio">No hay ítems guardados para este pedido.</div>'}
+      <div class="detalle-programacion-grid" style="margin-top: 12px;">
+        <div class="detalle-programacion-dato"><strong>Total final</strong>${escaparHtmlProducto(formatearPesos(detalle?.total_final || pedido?.total || 0))}</div>
+      </div>
+    </div>
+  `;
+
+  const modal = document.getElementById('modal-detalle-programacion');
+  if (modal) modal.style.display = 'flex';
+}
+
+function ejecutarAccionClickPedidoDashboard(id, cantidadClicks) {
+  if (cantidadClicks >= 3) {
+    abrirDetallePedidoProgramado(id);
+    return;
+  }
+  if (cantidadClicks === 2) {
+    abrirPdfPedido(id);
+    return;
+  }
+  selectPedidoDashboard(id);
+}
+
+function manejarClickPedidoDashboard(id) {
+  const pedidoId = normalizarPedidoProgramadoId(id);
+
+  if (pedidoDashboardClickTimer && pedidoDashboardClickId && pedidoDashboardClickId !== pedidoId) {
+    clearTimeout(pedidoDashboardClickTimer);
+    ejecutarAccionClickPedidoDashboard(pedidoDashboardClickId, pedidoDashboardClickCount);
+    pedidoDashboardClickTimer = null;
+    pedidoDashboardClickCount = 0;
+  }
+
+  pedidoDashboardClickId = pedidoId;
+  pedidoDashboardClickCount += 1;
+
+  if (pedidoDashboardClickTimer) {
+    clearTimeout(pedidoDashboardClickTimer);
+  }
+
+  pedidoDashboardClickTimer = setTimeout(() => {
+    ejecutarAccionClickPedidoDashboard(pedidoId, pedidoDashboardClickCount);
+    pedidoDashboardClickTimer = null;
+    pedidoDashboardClickCount = 0;
+    pedidoDashboardClickId = null;
+  }, 260);
 }
 
 function actualizarControlesSeleccionProgramacion() {
@@ -6385,20 +6830,16 @@ function actualizarControlesSeleccionProgramacion() {
   const btnDespachar = document.getElementById('btn-despachar-pedidos');
   const btnReprogramar = document.getElementById('btn-reprogramar-pedido');
   const btnCancelar = document.getElementById('btn-cancelar-pedido-dashboard');
+  const btnFerreteria = document.getElementById('filtro-programacion-ferreteria');
+  const btnBodega = document.getElementById('filtro-programacion-bodega');
   const total = pedidosSeleccionadosIds.size;
 
   if (info) {
-    if (total === 0) {
-      info.dataset.hasSelection = 'false';
-      info.textContent = 'Toca los pedidos que quieras marcar. Puedes seleccionar varios y luego oprimir DESPACHADO una sola vez.';
-    } else if (total === 1) {
-      info.dataset.hasSelection = 'true';
-      info.textContent = '1 pedido seleccionado. Puedes despacharlo, reprogramarlo o cancelarlo.';
-    } else {
-      info.dataset.hasSelection = 'true';
-      info.textContent = `${total} pedidos seleccionados. Puedes despacharlos juntos. Para reprogramar o cancelar, deja solo uno seleccionado.`;
-    }
+    info.dataset.hasSelection = total === 0 ? 'false' : 'true';
   }
+
+  if (btnFerreteria) btnFerreteria.classList.toggle('active', filtroPuntoVentaProgramacion === 'ferreteria');
+  if (btnBodega) btnBodega.classList.toggle('active', filtroPuntoVentaProgramacion === 'bodega');
 
   if (btnDespachar) {
     btnDespachar.disabled = total === 0;
@@ -6487,6 +6928,12 @@ async function fetchPedidosProgramados() {
     if (!resp.ok) throw new Error('Error API');
     const data = await resp.json();
     globalPedidos = data.pedidos || [];
+    if (detalleProgramacionPedidoIdActual) {
+      const detalleSigueVisible = globalPedidos.some(p => normalizarPedidoProgramadoId(p.id) === normalizarPedidoProgramadoId(detalleProgramacionPedidoIdActual));
+      if (!detalleSigueVisible) {
+        cerrarModalDetalleProgramacion();
+      }
+    }
     sincronizarSeleccionProgramacion();
     
     await reprogramarVencidos(globalPedidos);
@@ -6569,7 +7016,10 @@ function renderDashboard() {
   });
   
   // Filtrar
-  const pedidosFiltrados = pedidos.filter(p => p.fecha === fechaFiltro);
+  const pedidosFiltrados = pedidos.filter(p => {
+    const pvPedido = normalizarFiltroPuntoVentaProgramacion(p?.punto_venta || 'ferreteria');
+    return p.fecha === fechaFiltro && pvPedido === filtroPuntoVentaProgramacion;
+  });
   const idsVisibles = new Set(pedidosFiltrados.map(p => normalizarPedidoProgramadoId(p.id)));
   pedidosSeleccionadosIds = new Set(
     Array.from(pedidosSeleccionadosIds).filter(id => idsVisibles.has(id))
@@ -6618,8 +7068,8 @@ function renderDashboard() {
       <div class="pedido-status">${p.estado}</div>
     `;
     
-    item.onclick = () => selectPedidoDashboard(p.id);
-    item.ondblclick = () => abrirPdfPedido(p.id);
+    item.title = '1 clic: seleccionar · 2 clics: ver ruta del PDF · 3 clics: ver detalle interno';
+    item.onclick = () => manejarClickPedidoDashboard(p.id);
     
     lista.appendChild(item);
   });
@@ -6872,6 +7322,16 @@ async function guardarProgramacion() {
       if (transporteData.nombre) {
           pedidoExistente.cliente_nombre = transporteData.nombre;
       }
+      pedidoExistente.detalle_interno = construirDetalleInternoProgramacion({
+          consecutivo: pedidoExistente.consecutivo,
+          clienteNombre: pedidoExistente.cliente_nombre,
+          clienteData: pedidoExistente.cliente_data,
+          transporteData: transporteData,
+          items: pedidoExistente.items,
+          total: pedidoExistente.total,
+          fecha: fecha,
+          hora: hora
+      });
       
       try {
           const resp = await fetch(getApiBase() + '/api/programados', {
@@ -6917,6 +7377,16 @@ async function guardarProgramacion() {
     metodo_pago: getSelectedMetodoPago(),
     punto_venta: getPuntoVenta()
   };
+  nuevoPedido.detalle_interno = construirDetalleInternoProgramacion({
+    consecutivo: nuevoPedido.consecutivo,
+    clienteNombre: nuevoPedido.cliente_nombre,
+    clienteData: nuevoPedido.cliente_data,
+    transporteData: nuevoPedido.transporte,
+    items: nuevoPedido.items,
+    total: nuevoPedido.total,
+    fecha: nuevoPedido.fecha,
+    hora: nuevoPedido.hora
+  });
   
   try {
       const resp = await fetch(getApiBase() + '/api/programados', {
@@ -7047,6 +7517,7 @@ async function cancelarPedido() {
       // 1. Eliminar de Programados
       const resp1 = await fetch(getApiBase() + '/api/programados/' + pedidoSeleccionadoId, { method: 'DELETE' });
       if (!resp1.ok) throw new Error("Error eliminando programación");
+      cerrarModalDetalleProgramacionSiCorresponde(pedidoSeleccionadoId);
       
       // 2. Eliminar Venta de BD (si tiene consecutivo asociado)
       if (pedido.consecutivo) {
@@ -7098,6 +7569,7 @@ async function despacharPedido() {
           alert(`Se despacharon ${idsSeleccionados.length - errores.length} pedidos, pero ${errores.length} no se pudieron actualizar.`);
       }
 
+      cerrarModalDetalleProgramacionSiCorresponde(idsSeleccionados.filter(id => !errores.includes(id)));
       pedidosSeleccionadosIds = new Set();
       pedidoSeleccionadoId = null;
       actualizarControlesSeleccionProgramacion();
