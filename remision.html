@@ -535,6 +535,11 @@
       z-index: 1003;
     }
 
+    body.reportes-suspendidos #report-panel,
+    body.reportes-suspendidos #report-toggle-button {
+      display: none !important;
+    }
+
     .report-header {
       display: flex;
       flex-direction: column;
@@ -3887,6 +3892,7 @@ try {
       }
     }
     function actualizarToggleReportePanel() {
+      if (REPORTES_SUSPENDIDOS) return
       const panel = document.getElementById('report-panel')
       const toggle = document.getElementById('report-toggle-button')
       if (!panel || !toggle) return
@@ -3896,9 +3902,11 @@ try {
       toggle.setAttribute('title', colapsado ? 'Mostrar reportes' : 'Ocultar reportes')
     }
     function posicionarBotonReporte() {
+      if (REPORTES_SUSPENDIDOS) return
       actualizarToggleReportePanel()
     }
     function posicionarPanelReporte() {
+      if (REPORTES_SUSPENDIDOS) return
       const panel = document.getElementById('report-panel')
       if (!panel) return
       actualizarToggleReportePanel()
@@ -4032,10 +4040,26 @@ try {
         cargarCajaAdmin()
       }, 700)
     }
+    const REPORTES_SUSPENDIDOS = true;
     let reporteVentas = [];
     let filtroMetodo = 'todos';
     // function checkResetReporte() { ... } eliminada
+    function aplicarSuspensionReportes() {
+      if (!REPORTES_SUSPENDIDOS) return;
+      document.body.classList.add('reportes-suspendidos');
+      const panel = document.getElementById('report-panel');
+      if (panel) panel.classList.add('report-panel-colapsado');
+      const lista = document.getElementById('reporte-lista');
+      if (lista) lista.innerHTML = '';
+      const suma = document.getElementById('reporte-suma');
+      if (suma) suma.innerHTML = '';
+    }
     async function cargarReporte() {
+      if (REPORTES_SUSPENDIDOS) {
+        reporteVentas = [];
+        actualizarUIReporte();
+        return;
+      }
       try {
         const resp = await fetch(getApiBase() + '/api/reporte-ventas')
         if (resp.ok) {
@@ -4278,6 +4302,7 @@ try {
       }
     }
     document.addEventListener('DOMContentLoaded', () => {
+      aplicarSuspensionReportes();
       inicializarAutocompletadoCliente();
       inicializarModalClienteRapido();
       inicializarFacturacionElectronica();
@@ -4331,11 +4356,14 @@ try {
         document.addEventListener(ev, resetInactividad)
       })
       resetInactividad()
-      cargarReporte()
-      posicionarBotonReporte()
-      window.addEventListener('resize', posicionarBotonReporte)
+      if (!REPORTES_SUSPENDIDOS) {
+        cargarReporte()
+        posicionarBotonReporte()
+        window.addEventListener('resize', posicionarBotonReporte)
+      }
     });
     function agregarVentaReporte(metodo) {
+      if (REPORTES_SUSPENDIDOS) return
       // Ya no usamos localStorage local, recargamos desde BD
       setTimeout(() => {
         cargarReporte()
@@ -4346,6 +4374,7 @@ try {
     let filtroPuntoVenta = 'ferreteria'; // Default
 
     function setFiltroPuntoVenta(pv) {
+      if (REPORTES_SUSPENDIDOS) return
       if (esUsuarioKarenRemision() && pv !== 'bodega') {
         pv = 'bodega';
       }
@@ -4365,6 +4394,7 @@ try {
     }
 
     function actualizarUIReporte() {
+      if (REPORTES_SUSPENDIDOS) return;
       const cont = document.getElementById('reporte-lista');
       const sumEl = document.getElementById('reporte-suma');
       if (!cont || !sumEl) return;
@@ -4395,6 +4425,7 @@ try {
       `;
     }
     function toggleReportePanel() {
+      if (REPORTES_SUSPENDIDOS) return;
       const p = document.getElementById('report-panel');
       if (!p) return;
       p.classList.toggle('report-panel-colapsado');
