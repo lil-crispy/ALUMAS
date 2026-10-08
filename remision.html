@@ -509,7 +509,7 @@
 
     #report-panel {
       position: fixed;
-      left: 250px;
+      left: 0;
       top: 0;
       width: 320px;
       height: 100%;
@@ -526,20 +526,13 @@
     }
 
     #report-panel.report-panel-colapsado {
-      transform: translateX(-100%);
+      transform: translateX(calc(-100% + 28px));
       box-shadow: none;
     }
 
     .dashboard-toggle-reportes {
-      position: fixed;
-      left: 222px;
       top: calc(50% - 132px);
-      right: auto;
-      transform: none;
       z-index: 1003;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
     }
 
     .report-header {
@@ -1516,15 +1509,6 @@
   </div>
   <div class="conn-spacer"></div>
 
-  <button
-    id="report-toggle-button"
-    class="dashboard-toggle dashboard-toggle-reportes"
-    type="button"
-    onclick="toggleReportePanel()"
-    aria-label="Mostrar reportes"
-    title="Mostrar reportes"
-  >&#10095;</button>
-
   <div class="panel-sugerencias" id="panel-sugerencias">
     <div class="panel-header">
       <span>Sugerencias de productos</span>
@@ -1830,6 +1814,14 @@
       <button class="btn btn-programar" onclick="abrirModalProgramacion()">📅 Programar</button>
     </div>
     <div id="report-panel" class="report-panel report-panel-colapsado">
+      <button
+        id="report-toggle-button"
+        class="dashboard-toggle dashboard-toggle-reportes"
+        type="button"
+        onclick="toggleReportePanel()"
+        aria-label="Mostrar reportes"
+        title="Mostrar reportes"
+      >&#10095;</button>
       <div class="report-header">
         <div style="display:flex; flex-direction:column; width:100%;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
