@@ -526,13 +526,20 @@
     }
 
     #report-panel.report-panel-colapsado {
-      transform: translateX(calc(-100% + 28px));
+      transform: translateX(-100%);
       box-shadow: none;
     }
 
     .dashboard-toggle-reportes {
-      top: calc(50% - 92px);
+      position: fixed;
+      left: 222px;
+      top: calc(50% - 132px);
+      right: auto;
+      transform: none;
       z-index: 1003;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .report-header {
@@ -1509,6 +1516,15 @@
   </div>
   <div class="conn-spacer"></div>
 
+  <button
+    id="report-toggle-button"
+    class="dashboard-toggle dashboard-toggle-reportes"
+    type="button"
+    onclick="toggleReportePanel()"
+    aria-label="Mostrar reportes"
+    title="Mostrar reportes"
+  >&#10095;</button>
+
   <div class="panel-sugerencias" id="panel-sugerencias">
     <div class="panel-header">
       <span>Sugerencias de productos</span>
@@ -1814,14 +1830,6 @@
       <button class="btn btn-programar" onclick="abrirModalProgramacion()">📅 Programar</button>
     </div>
     <div id="report-panel" class="report-panel report-panel-colapsado">
-      <button
-        id="report-toggle-button"
-        class="dashboard-toggle dashboard-toggle-reportes"
-        type="button"
-        onclick="toggleReportePanel()"
-        aria-label="Mostrar reportes"
-        title="Mostrar reportes"
-      >&#10095;</button>
       <div class="report-header">
         <div style="display:flex; flex-direction:column; width:100%;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
@@ -4132,9 +4140,6 @@ try {
     function aplicarRestriccionesUsuarioRemision(forzarPredeterminado = false) {
       const soloBodega = esUsuarioKarenRemision()
       const puntoVentaPredeterminado = getPuntoVentaPredeterminadoPorUsuario()
-      // #region debug-point A:restricciones-entrada
-      fetch("http://127.0.0.1:7777/event",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sessionId:"login-db-timeout",runId:"post-fix",hypothesisId:"A",location:"remision.html:3757",msg:"[DEBUG] aplicarRestriccionesUsuarioRemision entrada",data:{forzarPredeterminado,soloBodega,puntoVentaPredeterminado,usuario:getUsuarioLoginActual(),rol:(localStorage.getItem('USUARIO_ROL')||'')},ts:Date.now()})}).catch(()=>{})
-      // #endregion
 
       const selectPV = document.getElementById('select-punto-venta')
       const opcionFerreteria = selectPV?.querySelector('option[value="ferreteria"]')
@@ -4166,9 +4171,6 @@ try {
         btnB.style.display = ''
         btnB.disabled = false
       }
-      // #region debug-point A:filtro-predeterminado
-      fetch("http://127.0.0.1:7777/event",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sessionId:"login-db-timeout",runId:"post-fix",hypothesisId:"A",location:"remision.html:3792",msg:"[DEBUG] evaluar filtro predeterminado",data:{soloBodega,forzarPredeterminado,puntoVentaPredeterminado,legacyFlagType:typeof usarBodegaPorDefecto},ts:Date.now()})}).catch(()=>{})
-      // #endregion
 
       if (soloBodega || (forzarPredeterminado && puntoVentaPredeterminado)) {
         setFiltroPuntoVenta(soloBodega ? 'bodega' : puntoVentaPredeterminado)
@@ -4223,9 +4225,6 @@ try {
       const usuario = document.getElementById('login-usuario')?.value.trim() || ''
       const contrasena = document.getElementById('login-contrasena')?.value || ''
       const errorEl = document.getElementById('login-error')
-      // #region debug-point B:login-intento
-      fetch("http://127.0.0.1:7777/event",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sessionId:"login-db-timeout",runId:"post-fix",hypothesisId:"B",location:"remision.html:3841",msg:"[DEBUG] intento de login",data:{usuario,apiBase:getApiBase()},ts:Date.now()})}).catch(()=>{})
-      // #endregion
       if (errorEl) {
         errorEl.textContent = ''
         errorEl.style.color = ''
@@ -4277,9 +4276,6 @@ try {
           actualizarCajaAdminVisibilidad()
         }, 900)
       } catch (e) {
-        // #region debug-point B:login-error
-        fetch("http://127.0.0.1:7777/event",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sessionId:"login-db-timeout",runId:"post-fix",hypothesisId:"B",location:"remision.html:3895",msg:"[DEBUG] login catch",data:{name:e?.name||'',message:e?.message||'',stack:String(e?.stack||'').slice(0,500)},ts:Date.now()})}).catch(()=>{})
-        // #endregion
         if (errorEl) {
           const mensaje = String(e?.message || '')
           const pareceErrorConexion = e?.name === 'TypeError' || /fetch|network|load failed/i.test(mensaje)
@@ -5870,19 +5866,7 @@ try {
 
     // #region debug-point helper:fe-qr-fecha
     function reportDebugFeQrFecha(hypothesisId, location, msg, data = {}) {
-      fetch('http://127.0.0.1:7777/event', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: 'fe-qr-fecha',
-          runId: 'post-fix',
-          hypothesisId,
-          location,
-          msg: `[DEBUG] ${msg}`,
-          data,
-          ts: Date.now()
-        })
-      }).catch(() => {})
+      return
     }
     // #endregion
 
@@ -6742,7 +6726,8 @@ function construirDetalleInternoProgramacion({ consecutivo, clienteNombre, clien
       cantidad: Number(item?.cantidad || 0),
       descripcion: String(item?.descripcion || '').trim(),
       valor_u: Number(item?.valor_unitario || 0),
-      valor_t: Number(item?.valor_total || 0)
+      valor_t: Number(item?.valor_total || 0),
+      alistado: !!item?.alistado
     })) : [],
     total_final: Number(total || 0)
   };
@@ -6802,8 +6787,32 @@ function habilitarResaltadoDetalleProgramacion() {
   if (!tabla) return;
 
   tabla.querySelectorAll('tr').forEach((fila) => {
-    fila.ondblclick = () => {
-      fila.classList.toggle('detalle-programacion-item-alistado');
+    fila.ondblclick = async () => {
+      const itemIndex = Number(fila.dataset.itemIndex || -1);
+      if (itemIndex < 0 || !detalleProgramacionPedidoIdActual) return;
+
+      const pedido = globalPedidos.find(p => normalizarPedidoProgramadoId(p.id) === normalizarPedidoProgramadoId(detalleProgramacionPedidoIdActual));
+      if (!pedido) return;
+
+      if (!pedido.detalle_interno || typeof pedido.detalle_interno !== 'object') {
+        pedido.detalle_interno = obtenerDetalleInternoPedidoProgramado(pedido);
+      }
+
+      if (!Array.isArray(pedido.detalle_interno.items) || !pedido.detalle_interno.items[itemIndex]) return;
+
+      const nuevoEstado = !pedido.detalle_interno.items[itemIndex].alistado;
+      pedido.detalle_interno.items[itemIndex].alistado = nuevoEstado;
+      fila.classList.toggle('detalle-programacion-item-alistado', nuevoEstado);
+
+      try {
+        await fetch(getApiBase() + '/api/programados', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(pedido)
+        });
+      } catch (error) {
+        console.error('Error guardando estado de alistado:', error);
+      }
     };
   });
 }
@@ -6858,8 +6867,8 @@ function abrirDetallePedidoProgramado(id) {
             </tr>
           </thead>
           <tbody>
-            ${items.map((item) => `
-              <tr>
+            ${items.map((item, index) => `
+              <tr class="${item?.alistado ? 'detalle-programacion-item-alistado' : ''}" data-item-index="${index}">
                 <td>${escaparHtmlProducto(item?.cantidad ?? '')}</td>
                 <td>${escaparHtmlProducto(item?.descripcion || '')}</td>
                 <td>${escaparHtmlProducto(formatearPesos(item?.valor_u || 0))}</td>
@@ -6884,10 +6893,6 @@ function abrirDetallePedidoProgramado(id) {
 function ejecutarAccionClickPedidoDashboard(id, cantidadClicks) {
   if (cantidadClicks >= 3) {
     abrirDetallePedidoProgramado(id);
-    return;
-  }
-  if (cantidadClicks === 2) {
-    abrirPdfPedido(id);
     return;
   }
   selectPedidoDashboard(id);
@@ -7161,7 +7166,7 @@ function renderDashboard() {
       <div class="pedido-status">${p.estado}</div>
     `;
     
-    item.title = '1 clic: seleccionar · 2 clics: ver ruta del PDF · 3 clics: ver detalle interno';
+    item.title = '1 clic: seleccionar · 3 clics: ver detalle interno';
     item.onclick = () => manejarClickPedidoDashboard(p.id);
     
     lista.appendChild(item);
@@ -7496,24 +7501,6 @@ async function guardarProgramacion() {
       cerrarModalProgramacion();
   } catch (e) {
       alert("Error al guardar en el servidor: " + e.message);
-  }
-}
-
-function abrirPdfPedido(id) {
-  const pedido = globalPedidos.find(p => p.id === id);
-  if (!pedido) return;
-
-  const pv = pedido.punto_venta || 'ferreteria'; 
-  const filename = (pedido.consecutivo) ? `${pedido.consecutivo}_${pv}.pdf` : `remision_${pv}.pdf`;
-  const rutaWindows = `G:\\Mi unidad\\FERREDISTRIBUCIONES ALUMAS SAS\\bodega\\${filename}`;
-
-  // Mensaje directo: Ruta y opción de copiar
-  if (confirm(`Ubicación del archivo:\n${rutaWindows}\n\n¿Desea copiar la ruta al portapapeles?`)) {
-      navigator.clipboard.writeText(rutaWindows).then(() => {
-          // Opcional: Feedback breve o silencioso
-      }).catch(err => {
-          prompt("Copie la ruta manualmente:", rutaWindows);
-      });
   }
 }
 
