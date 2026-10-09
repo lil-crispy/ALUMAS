@@ -482,6 +482,7 @@
       display: flex;
       flex-direction: column;
       overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
 
     .dashboard-toggle {
@@ -505,61 +506,6 @@
 
     .dashboard-toggle:hover {
       background: #0097a7;
-    }
-
-    #report-panel {
-      position: fixed;
-      left: 0;
-      top: 0;
-      width: 320px;
-      height: 100%;
-      background: #f8f9fa;
-      border-right: 2px solid #ddd;
-      box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-      padding: 10px;
-      z-index: 1002;
-      display: flex;
-      flex-direction: column;
-      box-sizing: border-box;
-      overflow: visible;
-      transition: transform 0.25s ease, box-shadow 0.25s ease;
-    }
-
-    #report-panel.report-panel-colapsado {
-      transform: translateX(calc(-100% + 28px));
-      box-shadow: none;
-    }
-
-    .dashboard-toggle-reportes {
-      top: calc(50% - 132px);
-      z-index: 1003;
-    }
-
-    body.reportes-suspendidos #report-panel,
-    body.reportes-suspendidos #report-toggle-button {
-      display: none !important;
-    }
-
-    .report-header {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-bottom: 10px;
-      padding-bottom: 8px;
-      border-bottom: 2px solid #00acc1;
-    }
-
-    .report-list {
-      flex: 1;
-      overflow-y: auto;
-      padding-right: 2px;
-    }
-
-    .report-total {
-      margin-top: 10px;
-      padding-top: 10px;
-      border-top: 1px solid #d1d5db;
-      background: #f8f9fa;
     }
 
     /* MODO TRANSPORTADOR: Dashboard pantalla completa y exclusivo */
@@ -600,6 +546,16 @@
      /* Show the specific logout button only in Transportador Mode */
      body.transportador-mode #btn-logout-transportador {
         display: block !important;
+     }
+
+     body.transportador-mode #modal-detalle-programacion {
+       z-index: 8000 !important;
+       padding: 10px;
+     }
+
+     body.transportador-mode #modal-detalle-programacion .modal-content {
+       width: min(820px, calc(100vw - 20px));
+       max-height: calc(100vh - 20px);
      }
 
      .caja-admin-widget {
@@ -999,7 +955,7 @@
       width: 100%;
       height: 100%;
       background: rgba(0,0,0,0.5);
-      z-index: 2000;
+      z-index: 7000;
       justify-content: center;
       align-items: center;
     }
@@ -1187,6 +1143,78 @@
     @media screen and (max-width: 640px) {
       .detalle-programacion-grid {
         grid-template-columns: 1fr;
+      }
+
+      .modal-detalle-programacion .modal-content {
+        width: calc(100vw - 18px);
+        max-height: calc(100vh - 18px);
+        padding: 14px 12px;
+        border-radius: 10px;
+      }
+
+      .detalle-programacion-header {
+        align-items: flex-start;
+      }
+
+      .detalle-programacion-header h3 {
+        font-size: 1.05em;
+      }
+
+      .detalle-programacion-tabla {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+      }
+
+      .detalle-programacion-tabla th,
+      .detalle-programacion-tabla td {
+        font-size: 0.84em;
+        padding: 7px 6px;
+      }
+
+      .detalle-programacion-acciones {
+        flex-direction: column;
+      }
+
+      .detalle-programacion-acciones button {
+        width: 100%;
+      }
+    }
+
+    @media screen and (max-width: 768px) {
+      #dashboard-programacion {
+        width: 100vw;
+        max-width: 100vw;
+        padding: 10px 10px 14px;
+      }
+
+      .dashboard-programacion-body {
+        gap: 10px;
+        padding-bottom: 12px;
+      }
+
+      .nav-controles {
+        position: sticky;
+        top: 0;
+        z-index: 3;
+      }
+
+      #lista-pedidos {
+        flex: 1;
+        overflow-y: auto;
+        padding-bottom: 8px;
+      }
+
+      .dashboard-acciones {
+        position: sticky;
+        bottom: 0;
+        background: #f8f9fa;
+        padding-top: 8px;
+      }
+
+      .pedido-item {
+        border-radius: 10px;
+        padding: 14px 12px;
       }
     }
 
@@ -1817,30 +1845,6 @@
       <button class="btn btn-pdf" onclick="descargarPDF()">Descargar PDF</button>
       <!-- <button class="btn btn-aux" onclick="descargarPDF(true)">⚡ PDF Rápido</button> -->
       <button class="btn btn-programar" onclick="abrirModalProgramacion()">📅 Programar</button>
-    </div>
-    <div id="report-panel" class="report-panel report-panel-colapsado">
-      <button
-        id="report-toggle-button"
-        class="dashboard-toggle dashboard-toggle-reportes"
-        type="button"
-        onclick="toggleReportePanel()"
-        aria-label="Mostrar reportes"
-        title="Mostrar reportes"
-      >&#10095;</button>
-      <div class="report-header">
-        <div style="display:flex; flex-direction:column; width:100%;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-            <span>Reporte Ventas</span>
-            <button class="report-close" onclick="toggleReportePanel()">✖</button>
-          </div>
-          <div class="pv-tabs" style="display:flex; gap:10px; margin-bottom:8px; border-bottom:1px solid #eee;">
-            <button id="tab-ferreteria" class="pv-tab active" onclick="setFiltroPuntoVenta('ferreteria')">Ferretería</button>
-            <button id="tab-bodega" class="pv-tab" onclick="setFiltroPuntoVenta('bodega')">Bodega</button>
-          </div>
-        </div>
-      </div>
-      <div id="reporte-lista" class="report-list"></div>
-      <div id="reporte-suma" class="report-total"></div>
     </div>
   </div>
 
@@ -4302,7 +4306,6 @@ try {
       }
     }
     document.addEventListener('DOMContentLoaded', () => {
-      aplicarSuspensionReportes();
       inicializarAutocompletadoCliente();
       inicializarModalClienteRapido();
       inicializarFacturacionElectronica();
@@ -4318,28 +4321,6 @@ try {
       if (valorPagadoInput) {
           valorPagadoInput.addEventListener('input', calcularCambio);
       }
-      // Filtros del reporte
-      const header = document.querySelector('.report-header');
-      if (header) {
-        const filtrosHTML = `
-          <div class="report-filters">
-            <button class="chip" data-metodo="todos">Todos</button>
-            <button class="chip" data-metodo="efectivo">Efectivo</button>
-            <button class="chip" data-metodo="tarjeta">Tarjeta</button>
-            <button class="chip" data-metodo="qr">QR</button>
-          </div>`;
-        header.insertAdjacentHTML('beforeend', filtrosHTML);
-        header.querySelectorAll('.chip').forEach(btn => {
-          btn.addEventListener('click', () => {
-            filtroMetodo = btn.getAttribute('data-metodo') || 'todos';
-            header.querySelectorAll('.chip').forEach(b => b.classList.toggle('active', b === btn));
-            actualizarUIReporte();
-          });
-        });
-        const def = header.querySelector('.chip[data-metodo="todos"]');
-        if (def) def.classList.add('active');
-      }
-      // setInterval(checkResetReporte, 60000); // Eliminado
       loadDbInfo().then(checkConexion);
       setInterval(checkConexion, 20000);
       const usuarioId = localStorage.getItem('USUARIO_ID')
@@ -4356,11 +4337,6 @@ try {
         document.addEventListener(ev, resetInactividad)
       })
       resetInactividad()
-      if (!REPORTES_SUSPENDIDOS) {
-        cargarReporte()
-        posicionarBotonReporte()
-        window.addEventListener('resize', posicionarBotonReporte)
-      }
     });
     function agregarVentaReporte(metodo) {
       if (REPORTES_SUSPENDIDOS) return
@@ -6703,6 +6679,11 @@ function normalizarFiltroPuntoVentaProgramacion(valor) {
   return normalizado === 'bodega' ? 'bodega' : 'ferreteria';
 }
 
+function esModoTransportadorActivo() {
+  return document.body.classList.contains('transportador-mode') ||
+    String(localStorage.getItem('USUARIO_ROL') || '').trim().toLowerCase() === 'transportador';
+}
+
 function setFiltroPuntoVentaProgramacion(valor) {
   filtroPuntoVentaProgramacion = normalizarFiltroPuntoVentaProgramacion(valor);
   renderDashboard();
@@ -6914,6 +6895,10 @@ function abrirDetallePedidoProgramado(id) {
 }
 
 function ejecutarAccionClickPedidoDashboard(id, cantidadClicks) {
+  if (esModoTransportadorActivo()) {
+    abrirDetallePedidoProgramado(id);
+    return;
+  }
   if (cantidadClicks >= 3) {
     abrirDetallePedidoProgramado(id);
     return;
@@ -6923,6 +6908,11 @@ function ejecutarAccionClickPedidoDashboard(id, cantidadClicks) {
 
 function manejarClickPedidoDashboard(id) {
   const pedidoId = normalizarPedidoProgramadoId(id);
+
+  if (esModoTransportadorActivo()) {
+    ejecutarAccionClickPedidoDashboard(pedidoId, 1);
+    return;
+  }
 
   if (pedidoDashboardClickTimer && pedidoDashboardClickId && pedidoDashboardClickId !== pedidoId) {
     clearTimeout(pedidoDashboardClickTimer);
@@ -7189,7 +7179,9 @@ function renderDashboard() {
       <div class="pedido-status">${p.estado}</div>
     `;
     
-    item.title = '1 clic: seleccionar · 3 clics: ver detalle interno';
+    item.title = esModoTransportadorActivo()
+      ? 'Toque para ver detalle interno'
+      : '1 clic: seleccionar · 3 clics: ver detalle interno';
     item.onclick = () => manejarClickPedidoDashboard(p.id);
     
     lista.appendChild(item);
