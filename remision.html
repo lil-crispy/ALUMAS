@@ -527,6 +527,144 @@
       background: #ef6c00;
     }
 
+    .dashboard-reportes-body {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow: hidden;
+    }
+
+    .dashboard-reportes-fecha {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 2px;
+      background: #fff3e0;
+      border: 1px solid #ffcc80;
+      border-radius: 8px;
+      padding: 8px 10px;
+      color: #8a4b08;
+      font-size: 0.9em;
+      font-weight: bold;
+    }
+
+    .dashboard-reportes-refresh {
+      border: none;
+      background: #fb8c00;
+      color: #fff;
+      border-radius: 6px;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .dashboard-reportes-refresh:hover {
+      background: #ef6c00;
+    }
+
+    .reportes-filtros-metodo {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .reportes-filtro-btn {
+      border: 1px solid #d7d7d7;
+      background: #fff;
+      color: #555;
+      border-radius: 7px;
+      padding: 7px 6px;
+      cursor: pointer;
+      font-size: 0.86em;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+
+    .reportes-filtro-btn.active {
+      background: #fb8c00;
+      color: #fff;
+      border-color: #fb8c00;
+      box-shadow: 0 4px 10px rgba(251, 140, 0, 0.22);
+    }
+
+    .reporte-suma {
+      background: #ffffff;
+      border: 1px solid #ececec;
+      border-radius: 10px;
+      padding: 10px;
+      display: grid;
+      gap: 6px;
+      color: #2f2f2f;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.9);
+    }
+
+    .reporte-suma div {
+      font-size: 0.9em;
+    }
+
+    .reporte-lista {
+      flex: 1;
+      overflow-y: auto;
+      background: #fff;
+      border: 1px solid #ececec;
+      border-radius: 10px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .report-item {
+      border: 1px solid #f0d7bd;
+      border-radius: 10px;
+      padding: 8px 9px;
+      background: linear-gradient(180deg, #fffaf4 0%, #fff 100%);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .report-item-resumen {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-width: 0;
+    }
+
+    .report-item-titulo {
+      font-size: 0.92em;
+      font-weight: bold;
+      color: #303030;
+      word-break: break-word;
+    }
+
+    .report-item-meta {
+      font-size: 0.8em;
+      color: #7a7a7a;
+    }
+
+    .report-del {
+      border: none;
+      background: #d32f2f;
+      color: #fff;
+      border-radius: 6px;
+      padding: 6px 8px;
+      cursor: pointer;
+      font-size: 0.8em;
+      font-weight: bold;
+      flex-shrink: 0;
+    }
+
+    .report-empty {
+      text-align: center;
+      color: #8a8a8a;
+      padding: 18px 10px;
+      font-size: 0.92em;
+    }
+
     /* MODO TRANSPORTADOR: Dashboard pantalla completa y exclusivo */
      body.transportador-mode .panel-dashboard-programacion {
        width: 100% !important;
@@ -1217,6 +1355,10 @@
         padding-bottom: 12px;
       }
 
+      .dashboard-reportes-body {
+        padding-bottom: 12px;
+      }
+
       .nav-controles {
         position: sticky;
         top: 0;
@@ -1234,6 +1376,10 @@
         bottom: 0;
         background: #f8f9fa;
         padding-top: 8px;
+      }
+
+      .reportes-filtros-metodo {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
       .pedido-item {
@@ -4068,7 +4214,7 @@ try {
         cargarCajaAdmin()
       }, 700)
     }
-    const REPORTES_SUSPENDIDOS = true;
+    const REPORTES_SUSPENDIDOS = false;
     let reporteVentas = [];
     let filtroMetodo = 'todos';
     // function checkResetReporte() { ... } eliminada
@@ -4140,6 +4286,8 @@ try {
       } catch (e) {
         console.error('Error cargando reporte BD', e)
       }
+      reporteVentas = [];
+      actualizarUIReporte();
     }
     function mostrarLogin() {
       const overlay = document.getElementById('login-overlay')
@@ -4318,6 +4466,7 @@ try {
           }
           ocultarLogin()
           actualizarCajaAdminVisibilidad()
+          cargarReporte()
         }, 900)
       } catch (e) {
         if (errorEl) {
@@ -4356,6 +4505,7 @@ try {
       actualizarUserBar()
       aplicarRestriccionesUsuarioRemision(true)
       actualizarCajaAdminVisibilidad()
+      cargarReporte()
       solicitarConsecutivo().catch(() => {})
       ;['click','keydown','mousemove','touchstart'].forEach(ev => {
         document.addEventListener(ev, resetInactividad)
@@ -4393,11 +4543,30 @@ try {
       actualizarUIReporte();
     }
 
+    function setFiltroMetodoReporte(valor) {
+      if (REPORTES_SUSPENDIDOS) return;
+      filtroMetodo = ['efectivo', 'tarjeta', 'qr'].includes(valor) ? valor : 'todos';
+      document.querySelectorAll('[data-report-method]').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.reportMethod === filtroMetodo);
+      });
+      actualizarUIReporte();
+    }
+
     function actualizarUIReporte() {
       if (REPORTES_SUSPENDIDOS) return;
       const cont = document.getElementById('reporte-lista');
       const sumEl = document.getElementById('reporte-suma');
+      const fechaEl = document.getElementById('reporte-fecha-actual');
       if (!cont || !sumEl) return;
+
+      const hoyTexto = new Date().toLocaleDateString('es-CO', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short'
+      });
+      if (fechaEl) {
+        fechaEl.textContent = `Ventas de hoy (${hoyTexto})`;
+      }
       
       // Filtramos por punto de venta Y por método de pago
       const visibles = reporteVentas.filter(it => {
@@ -4406,23 +4575,33 @@ try {
         return mismoPV && mismoMetodo;
       });
 
-      cont.innerHTML = visibles.map((it, i) => `
-        <div class="report-item">
-          <span>#${it.id || '?'} — ${formatearPesos(it.v)} — ${(it.m || '').toUpperCase()}</span>
-          <button class="report-del" onclick="eliminarVentaBD(${it.id})">Eliminar</button>
-        </div>
-      `).join('');
-      
       const sumaTotal = visibles.reduce((acc, it) => acc + (parseInt(it.v) || 0), 0);
       const sumaEf = visibles.filter(it => it.m === 'efectivo').reduce((acc, it) => acc + it.v, 0);
       const sumaTa = visibles.filter(it => it.m === 'tarjeta').reduce((acc, it) => acc + it.v, 0);
       const sumaQr = visibles.filter(it => it.m === 'qr').reduce((acc, it) => acc + it.v, 0);
+      const puedeEliminar = esAdminRemision();
       sumEl.innerHTML = `
+        <div><strong>Registros:</strong> ${visibles.length}</div>
         <div><strong>Total (${filtroPuntoVenta.toUpperCase()}):</strong> ${formatearPesos(sumaTotal)}</div>
         <div><strong>Efectivo:</strong> ${formatearPesos(sumaEf)}</div>
         <div><strong>Tarjeta:</strong> ${formatearPesos(sumaTa)}</div>
         <div><strong>QR:</strong> ${formatearPesos(sumaQr)}</div>
       `;
+
+      if (!visibles.length) {
+        cont.innerHTML = '<div class="report-empty">No hay ventas registradas para este filtro.</div>';
+        return;
+      }
+
+      cont.innerHTML = visibles.map((it) => `
+        <div class="report-item">
+          <div class="report-item-resumen">
+            <div class="report-item-titulo">#${it.id || '?'} - ${formatearPesos(it.v)}</div>
+            <div class="report-item-meta">${(it.m || '').toUpperCase()} · ${(it.pv || 'ferreteria').toUpperCase()}</div>
+          </div>
+          ${puedeEliminar ? `<button class="report-del" onclick="eliminarVentaBD(${it.id})">Eliminar</button>` : ''}
+        </div>
+      `).join('');
     }
     function toggleReportePanel() {
       if (REPORTES_SUSPENDIDOS) return;
@@ -6443,42 +6622,39 @@ document.addEventListener('DOMContentLoaded', () => {
       class="dashboard-toggle dashboard-toggle-secundario"
       type="button"
       onclick="toggleDashboardProgramacion('secundario')"
-      aria-label="Ocultar tablero"
-      title="Ocultar tablero"
+      aria-label="Ocultar reportes"
+      title="Ocultar reportes"
     >&#10094;</button>
-    <div class="dashboard-programacion-body">
+    <div class="dashboard-reportes-body">
       <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #00acc1; margin-bottom: 10px; padding-bottom: 5px;">
-          <h3 style="margin:0; border:none; padding:0;">Pedidos Programados</h3>
+          <h3 style="margin:0; border:none; padding:0;">Reportes del Día</h3>
           <button class="btn-logout-transportador" onclick="logoutUsuario()" style="display:none; background:#d32f2f; color:white; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; font-weight:bold; font-size: 0.9em;">Cerrar Sesión</button>
       </div>
 
-      <div class="nav-controles" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; background:#f1f1f1; padding:5px; border-radius:5px;">
-          <button onclick="cambiarDia(-1)" style="border:none; background:transparent; font-weight:bold; cursor:pointer; font-size:1.4em; color:#00acc1;">&#9664;</button>
-          <div style="text-align:center;">
-              <span class="current-date-display" style="display:block; font-size:0.85em; font-weight:bold; color:#555; margin-bottom:2px;">HOY</span>
-              <input type="number" class="day-input-programacion" min="1" max="31" placeholder="Día"
-                     style="width:60px; text-align:center; border:1px solid #ccc; border-radius:4px; padding:4px;"
-                     onchange="irADia(this.value)">
-          </div>
-          <button onclick="cambiarDia(1)" style="border:none; background:transparent; font-weight:bold; cursor:pointer; font-size:1.4em; color:#00acc1;">&#9654;</button>
+      <div class="dashboard-reportes-fecha">
+          <span id="reporte-fecha-actual">Ventas de hoy</span>
+          <button type="button" class="dashboard-reportes-refresh" onclick="cargarReporte()">Actualizar</button>
       </div>
 
       <div class="programacion-selection-info dashboard-selection-info" data-has-selection="false">
         <div class="programacion-filtros-wrap">
           <div class="programacion-filtros-label">Punto de venta</div>
           <div class="programacion-filtros">
-            <button type="button" class="programacion-filtro-btn active" data-programacion-filtro="ferreteria" onclick="setFiltroPuntoVentaProgramacion('ferreteria')">Ferretería</button>
-            <button type="button" class="programacion-filtro-btn" data-programacion-filtro="bodega" onclick="setFiltroPuntoVentaProgramacion('bodega')">Bodega</button>
+            <button type="button" id="tab-ferreteria" class="programacion-filtro-btn active" onclick="setFiltroPuntoVenta('ferreteria')">Ferretería</button>
+            <button type="button" id="tab-bodega" class="programacion-filtro-btn" onclick="setFiltroPuntoVenta('bodega')">Bodega</button>
           </div>
         </div>
       </div>
 
-      <div class="lista-pedidos-programacion"></div>
-      <div class="dashboard-acciones">
-          <button class="btn-despachar-pedidos btn-despachado" onclick="despacharPedido()">DESPACHADO</button>
-          <button class="btn-reprogramar-pedido btn-reprogramar" onclick="iniciarReprogramacion()">REPROGRAMAR</button>
-          <button class="btn-cancelar-pedido-dashboard btn-cancelar-pedido" onclick="cancelarPedido()">CANCELAR</button>
+      <div class="reportes-filtros-metodo">
+        <button type="button" class="reportes-filtro-btn active" data-report-method="todos" onclick="setFiltroMetodoReporte('todos')">Todos</button>
+        <button type="button" class="reportes-filtro-btn" data-report-method="efectivo" onclick="setFiltroMetodoReporte('efectivo')">Efectivo</button>
+        <button type="button" class="reportes-filtro-btn" data-report-method="tarjeta" onclick="setFiltroMetodoReporte('tarjeta')">Tarjeta</button>
+        <button type="button" class="reportes-filtro-btn" data-report-method="qr" onclick="setFiltroMetodoReporte('qr')">QR</button>
       </div>
+
+      <div id="reporte-suma" class="reporte-suma"></div>
+      <div id="reporte-lista" class="reporte-lista"></div>
     </div>
   </div>
 
@@ -7071,8 +7247,9 @@ function toggleDashboardProgramacion(tipo = 'primario') {
   dashboardProgramacionColapsado[tipo] = !dashboardProgramacionColapsado[tipo];
   dashboard.classList.toggle('dashboard-colapsado', dashboardProgramacionColapsado[tipo]);
   toggle.innerHTML = dashboardProgramacionColapsado[tipo] ? '&#10095;' : '&#10094;';
-  toggle.setAttribute('aria-label', dashboardProgramacionColapsado[tipo] ? 'Mostrar tablero' : 'Ocultar tablero');
-  toggle.setAttribute('title', dashboardProgramacionColapsado[tipo] ? 'Mostrar tablero' : 'Ocultar tablero');
+  const etiquetaPanel = tipo === 'secundario' ? 'reportes' : 'tablero';
+  toggle.setAttribute('aria-label', dashboardProgramacionColapsado[tipo] ? `Mostrar ${etiquetaPanel}` : `Ocultar ${etiquetaPanel}`);
+  toggle.setAttribute('title', dashboardProgramacionColapsado[tipo] ? `Mostrar ${etiquetaPanel}` : `Ocultar ${etiquetaPanel}`);
 }
 
 function obtenerPedidoSeleccionadoUnico(mensajeBase) {
