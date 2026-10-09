@@ -282,6 +282,7 @@
 
       /* Ocultar TODO lo que no sea la factura */
       #dashboard-programacion,
+      #dashboard-programacion-secundario,
       .modal-programacion,
       .boton-imprimir,
       .acciones-tabla,
@@ -453,7 +454,7 @@
     }
 
     /* --- ESTILOS DASHBOARD PROGRAMACIÓN --- */
-    #dashboard-programacion {
+    .panel-dashboard-programacion {
       position: fixed;
       left: 0;
       top: 0;
@@ -472,7 +473,15 @@
       transition: transform 0.25s ease, box-shadow 0.25s ease;
     }
 
-    #dashboard-programacion.dashboard-colapsado {
+    #dashboard-programacion {
+      z-index: 1000;
+    }
+
+    #dashboard-programacion-secundario {
+      z-index: 999;
+    }
+
+    .panel-dashboard-programacion.dashboard-colapsado {
       transform: translateX(calc(-100% + 28px));
       box-shadow: none;
     }
@@ -508,8 +517,18 @@
       background: #0097a7;
     }
 
+    .dashboard-toggle-secundario {
+      background: #fb8c00;
+      top: calc(50% - 86px);
+      z-index: 1002;
+    }
+
+    .dashboard-toggle-secundario:hover {
+      background: #ef6c00;
+    }
+
     /* MODO TRANSPORTADOR: Dashboard pantalla completa y exclusivo */
-     body.transportador-mode #dashboard-programacion {
+     body.transportador-mode .panel-dashboard-programacion {
        width: 100% !important;
        height: 100% !important;
        z-index: 5000;
@@ -518,11 +537,15 @@
        top: 0;
      }
 
-     body.transportador-mode #dashboard-programacion.dashboard-colapsado {
+     body.transportador-mode #dashboard-programacion-secundario {
+       display: none !important;
+     }
+
+     body.transportador-mode .panel-dashboard-programacion.dashboard-colapsado {
        transform: none !important;
      }
 
-     body.transportador-mode .dashboard-toggle {
+     body.transportador-mode .panel-dashboard-programacion .dashboard-toggle {
        display: none !important;
      }
 
@@ -544,7 +567,7 @@
      }
 
      /* Show the specific logout button only in Transportador Mode */
-     body.transportador-mode #btn-logout-transportador {
+     body.transportador-mode .btn-logout-transportador {
         display: block !important;
      }
 
@@ -763,7 +786,7 @@
        Veamos user-bar styles.
     */
     
-    #dashboard-programacion h3 {
+    .panel-dashboard-programacion h3 {
       font-family: 'Bauhaus', sans-serif;
       font-size: 1.2em;
       text-align: center;
@@ -1182,7 +1205,8 @@
     }
 
     @media screen and (max-width: 768px) {
-      #dashboard-programacion {
+      #dashboard-programacion,
+      #dashboard-programacion-secundario {
         width: 100vw;
         max-width: 100vw;
         padding: 10px 10px 14px;
@@ -1199,7 +1223,7 @@
         z-index: 3;
       }
 
-      #lista-pedidos {
+      .lista-pedidos-programacion {
         flex: 1;
         overflow-y: auto;
         padding-bottom: 8px;
@@ -6413,47 +6437,92 @@ document.addEventListener('DOMContentLoaded', () => {
 
   </script>
     <!-- Dashboard Programación -->
-  <div id="dashboard-programacion">
+  <div id="dashboard-programacion-secundario" class="panel-dashboard-programacion">
     <button
-      id="dashboard-toggle-programacion"
-      class="dashboard-toggle"
+      id="dashboard-toggle-programacion-secundario"
+      class="dashboard-toggle dashboard-toggle-secundario"
       type="button"
-      onclick="toggleDashboardProgramacion()"
+      onclick="toggleDashboardProgramacion('secundario')"
       aria-label="Ocultar tablero"
       title="Ocultar tablero"
     >&#10094;</button>
     <div class="dashboard-programacion-body">
       <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #00acc1; margin-bottom: 10px; padding-bottom: 5px;">
           <h3 style="margin:0; border:none; padding:0;">Pedidos Programados</h3>
-          <button id="btn-logout-transportador" onclick="logoutUsuario()" style="display:none; background:#d32f2f; color:white; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; font-weight:bold; font-size: 0.9em;">Cerrar Sesión</button>
+          <button class="btn-logout-transportador" onclick="logoutUsuario()" style="display:none; background:#d32f2f; color:white; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; font-weight:bold; font-size: 0.9em;">Cerrar Sesión</button>
       </div>
 
       <div class="nav-controles" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; background:#f1f1f1; padding:5px; border-radius:5px;">
           <button onclick="cambiarDia(-1)" style="border:none; background:transparent; font-weight:bold; cursor:pointer; font-size:1.4em; color:#00acc1;">&#9664;</button>
           <div style="text-align:center;">
-              <span id="current-date-display" style="display:block; font-size:0.85em; font-weight:bold; color:#555; margin-bottom:2px;">HOY</span>
-              <input type="number" id="day-input" min="1" max="31" placeholder="Día"
+              <span class="current-date-display" style="display:block; font-size:0.85em; font-weight:bold; color:#555; margin-bottom:2px;">HOY</span>
+              <input type="number" class="day-input-programacion" min="1" max="31" placeholder="Día"
                      style="width:60px; text-align:center; border:1px solid #ccc; border-radius:4px; padding:4px;"
                      onchange="irADia(this.value)">
           </div>
           <button onclick="cambiarDia(1)" style="border:none; background:transparent; font-weight:bold; cursor:pointer; font-size:1.4em; color:#00acc1;">&#9654;</button>
       </div>
 
-      <div id="programacion-selection-info" class="dashboard-selection-info" data-has-selection="false">
+      <div class="programacion-selection-info dashboard-selection-info" data-has-selection="false">
         <div class="programacion-filtros-wrap">
           <div class="programacion-filtros-label">Punto de venta</div>
           <div class="programacion-filtros">
-            <button type="button" id="filtro-programacion-ferreteria" class="programacion-filtro-btn active" onclick="setFiltroPuntoVentaProgramacion('ferreteria')">Ferretería</button>
-            <button type="button" id="filtro-programacion-bodega" class="programacion-filtro-btn" onclick="setFiltroPuntoVentaProgramacion('bodega')">Bodega</button>
+            <button type="button" class="programacion-filtro-btn active" data-programacion-filtro="ferreteria" onclick="setFiltroPuntoVentaProgramacion('ferreteria')">Ferretería</button>
+            <button type="button" class="programacion-filtro-btn" data-programacion-filtro="bodega" onclick="setFiltroPuntoVentaProgramacion('bodega')">Bodega</button>
           </div>
         </div>
       </div>
 
-      <div id="lista-pedidos"></div>
+      <div class="lista-pedidos-programacion"></div>
       <div class="dashboard-acciones">
-          <button id="btn-despachar-pedidos" class="btn-despachado" onclick="despacharPedido()">DESPACHADO</button>
-          <button id="btn-reprogramar-pedido" class="btn-reprogramar" onclick="iniciarReprogramacion()">REPROGRAMAR</button>
-          <button id="btn-cancelar-pedido-dashboard" class="btn-cancelar-pedido" onclick="cancelarPedido()">CANCELAR</button>
+          <button class="btn-despachar-pedidos btn-despachado" onclick="despacharPedido()">DESPACHADO</button>
+          <button class="btn-reprogramar-pedido btn-reprogramar" onclick="iniciarReprogramacion()">REPROGRAMAR</button>
+          <button class="btn-cancelar-pedido-dashboard btn-cancelar-pedido" onclick="cancelarPedido()">CANCELAR</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="dashboard-programacion" class="panel-dashboard-programacion">
+    <button
+      id="dashboard-toggle-programacion"
+      class="dashboard-toggle"
+      type="button"
+      onclick="toggleDashboardProgramacion('primario')"
+      aria-label="Ocultar tablero"
+      title="Ocultar tablero"
+    >&#10094;</button>
+    <div class="dashboard-programacion-body">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #00acc1; margin-bottom: 10px; padding-bottom: 5px;">
+          <h3 style="margin:0; border:none; padding:0;">Pedidos Programados</h3>
+          <button class="btn-logout-transportador" onclick="logoutUsuario()" style="display:none; background:#d32f2f; color:white; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; font-weight:bold; font-size: 0.9em;">Cerrar Sesión</button>
+      </div>
+
+      <div class="nav-controles" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; background:#f1f1f1; padding:5px; border-radius:5px;">
+          <button onclick="cambiarDia(-1)" style="border:none; background:transparent; font-weight:bold; cursor:pointer; font-size:1.4em; color:#00acc1;">&#9664;</button>
+          <div style="text-align:center;">
+              <span class="current-date-display" style="display:block; font-size:0.85em; font-weight:bold; color:#555; margin-bottom:2px;">HOY</span>
+              <input type="number" class="day-input-programacion" min="1" max="31" placeholder="Día"
+                     style="width:60px; text-align:center; border:1px solid #ccc; border-radius:4px; padding:4px;"
+                     onchange="irADia(this.value)">
+          </div>
+          <button onclick="cambiarDia(1)" style="border:none; background:transparent; font-weight:bold; cursor:pointer; font-size:1.4em; color:#00acc1;">&#9654;</button>
+      </div>
+
+      <div class="programacion-selection-info dashboard-selection-info" data-has-selection="false">
+        <div class="programacion-filtros-wrap">
+          <div class="programacion-filtros-label">Punto de venta</div>
+          <div class="programacion-filtros">
+            <button type="button" class="programacion-filtro-btn active" data-programacion-filtro="ferreteria" onclick="setFiltroPuntoVentaProgramacion('ferreteria')">Ferretería</button>
+            <button type="button" class="programacion-filtro-btn" data-programacion-filtro="bodega" onclick="setFiltroPuntoVentaProgramacion('bodega')">Bodega</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="lista-pedidos-programacion"></div>
+      <div class="dashboard-acciones">
+          <button class="btn-despachar-pedidos btn-despachado" onclick="despacharPedido()">DESPACHADO</button>
+          <button class="btn-reprogramar-pedido btn-reprogramar" onclick="iniciarReprogramacion()">REPROGRAMAR</button>
+          <button class="btn-cancelar-pedido-dashboard btn-cancelar-pedido" onclick="cancelarPedido()">CANCELAR</button>
       </div>
     </div>
   </div>
@@ -6662,7 +6731,10 @@ let globalPedidos = [];
 let modoReprogramacion = false;
 let currentViewDate = new Date();
 let pedidosSeleccionadosIds = new Set();
-let dashboardProgramacionColapsado = false;
+const dashboardProgramacionColapsado = {
+  primario: false,
+  secundario: false
+};
 let filtroPuntoVentaProgramacion = 'ferreteria';
 let detalleProgramacionPedidoIdActual = null;
 let direccionDetalleProgramacionActual = '';
@@ -6682,6 +6754,14 @@ function normalizarFiltroPuntoVentaProgramacion(valor) {
 function esModoTransportadorActivo() {
   return document.body.classList.contains('transportador-mode') ||
     String(localStorage.getItem('USUARIO_ROL') || '').trim().toLowerCase() === 'transportador';
+}
+
+function obtenerDashboardProgramacion(tipo = 'primario') {
+  const esSecundario = tipo === 'secundario';
+  return {
+    dashboard: document.getElementById(esSecundario ? 'dashboard-programacion-secundario' : 'dashboard-programacion'),
+    toggle: document.getElementById(esSecundario ? 'dashboard-toggle-programacion-secundario' : 'dashboard-toggle-programacion')
+  };
 }
 
 function setFiltroPuntoVentaProgramacion(valor) {
@@ -6937,28 +7017,32 @@ function manejarClickPedidoDashboard(id) {
 }
 
 function actualizarControlesSeleccionProgramacion() {
-  const info = document.getElementById('programacion-selection-info');
-  const btnDespachar = document.getElementById('btn-despachar-pedidos');
-  const btnReprogramar = document.getElementById('btn-reprogramar-pedido');
-  const btnCancelar = document.getElementById('btn-cancelar-pedido-dashboard');
-  const btnFerreteria = document.getElementById('filtro-programacion-ferreteria');
-  const btnBodega = document.getElementById('filtro-programacion-bodega');
   const total = pedidosSeleccionadosIds.size;
 
-  if (info) {
+  document.querySelectorAll('.programacion-selection-info').forEach((info) => {
     info.dataset.hasSelection = total === 0 ? 'false' : 'true';
-  }
+  });
 
-  if (btnFerreteria) btnFerreteria.classList.toggle('active', filtroPuntoVentaProgramacion === 'ferreteria');
-  if (btnBodega) btnBodega.classList.toggle('active', filtroPuntoVentaProgramacion === 'bodega');
+  document.querySelectorAll('[data-programacion-filtro="ferreteria"]').forEach((btn) => {
+    btn.classList.toggle('active', filtroPuntoVentaProgramacion === 'ferreteria');
+  });
 
-  if (btnDespachar) {
-    btnDespachar.disabled = total === 0;
-    btnDespachar.textContent = total > 1 ? `DESPACHADO (${total})` : 'DESPACHADO';
-  }
+  document.querySelectorAll('[data-programacion-filtro="bodega"]').forEach((btn) => {
+    btn.classList.toggle('active', filtroPuntoVentaProgramacion === 'bodega');
+  });
 
-  if (btnReprogramar) btnReprogramar.disabled = total !== 1;
-  if (btnCancelar) btnCancelar.disabled = total !== 1;
+  document.querySelectorAll('.btn-despachar-pedidos').forEach((btn) => {
+    btn.disabled = total === 0;
+    btn.textContent = total > 1 ? `DESPACHADO (${total})` : 'DESPACHADO';
+  });
+
+  document.querySelectorAll('.btn-reprogramar-pedido').forEach((btn) => {
+    btn.disabled = total !== 1;
+  });
+
+  document.querySelectorAll('.btn-cancelar-pedido-dashboard').forEach((btn) => {
+    btn.disabled = total !== 1;
+  });
 }
 
 function sincronizarSeleccionProgramacion() {
@@ -6980,16 +7064,15 @@ function sincronizarSeleccionProgramacion() {
   actualizarControlesSeleccionProgramacion();
 }
 
-function toggleDashboardProgramacion() {
-  const dashboard = document.getElementById('dashboard-programacion');
-  const toggle = document.getElementById('dashboard-toggle-programacion');
+function toggleDashboardProgramacion(tipo = 'primario') {
+  const { dashboard, toggle } = obtenerDashboardProgramacion(tipo);
   if (!dashboard || !toggle || document.body.classList.contains('transportador-mode')) return;
 
-  dashboardProgramacionColapsado = !dashboardProgramacionColapsado;
-  dashboard.classList.toggle('dashboard-colapsado', dashboardProgramacionColapsado);
-  toggle.innerHTML = dashboardProgramacionColapsado ? '&#10095;' : '&#10094;';
-  toggle.setAttribute('aria-label', dashboardProgramacionColapsado ? 'Mostrar tablero' : 'Ocultar tablero');
-  toggle.setAttribute('title', dashboardProgramacionColapsado ? 'Mostrar tablero' : 'Ocultar tablero');
+  dashboardProgramacionColapsado[tipo] = !dashboardProgramacionColapsado[tipo];
+  dashboard.classList.toggle('dashboard-colapsado', dashboardProgramacionColapsado[tipo]);
+  toggle.innerHTML = dashboardProgramacionColapsado[tipo] ? '&#10095;' : '&#10094;';
+  toggle.setAttribute('aria-label', dashboardProgramacionColapsado[tipo] ? 'Mostrar tablero' : 'Ocultar tablero');
+  toggle.setAttribute('title', dashboardProgramacionColapsado[tipo] ? 'Mostrar tablero' : 'Ocultar tablero');
 }
 
 function obtenerPedidoSeleccionadoUnico(mensajeBase) {
@@ -7094,15 +7177,51 @@ async function reprogramarVencidos(pedidos) {
     }
 }
 
+function crearPedidoItemDashboard(p) {
+  const item = document.createElement('div');
+  item.className = 'pedido-item';
+  const pedidoId = normalizarPedidoProgramadoId(p.id);
+  if (pedidosSeleccionadosIds.has(pedidoId)) item.classList.add('selected');
+  if (pedidoSeleccionadoId && normalizarPedidoProgramadoId(pedidoSeleccionadoId) === pedidoId) {
+    item.classList.add('selected-primary');
+  }
+
+  const dateObj = new Date(p.fecha + 'T' + p.hora);
+  const fechaStr = dateObj.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' });
+
+  let horaShow = p.hora;
+  try {
+      const [hh] = p.hora.split(':');
+      const hVal = parseInt(hh);
+      const ampm = hVal >= 12 ? 'PM' : 'AM';
+      const h12 = hVal % 12 || 12;
+      horaShow = `${h12} ${ampm}`;
+  } catch(e) {}
+
+  item.innerHTML = `
+    <div class="pedido-check">✓</div>
+    <div class="pedido-info"><strong>${p.consecutivo ? 'REM ' + p.consecutivo : 'ID: ' + p.id.substr(0,4)}</strong></div>
+    <div class="pedido-info">${p.cliente_nombre || 'Cliente General'}</div>
+    <div class="pedido-info" style="color:#555;">📅 ${fechaStr} ⏰ ${horaShow}</div>
+    <div class="pedido-status">${p.estado}</div>
+  `;
+
+  item.title = esModoTransportadorActivo()
+    ? 'Toque para ver detalle interno'
+    : '1 clic: seleccionar · 3 clics: ver detalle interno';
+  item.onclick = () => manejarClickPedidoDashboard(p.id);
+
+  return item;
+}
+
 function renderDashboard() {
-  const lista = document.getElementById('lista-pedidos');
-  if (!lista) return;
+  const listas = Array.from(document.querySelectorAll('.lista-pedidos-programacion'));
+  if (!listas.length) return;
   sincronizarSeleccionProgramacion();
   
   // Actualizar display de fecha
   const opcionesFecha = { weekday: 'short', day: 'numeric', month: 'short' };
   const fechaTexto = currentViewDate.toLocaleDateString('es-CO', opcionesFecha);
-  const elDateDisplay = document.getElementById('current-date-display');
   
   // Verificar si es HOY para mostrar "HOY"
   const hoy = new Date();
@@ -7110,9 +7229,12 @@ function renderDashboard() {
                  hoy.getMonth() === currentViewDate.getMonth() && 
                  hoy.getFullYear() === currentViewDate.getFullYear());
                  
-  if (elDateDisplay) {
-      elDateDisplay.textContent = esHoy ? `HOY (${fechaTexto})` : fechaTexto;
-  }
+  document.querySelectorAll('.current-date-display').forEach((elDateDisplay) => {
+    elDateDisplay.textContent = esHoy ? `HOY (${fechaTexto})` : fechaTexto;
+  });
+  document.querySelectorAll('.day-input-programacion').forEach((inputDia) => {
+    inputDia.value = currentViewDate.getDate();
+  });
 
   // Filtro por fecha seleccionada (YYYY-MM-DD)
   const y = currentViewDate.getFullYear();
@@ -7141,50 +7263,21 @@ function renderDashboard() {
   }
   actualizarControlesSeleccionProgramacion();
 
-  lista.innerHTML = '';
+  listas.forEach((lista) => {
+    lista.innerHTML = '';
+  });
   
   if (pedidosFiltrados.length === 0) {
-    lista.innerHTML = '<div style="text-align:center; color:#777; padding:10px;">No hay pedidos para esta fecha</div>';
+    listas.forEach((lista) => {
+      lista.innerHTML = '<div style="text-align:center; color:#777; padding:10px;">No hay pedidos para esta fecha</div>';
+    });
     return;
   }
 
   pedidosFiltrados.forEach(p => {
-    const item = document.createElement('div');
-    item.className = 'pedido-item';
-    const pedidoId = normalizarPedidoProgramadoId(p.id);
-    if (pedidosSeleccionadosIds.has(pedidoId)) item.classList.add('selected');
-    if (pedidoSeleccionadoId && normalizarPedidoProgramadoId(pedidoSeleccionadoId) === pedidoId) {
-      item.classList.add('selected-primary');
-    }
-    
-    // Formato fecha amigable
-    const dateObj = new Date(p.fecha + 'T' + p.hora);
-    const fechaStr = dateObj.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' });
-    
-    // Formato hora AM/PM simple
-    let horaShow = p.hora;
-    try {
-        const [hh, mm] = p.hora.split(':');
-        const hVal = parseInt(hh);
-        const ampm = hVal >= 12 ? 'PM' : 'AM';
-        const h12 = hVal % 12 || 12;
-        horaShow = `${h12} ${ampm}`;
-    } catch(e) {}
-
-    item.innerHTML = `
-      <div class="pedido-check">✓</div>
-      <div class="pedido-info"><strong>${p.consecutivo ? 'REM ' + p.consecutivo : 'ID: ' + p.id.substr(0,4)}</strong></div>
-      <div class="pedido-info">${p.cliente_nombre || 'Cliente General'}</div>
-      <div class="pedido-info" style="color:#555;">📅 ${fechaStr} ⏰ ${horaShow}</div>
-      <div class="pedido-status">${p.estado}</div>
-    `;
-    
-    item.title = esModoTransportadorActivo()
-      ? 'Toque para ver detalle interno'
-      : '1 clic: seleccionar · 3 clics: ver detalle interno';
-    item.onclick = () => manejarClickPedidoDashboard(p.id);
-    
-    lista.appendChild(item);
+    listas.forEach((lista) => {
+      lista.appendChild(crearPedidoItemDashboard(p));
+    });
   });
 }
 
