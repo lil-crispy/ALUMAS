@@ -49,6 +49,8 @@ async function ensureSchema() {
       id VARCHAR(50) PRIMARY KEY,
       consecutivo VARCHAR(50),
       cliente_nombre VARCHAR(255),
+      programado_por_usuario_id INT NULL,
+      programado_por_usuario_nombre VARCHAR(255) NULL,
       cliente_data TEXT,
       items TEXT,
       detalle_interno LONGTEXT,
@@ -69,6 +71,7 @@ async function ensureSchema() {
       usuario_id INT NOT NULL,
       valor INT NOT NULL,
       justificacion VARCHAR(255) NOT NULL,
+      punto_venta VARCHAR(50) NOT NULL DEFAULT 'ferreteria',
       eliminado TINYINT(1) NOT NULL DEFAULT 0,
       eliminado_por INT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -295,11 +298,34 @@ async function ensureSchema() {
     {
       name: 'detalle_interno',
       sql: 'ALTER TABLE pedidos_programados ADD COLUMN detalle_interno LONGTEXT NULL DEFAULT NULL AFTER items'
+    },
+    {
+      name: 'programado_por_usuario_id',
+      sql: 'ALTER TABLE pedidos_programados ADD COLUMN programado_por_usuario_id INT NULL DEFAULT NULL AFTER cliente_nombre'
+    },
+    {
+      name: 'programado_por_usuario_nombre',
+      sql: 'ALTER TABLE pedidos_programados ADD COLUMN programado_por_usuario_nombre VARCHAR(255) NULL DEFAULT NULL AFTER programado_por_usuario_id'
     }
   ]
 
   for (const column of missingProgramadosColumns) {
     if (!programadosColumnSet.has(column.name.toLowerCase())) {
+      await pool.query(column.sql)
+    }
+  }
+
+  const cajaEgresosColumns = await getTableColumns('caja_egresos')
+  const cajaEgresosColumnSet = new Set(cajaEgresosColumns.map((column) => String(column || '').toLowerCase()))
+  const missingCajaEgresosColumns = [
+    {
+      name: 'punto_venta',
+      sql: "ALTER TABLE caja_egresos ADD COLUMN punto_venta VARCHAR(50) NOT NULL DEFAULT 'ferreteria' AFTER justificacion"
+    }
+  ]
+
+  for (const column of missingCajaEgresosColumns) {
+    if (!cajaEgresosColumnSet.has(column.name.toLowerCase())) {
       await pool.query(column.sql)
     }
   }
@@ -6150,7 +6176,12 @@ async function safeAppendUserAccessLog(entry) {
   }
 }
 
-async function getCajaResumen(conn = pool) {
+function normalizarPuntoVentaCaja(valor) {
+  return String(valor || '').trim().toLowerCase() === 'bodega' ? 'bodega' : 'ferreteria'
+}
+
+async function getCajaResumen(puntoVenta = 'ferreteria', conn = pool) {
+  const puntoVentaNormalizado = normalizarPuntoVentaCaja(puntoVenta)
   const now = new Date()
   const y = now.getFullYear()
   const m = String(now.getMonth() + 1).padStart(2, '0')
@@ -6174,8 +6205,8 @@ async function getCajaResumen(conn = pool) {
      LEFT JOIN ventas_payment_details vpd
        ON vpd.venta_id = v.id_consecutivo
      WHERE v.fecha >= ? AND v.fecha <= ?
-       AND LOWER(TRIM(COALESCE(v.punto_venta, 'ferreteria'))) = 'ferreteria'`,
-    [startStr, endStr]
+       AND LOWER(TRIM(COALESCE(v.punto_venta, 'ferreteria'))) = ?`,
+    [startStr, endStr, puntoVentaNormalizado]
   )
   let egresoRow = { total_egresos: 0 }
   let egresos = []
@@ -6184,8 +6215,9 @@ async function getCajaResumen(conn = pool) {
       `SELECT COALESCE(SUM(valor), 0) AS total_egresos
        FROM caja_egresos
        WHERE eliminado = 0
+         AND LOWER(TRIM(COALESCE(punto_venta, 'ferreteria'))) = ?
          AND created_at >= ? AND created_at <= ?`,
-      [startStr, endStr]
+      [puntoVentaNormalizado, startStr, endStr]
     )
     egresoRow = (sumRows && sumRows[0]) || egresoRow
 
@@ -6195,13 +6227,15 @@ async function getCajaResumen(conn = pool) {
           ce.usuario_id,
           ce.valor,
           ce.justificacion,
+          ce.punto_venta,
           ce.created_at
         FROM caja_egresos ce
         WHERE ce.eliminado = 0
+          AND LOWER(TRIM(COALESCE(ce.punto_venta, 'ferreteria'))) = ?
           AND ce.created_at >= ? AND ce.created_at <= ?
         ORDER BY ce.created_at DESC, ce.id DESC
         LIMIT 50`,
-      [startStr, endStr]
+      [puntoVentaNormalizado, startStr, endStr]
     )
 
     egresos = (egresoRows || []).map(row => ({
@@ -6218,6 +6252,7 @@ async function getCajaResumen(conn = pool) {
             usuario_id INT NOT NULL,
             valor INT NOT NULL,
             justificacion VARCHAR(255) NOT NULL,
+            punto_venta VARCHAR(50) NOT NULL DEFAULT 'ferreteria',
             eliminado TINYINT(1) NOT NULL DEFAULT 0,
             eliminado_por INT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -6236,6 +6271,7 @@ async function getCajaResumen(conn = pool) {
 
   return {
     fecha_caja: `${y}-${m}-${d}`,
+    punto_venta: puntoVentaNormalizado,
     base_inicial: baseInicial,
     total_efectivo: totalEfectivo,
     total_egresos: totalEgresos,
@@ -7799,6 +7835,7 @@ app.post('/api/confirmar-pass', async (req, res) => {
 app.get('/api/caja/resumen', async (req, res) => {
   try {
     const usuarioId = Number(req.query.usuario_id || 0)
+    const puntoVenta = normalizarPuntoVentaCaja(req.query.punto_venta || 'ferreteria')
     if (!usuarioId) {
       return res.status(400).json({ ok: false, error: 'usuario_id_requerido' })
     }
@@ -7806,7 +7843,7 @@ app.get('/api/caja/resumen', async (req, res) => {
       return res.status(403).json({ ok: false, error: 'solo_admin' })
     }
 
-    const resumen = await getCajaResumen()
+    const resumen = await getCajaResumen(puntoVenta)
     res.json({ ok: true, ...resumen })
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message })
@@ -7815,10 +7852,11 @@ app.get('/api/caja/resumen', async (req, res) => {
 
 app.post('/api/caja/egresos', async (req, res) => {
   try {
-    const { usuario_id, valor, justificacion } = req.body || {}
+    const { usuario_id, valor, justificacion, punto_venta } = req.body || {}
     const usuarioId = Number(usuario_id || 0)
     const valorNum = Math.round(Number(valor || 0))
     const motivo = String(justificacion || '').trim()
+    const puntoVenta = normalizarPuntoVentaCaja(punto_venta || 'ferreteria')
 
     if (!usuarioId) {
       return res.status(400).json({ ok: false, error: 'usuario_id_requerido' })
@@ -7834,10 +7872,10 @@ app.post('/api/caja/egresos', async (req, res) => {
     }
 
     const [result] = await pool.query(
-      'INSERT INTO caja_egresos (usuario_id, valor, justificacion) VALUES (?, ?, ?)',
-      [usuarioId, valorNum, motivo]
+      'INSERT INTO caja_egresos (usuario_id, valor, justificacion, punto_venta) VALUES (?, ?, ?, ?)',
+      [usuarioId, valorNum, motivo, puntoVenta]
     )
-    const resumen = await getCajaResumen()
+    const resumen = await getCajaResumen(puntoVenta)
     res.json({ ok: true, id: result.insertId, ...resumen })
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message })
@@ -7847,8 +7885,9 @@ app.post('/api/caja/egresos', async (req, res) => {
 app.delete('/api/caja/egresos/:id', async (req, res) => {
   try {
     const egresoId = Number(req.params.id || 0)
-    const { usuario_id, contrasena } = req.body || {}
+    const { usuario_id, contrasena, punto_venta } = req.body || {}
     const usuarioId = Number(usuario_id || 0)
+    const puntoVenta = normalizarPuntoVentaCaja(punto_venta || 'ferreteria')
 
     if (!egresoId) {
       return res.status(400).json({ ok: false, error: 'egreso_id_invalido' })
@@ -7880,7 +7919,7 @@ app.delete('/api/caja/egresos/:id', async (req, res) => {
       [usuarioId, egresoId]
     )
 
-    const resumen = await getCajaResumen()
+    const resumen = await getCajaResumen(puntoVenta)
     res.json({ ok: true, ...resumen })
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message })
@@ -8244,10 +8283,11 @@ app.post('/api/programados', async (req, res) => {
     // Dado que el ID lo genera el front, usaremos INSERT ON DUPLICATE KEY UPDATE
     const sql = `
       INSERT INTO pedidos_programados 
-      (id, consecutivo, cliente_nombre, cliente_data, items, detalle_interno, total, fecha, hora, estado, transporte, tipo_pago, metodo_pago, punto_venta)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (id, consecutivo, cliente_nombre, programado_por_usuario_id, programado_por_usuario_nombre, cliente_data, items, detalle_interno, total, fecha, hora, estado, transporte, tipo_pago, metodo_pago, punto_venta)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE
-      consecutivo=VALUES(consecutivo), cliente_nombre=VALUES(cliente_nombre), cliente_data=VALUES(cliente_data),
+      consecutivo=VALUES(consecutivo), cliente_nombre=VALUES(cliente_nombre),
+      programado_por_usuario_id=VALUES(programado_por_usuario_id), programado_por_usuario_nombre=VALUES(programado_por_usuario_nombre), cliente_data=VALUES(cliente_data),
       items=VALUES(items), detalle_interno=VALUES(detalle_interno), total=VALUES(total), fecha=VALUES(fecha), hora=VALUES(hora), estado=VALUES(estado),
       transporte=VALUES(transporte), tipo_pago=VALUES(tipo_pago), metodo_pago=VALUES(metodo_pago), punto_venta=VALUES(punto_venta)
     `;
@@ -8256,6 +8296,8 @@ app.post('/api/programados', async (req, res) => {
       p.id,
       p.consecutivo || null,
       p.cliente_nombre || '',
+      Number.isFinite(Number(p.programado_por_usuario_id)) ? Number(p.programado_por_usuario_id) : null,
+      p.programado_por_usuario_nombre || null,
       JSON.stringify(p.cliente_data || {}),
       JSON.stringify(p.items || []),
       JSON.stringify(p.detalle_interno || null),

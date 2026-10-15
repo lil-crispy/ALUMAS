@@ -996,6 +996,19 @@
       text-transform: uppercase;
     }
 
+    .pedido-tag-contraentrega {
+      display: inline-block;
+      margin-top: 4px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #fff3e0;
+      color: #e65100;
+      border: 1px solid #ffcc80;
+      font-size: 0.74em;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+
     .btn-despachado {
       background: #4caf50;
       color: white;
@@ -1179,6 +1192,167 @@
       overflow-y: auto;
       text-align: left;
       padding: 18px;
+    }
+
+    .metodos-pago {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 8px 0 6px;
+    }
+
+    .metodo-pago-opcion {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 10px;
+      border: 1px solid #cfd8dc;
+      border-radius: 999px;
+      background: #fff;
+      cursor: pointer;
+      font-size: 0.9em;
+      transition: all 0.18s ease;
+      user-select: none;
+    }
+
+    .metodo-pago-opcion.selected {
+      background: #e0f7fa;
+      border-color: #00acc1;
+      color: #006064;
+      box-shadow: 0 0 0 1px rgba(0, 172, 193, 0.15);
+    }
+
+    .metodo-pago-opcion.selected-mixto {
+      background: #fff3e0;
+      border-color: #ff9800;
+      color: #e65100;
+    }
+
+    .metodo-pago-opcion.selected-contraentrega {
+      background: #fff3e0;
+      border-color: #fb8c00;
+      color: #e65100;
+      box-shadow: 0 0 0 1px rgba(251, 140, 0, 0.16);
+    }
+
+    .modal-contraentrega-content {
+      width: min(430px, 94vw);
+      text-align: left;
+    }
+
+    .modal-contraentrega-resumen {
+      background: #fff8ef;
+      border: 1px solid #ffe0b2;
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+      color: #6d4c41;
+      font-size: 0.92em;
+      line-height: 1.45;
+    }
+
+    .modal-contraentrega-opciones {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .modal-contraentrega-opcion {
+      border: 1px solid #d7d7d7;
+      background: #fff;
+      border-radius: 8px;
+      padding: 10px 8px;
+      text-align: center;
+      cursor: pointer;
+      font-weight: bold;
+      color: #555;
+      transition: all 0.18s ease;
+    }
+
+    .modal-contraentrega-opcion.active {
+      background: #e8f5e9;
+      border-color: #43a047;
+      color: #1b5e20;
+      box-shadow: 0 0 0 1px rgba(67, 160, 71, 0.16);
+    }
+
+    .modal-contraentrega-mixto {
+      display: none;
+      margin-bottom: 12px;
+      background: #fafafa;
+      border: 1px solid #ececec;
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+
+    .modal-contraentrega-mixto h4 {
+      margin: 0 0 8px;
+      font-size: 0.92em;
+      color: #444;
+    }
+
+    .modal-contraentrega-mixto-opciones {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .modal-contraentrega-ayuda {
+      font-size: 0.85em;
+      color: #666;
+      margin-bottom: 12px;
+    }
+
+    .modal-recordatorio-programado-content {
+      width: min(460px, 94vw);
+      text-align: left;
+    }
+
+    .modal-recordatorio-programado-resumen {
+      background: #f7fbff;
+      border: 1px solid #d7ebff;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 12px;
+      color: #264653;
+      line-height: 1.45;
+      font-size: 0.92em;
+    }
+
+    .modal-recordatorio-programado-aviso {
+      margin-bottom: 12px;
+      font-size: 0.9em;
+      color: #555;
+    }
+
+    .menu-contextual-programacion {
+      position: fixed;
+      display: none;
+      min-width: 160px;
+      background: #ffffff;
+      border: 1px solid #d7d7d7;
+      border-radius: 10px;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
+      padding: 6px;
+      z-index: 9200;
+    }
+
+    .menu-contextual-programacion button {
+      width: 100%;
+      border: none;
+      background: transparent;
+      text-align: left;
+      padding: 9px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.92em;
+      color: #333;
+    }
+
+    .menu-contextual-programacion button:hover {
+      background: #f2f7fb;
+      color: #1565c0;
     }
 
     .detalle-programacion-header {
@@ -1679,9 +1853,11 @@
     <div class="login-box">
       <img src="./img/logo5.webp" alt="ALUMAS" class="login-logo">
       <h2>Acceso al sistema</h2>
-      <input type="text" id="login-usuario" placeholder="Usuario">
-      <input type="password" id="login-contrasena" placeholder="Contraseña">
-      <button onclick="realizarLogin()">Ingresar</button>
+      <form id="login-form-remision" autocomplete="off" onsubmit="realizarLogin(); return false;">
+        <input type="text" id="login-usuario" name="alumas_login_manual_user" placeholder="Usuario" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" readonly onfocus="this.removeAttribute('readonly')">
+        <input type="password" id="login-contrasena" name="alumas_login_manual_pass" placeholder="Contraseña" autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" readonly onfocus="this.removeAttribute('readonly')">
+        <button type="submit">Ingresar</button>
+      </form>
       <div id="login-error" class="login-error"></div>
     </div>
   </div>
@@ -1778,6 +1954,7 @@
       <label class="metodo-pago-opcion"><input type="checkbox" id="pago-efectivo"> Efectivo</label>
       <label class="metodo-pago-opcion"><input type="checkbox" id="pago-tarjeta"> Tarjeta</label>
       <label class="metodo-pago-opcion"><input type="checkbox" id="pago-qr"> QR</label>
+      <label class="metodo-pago-opcion"><input type="checkbox" id="pago-contraentrega"> Contraentrega</label>
       <label class="metodo-pago-opcion metodo-pago-mixto"><input type="checkbox" id="pago-mixto"> Mixto</label>
     </div>
 
@@ -2174,7 +2351,12 @@
     }
 
     const PAYMENT_METHOD_IDS = ['pago-efectivo', 'pago-tarjeta', 'pago-qr']
-    const PAYMENT_OPTION_IDS = [...PAYMENT_METHOD_IDS, 'pago-mixto']
+    const PAYMENT_SINGLE_OPTION_IDS = [...PAYMENT_METHOD_IDS, 'pago-contraentrega']
+    const PAYMENT_OPTION_IDS = [...PAYMENT_SINGLE_OPTION_IDS, 'pago-mixto']
+    const CONTRAENTREGA_FINAL_METHODS = ['efectivo', 'tarjeta', 'qr', 'mixto']
+    let pedidoContraentregaPendiente = null
+    let resolverModalContraentrega = null
+    let metodoContraentregaFinalSeleccionado = null
 
     function resetearDetallePagoEfectivo() {
       const pagadoEl = document.getElementById('valor-pagado')
@@ -2192,6 +2374,7 @@
       if (metodo === 'card') return 'tarjeta'
       if (metodo === 'qr') return 'qr'
       if (metodo === 'mixed' || metodo === 'mixto') return 'mixto'
+      if (metodo === 'contraentrega' || metodo === 'contra entrega') return 'contraentrega'
       return metodo
     }
 
@@ -2205,6 +2388,42 @@
       return !!document.getElementById('pago-mixto')?.checked
     }
 
+    function esPagoContraentregaSeleccionado() {
+      return !!document.getElementById('pago-contraentrega')?.checked
+    }
+
+    function pedidoEsContraentrega(pedido) {
+      return normalizarMetodoPagoDetalle(pedido?.metodo_pago) === 'contraentrega'
+    }
+
+    function resetearSeleccionMetodosPago(ids = PAYMENT_OPTION_IDS) {
+      ids.forEach((id) => {
+        const el = document.getElementById(id)
+        if (el) el.checked = false
+      })
+    }
+
+    function aplicarMetodoPagoSeleccionado(metodo, paymentDetails = []) {
+      const metodoNormalizado = normalizarMetodoPagoDetalle(metodo)
+      resetearSeleccionMetodosPago()
+      if (metodoNormalizado === 'mixto') {
+        const mixto = document.getElementById('pago-mixto')
+        if (mixto) mixto.checked = true
+        const details = Array.isArray(paymentDetails) ? paymentDetails : []
+        details.forEach((detalle) => {
+          const metodoDetalle = normalizarMetodoPagoDetalle(detalle?.payment_method_code || detalle?.metodo_pago)
+          const checkbox = document.getElementById(`pago-${metodoDetalle}`)
+          if (checkbox && PAYMENT_METHOD_IDS.includes(`pago-${metodoDetalle}`)) {
+            checkbox.checked = true
+          }
+        })
+      } else {
+        const checkbox = document.getElementById(`pago-${metodoNormalizado}`)
+        if (checkbox) checkbox.checked = true
+      }
+      actualizarEstadoMetodosPagoUI()
+    }
+
     function actualizarEstadoMetodosPagoUI() {
       const mixtoSeleccionado = esPagoMixtoSeleccionado()
       PAYMENT_OPTION_IDS.forEach(id => {
@@ -2213,6 +2432,7 @@
         if (!checkbox || !label) return
         label.classList.toggle('selected', !!checkbox.checked)
         label.classList.toggle('selected-mixto', id === 'pago-mixto' && !!checkbox.checked)
+        label.classList.toggle('selected-contraentrega', id === 'pago-contraentrega' && !!checkbox.checked)
       })
 
       const efectivoCheckbox = document.getElementById('pago-efectivo')
@@ -2229,7 +2449,20 @@
     function manejarCambioMetodoPago(changedId) {
       const changed = document.getElementById(changedId)
       const mixtoCheckbox = document.getElementById('pago-mixto')
+      const contraentregaCheckbox = document.getElementById('pago-contraentrega')
       if (!changed) return
+
+      if (changedId === 'pago-contraentrega') {
+        if (changed.checked) {
+          PAYMENT_METHOD_IDS.forEach(id => {
+            const checkbox = document.getElementById(id)
+            if (checkbox) checkbox.checked = false
+          })
+          if (mixtoCheckbox) mixtoCheckbox.checked = false
+        }
+        actualizarEstadoMetodosPagoUI()
+        return
+      }
 
       if (changedId === 'pago-mixto') {
         if (changed.checked) {
@@ -2237,6 +2470,7 @@
             const checkbox = document.getElementById(id)
             if (checkbox) checkbox.checked = false
           })
+          if (contraentregaCheckbox) contraentregaCheckbox.checked = false
         } else {
           const seleccionados = obtenerMetodosPagoSeleccionados()
           if (seleccionados.length > 1) {
@@ -2263,7 +2497,7 @@
           alert('Con pago mixto solo puede seleccionar dos métodos adicionales.')
         }
       } else if (changed.checked) {
-        PAYMENT_METHOD_IDS.forEach(id => {
+        PAYMENT_SINGLE_OPTION_IDS.forEach(id => {
           if (id === changedId) return
           const checkbox = document.getElementById(id)
           if (checkbox) checkbox.checked = false
@@ -2326,6 +2560,105 @@
       }
 
       return pagos
+    }
+
+    function resetearModalContraentregaDespacho() {
+      pedidoContraentregaPendiente = null
+      metodoContraentregaFinalSeleccionado = null
+      document.querySelectorAll('[data-contraentrega-final]').forEach((btn) => {
+        btn.classList.remove('active')
+      })
+      const resumen = document.getElementById('modal-contraentrega-resumen')
+      if (resumen) resumen.innerHTML = ''
+      const mixtoWrap = document.getElementById('modal-contraentrega-mixto')
+      if (mixtoWrap) mixtoWrap.style.display = 'none'
+      ;['contraentrega-mixto-efectivo', 'contraentrega-mixto-tarjeta', 'contraentrega-mixto-qr'].forEach((id) => {
+        const checkbox = document.getElementById(id)
+        if (checkbox) checkbox.checked = false
+        checkbox?.closest('label')?.classList.remove('selected')
+      })
+    }
+
+    function cerrarModalContraentregaDespacho(resultado = null) {
+      const modal = document.getElementById('modal-contraentrega-despacho')
+      if (modal) modal.style.display = 'none'
+      const resolver = resolverModalContraentrega
+      resolverModalContraentrega = null
+      resetearModalContraentregaDespacho()
+      if (resolver) resolver(resultado)
+    }
+
+    function manejarCambioMetodoMixtoContraentrega() {
+      const ids = ['contraentrega-mixto-efectivo', 'contraentrega-mixto-tarjeta', 'contraentrega-mixto-qr']
+      const activos = ids.filter((id) => document.getElementById(id)?.checked)
+      if (activos.length > 2) {
+        const ultimo = activos[activos.length - 1]
+        const checkbox = document.getElementById(ultimo)
+        if (checkbox) checkbox.checked = false
+        alert('Para el pago mixto final seleccione exactamente dos medios.')
+      }
+      ids.forEach((id) => {
+        const checkbox = document.getElementById(id)
+        checkbox?.closest('label')?.classList.toggle('selected', !!checkbox?.checked)
+      })
+    }
+
+    function seleccionarMetodoContraentregaFinal(metodo) {
+      metodoContraentregaFinalSeleccionado = CONTRAENTREGA_FINAL_METHODS.includes(metodo) ? metodo : null
+      document.querySelectorAll('[data-contraentrega-final]').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.contraentregaFinal === metodoContraentregaFinalSeleccionado)
+      })
+      const mixtoWrap = document.getElementById('modal-contraentrega-mixto')
+      if (mixtoWrap) {
+        mixtoWrap.style.display = metodoContraentregaFinalSeleccionado === 'mixto' ? 'block' : 'none'
+      }
+    }
+
+    function abrirModalContraentregaDespacho(pedido) {
+      const modal = document.getElementById('modal-contraentrega-despacho')
+      const resumen = document.getElementById('modal-contraentrega-resumen')
+      if (!modal || !resumen) return Promise.resolve(null)
+
+      resetearModalContraentregaDespacho()
+      pedidoContraentregaPendiente = pedido
+      resumen.innerHTML = `
+        <div><strong>Pedido:</strong> ${escaparHtmlProducto(pedido?.consecutivo ? `REM ${pedido.consecutivo}` : `ID ${String(pedido?.id || '').slice(0, 6)}`)}</div>
+        <div><strong>Cliente:</strong> ${escaparHtmlProducto(pedido?.cliente_nombre || pedido?.transporte?.nombre || 'Cliente general')}</div>
+        <div><strong>Total:</strong> ${escaparHtmlProducto(formatearPesos(pedido?.total || 0))}</div>
+      `
+      modal.style.display = 'flex'
+      return new Promise((resolve) => {
+        resolverModalContraentrega = resolve
+      })
+    }
+
+    function confirmarModalContraentregaDespacho() {
+      if (!pedidoContraentregaPendiente) {
+        cerrarModalContraentregaDespacho(null)
+        return
+      }
+      if (!metodoContraentregaFinalSeleccionado) {
+        alert('Seleccione el medio de pago final del cliente.')
+        return
+      }
+
+      let pagosMixtos = []
+      if (metodoContraentregaFinalSeleccionado === 'mixto') {
+        const metodosMixtos = ['efectivo', 'tarjeta', 'qr'].filter((metodo) => {
+          return !!document.getElementById(`contraentrega-mixto-${metodo}`)?.checked
+        })
+        if (metodosMixtos.length !== 2) {
+          alert('Para pago mixto final debe seleccionar exactamente dos medios.')
+          return
+        }
+        pagosMixtos = solicitarMontosPagoMixto(pedidoContraentregaPendiente.total, metodosMixtos) || []
+        if (!pagosMixtos.length) return
+      }
+
+      cerrarModalContraentregaDespacho({
+        metodo: metodoContraentregaFinalSeleccionado,
+        pagosMixtos
+      })
     }
 
     function calcularCambio() {
@@ -2857,10 +3190,11 @@
       if (elHora) elHora.value = '08:00';
 
       // Limpiar checkboxes de pago
-      ['pago-efectivo', 'pago-tarjeta', 'pago-qr'].forEach(id => {
+      ['pago-efectivo', 'pago-tarjeta', 'pago-qr', 'pago-contraentrega', 'pago-mixto'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.checked = false;
       });
+      actualizarEstadoMetodosPagoUI()
 
       tabla.querySelectorAll('tr').forEach(fila => {
           const descripcion = fila.cells[1]?.textContent.trim();
@@ -3829,6 +4163,15 @@ try {
     }
 
     async function imprimirVenta() {
+      if (!validarContraentregaConfiguracion()) {
+        return;
+      }
+      if (esPagoContraentregaSeleccionado()) {
+        await abrirModalProgramacion(false)
+        prellenarCamposProgramacionTransporte()
+        alert('Los pedidos con pago contraentrega deben programarse primero. La venta se guardará cuando un administrador lo despache y confirme el pago final.')
+        return;
+      }
       const transporteProgramado = await validarProgramacionObligatoriaDeTransporte();
       if (!transporteProgramado) {
         return;
@@ -3919,7 +4262,7 @@ try {
 
     window.addEventListener('afterprint', () => {
       aplicarVentaUI();
-      ['pago-efectivo','pago-tarjeta','pago-qr','pago-mixto'].forEach(id => {
+      ['pago-efectivo','pago-tarjeta','pago-qr','pago-contraentrega','pago-mixto'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.checked = false;
       });
@@ -4004,12 +4347,16 @@ try {
         minute: '2-digit'
       })
     }
+    function getEtiquetaPuntoVentaCaja(valor = getPuntoVenta()) {
+      return String(valor || '').trim().toLowerCase() === 'bodega' ? 'Bodega' : 'Ferretería'
+    }
     function setCajaAdminResumen(resumen) {
       const saldoEl = document.getElementById('caja-admin-saldo')
       const metaEl = document.getElementById('caja-admin-meta')
       if (saldoEl) saldoEl.textContent = formatearPesos(resumen?.saldo_actual || 0)
       if (metaEl) {
-        metaEl.textContent = `Base: ${formatearPesos(resumen?.base_inicial || 0)} | Ferretería hoy: ${formatearPesos(resumen?.total_efectivo || 0)} | Egresos hoy: ${formatearPesos(resumen?.total_egresos || 0)}`
+        const etiquetaPv = getEtiquetaPuntoVentaCaja(resumen?.punto_venta || getPuntoVenta())
+        metaEl.textContent = `Base: ${formatearPesos(resumen?.base_inicial || 0)} | ${etiquetaPv} hoy: ${formatearPesos(resumen?.total_efectivo || 0)} | Egresos hoy: ${formatearPesos(resumen?.total_egresos || 0)}`
       }
       posicionarBotonReporte()
     }
@@ -4088,9 +4435,10 @@ try {
     async function cargarCajaAdmin() {
       if (!esAdminActual()) return
       const usuarioId = getUsuarioIdActual()
+      const puntoVenta = getPuntoVenta()
       if (!usuarioId) return
       try {
-        const resp = await fetch(getApiBase() + '/api/caja/resumen?usuario_id=' + usuarioId, {
+        const resp = await fetch(getApiBase() + '/api/caja/resumen?usuario_id=' + usuarioId + '&punto_venta=' + encodeURIComponent(puntoVenta), {
           cache: 'no-store'
         })
         if (!resp.ok) {
@@ -4164,7 +4512,8 @@ try {
           body: JSON.stringify({
             usuario_id: usuarioId,
             valor,
-            justificacion
+            justificacion,
+            punto_venta: getPuntoVenta()
           })
         })
         const data = await resp.json()
@@ -4193,7 +4542,8 @@ try {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             usuario_id: usuarioId,
-            contrasena
+            contrasena,
+            punto_venta: getPuntoVenta()
           })
         })
         const data = await resp.json()
@@ -4289,9 +4639,32 @@ try {
       reporteVentas = [];
       actualizarUIReporte();
     }
+    function prepararCamposLoginManual() {
+      const usuarioInput = document.getElementById('login-usuario')
+      const contrasenaInput = document.getElementById('login-contrasena')
+      const errorEl = document.getElementById('login-error')
+
+      if (usuarioInput) {
+        usuarioInput.value = ''
+        usuarioInput.setAttribute('readonly', 'readonly')
+        usuarioInput.setAttribute('autocomplete', 'off')
+      }
+
+      if (contrasenaInput) {
+        contrasenaInput.value = ''
+        contrasenaInput.setAttribute('readonly', 'readonly')
+        contrasenaInput.setAttribute('autocomplete', 'new-password')
+      }
+
+      if (errorEl) {
+        errorEl.textContent = ''
+        errorEl.style.color = ''
+      }
+    }
     function mostrarLogin() {
       const overlay = document.getElementById('login-overlay')
       if (overlay) overlay.style.display = 'flex'
+      prepararCamposLoginManual()
       document.body.classList.add('login-active')
     }
     function ocultarLogin() {
@@ -4394,6 +4767,7 @@ try {
       actualizarCajaAdminVisibilidad()
     }
     function logoutUsuario() {
+      cerrarModalRecordatorioPedido()
       localStorage.removeItem('USUARIO_ID')
       localStorage.removeItem('USUARIO_NOMBRE')
       localStorage.removeItem('USUARIO_ROL')
@@ -4467,6 +4841,7 @@ try {
           ocultarLogin()
           actualizarCajaAdminVisibilidad()
           cargarReporte()
+          fetchPedidosProgramados().catch(() => {})
         }, 900)
       } catch (e) {
         if (errorEl) {
@@ -4650,10 +5025,12 @@ try {
       const esEf = document.getElementById('pago-efectivo')?.checked;
       const esTa = document.getElementById('pago-tarjeta')?.checked;
       const esQr = document.getElementById('pago-qr')?.checked;
+      const esContraentrega = document.getElementById('pago-contraentrega')?.checked;
       if (esMixto) return 'mixto';
       if (esEf) return 'efectivo';
       if (esTa) return 'tarjeta';
       if (esQr) return 'qr';
+      if (esContraentrega) return 'contraentrega';
       return null;
     }
     function obtenerTotalNumerico() {
@@ -4757,6 +5134,56 @@ try {
       })
       // #endregion
       return details
+    }
+
+    async function guardarVentaDesdePedidoProgramado(pedido, metodoFinal, pagosMixtos = []) {
+      const items = Array.isArray(pedido?.items) ? pedido.items : []
+      if (!items.length) {
+        throw new Error('El pedido programado no tiene productos para guardar la venta.')
+      }
+
+      const total = Math.round(Number(pedido?.total || 0))
+      const tipo_pago = 'CONTADO'
+      const clienteTexto = String(pedido?.cliente_nombre || pedido?.transporte?.nombre || '').trim()
+      const paymentDetails = construirPaymentDetailsVenta(tipo_pago, metodoFinal, total, pagosMixtos)
+      const usuario_id = parseInt(localStorage.getItem('USUARIO_ID') || '1', 10) || 1
+      const cliente_id = Number(pedido?.cliente_data?.id || pedido?.cliente_data?.cliente_id || 1) || 1
+
+      let id_consecutivo = obtenerConsecutivoPedidoProgramado(pedido)
+      if (!id_consecutivo) {
+        id_consecutivo = await solicitarConsecutivo()
+      }
+
+      const payload = {
+        id_consecutivo,
+        usuario_id,
+        cliente_id,
+        total,
+        tipo_pago,
+        forma_pago: String(metodoFinal || '').toUpperCase(),
+        punto_venta: pedido?.punto_venta || getPuntoVenta(),
+        items,
+        cliente_nombre: clienteTexto,
+        payment_details: paymentDetails
+      }
+
+      const resp = await fetch(getApiBase() + '/api/venta', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+
+      const data = await resp.json().catch(() => ({}))
+      if (!resp.ok || !data?.ok) {
+        throw new Error(data?.message || data?.error || 'La venta contraentrega no se pudo guardar.')
+      }
+
+      agregarVentaReporte(metodoFinal)
+      refrescarCajaAdminPronto()
+      try {
+        await cargarReporte()
+      } catch (_) {}
+      return data
     }
     function redondearValorFacturacion(valor) {
       const numero = Number(valor || 0)
@@ -6044,6 +6471,10 @@ try {
       // Eliminamos la clase 'formato-bodega' para evitar que oculte contenido en pantalla
       // La clase se activará dinámicamente SOLO al momento de imprimir
       body.classList.remove('formato-bodega');
+
+      if (esAdminActual() && getUsuarioIdActual()) {
+        cargarCajaAdmin()
+      }
     }
     
     function getTipoPago() {
@@ -6338,6 +6769,22 @@ try {
       return false
     }
 
+    function validarContraentregaConfiguracion() {
+      if (!esPagoContraentregaSeleccionado()) return true
+      if (getTipoPago() === 'CREDITO') {
+        alert('El pago contraentrega solo está disponible para ventas de contado.')
+        return false
+      }
+      return true
+    }
+
+    function obtenerConsecutivoPedidoProgramado(pedido) {
+      const texto = String(pedido?.consecutivo || '').trim()
+      const digitos = texto.replace(/[^\d]/g, '')
+      const numero = parseInt(digitos, 10)
+      return Number.isFinite(numero) && numero > 0 ? numero : null
+    }
+
     async function editarConsecutivo() {
       if (facturaElectronicaCheckboxActivo()) {
         alert('Cuando la factura electrónica está activa, la numeración visible la define Factus y no se puede editar manualmente.')
@@ -6375,6 +6822,10 @@ try {
       const total = obtenerTotalNumerico()
       const clienteTexto = document.getElementById('nombre-cliente')?.value.trim() || ''
       const tipo_pago = getTipoPago()
+      if (normalizarMetodoPagoDetalle(metodo) === 'contraentrega') {
+        alert('Las ventas contraentrega no se guardan desde Vender. Deben programarse y cerrarse al momento de despachar.')
+        return false
+      }
       const pagoMixtoActivo = String(metodo || '').toLowerCase() === 'mixto'
       let pagosMixtos = []
       if (pagoMixtoActivo) {
@@ -6899,6 +7350,52 @@ document.addEventListener('DOMContentLoaded', () => {
     </div>
   </div>
 
+  <div id="modal-contraentrega-despacho" class="modal-programacion" onclick="if (event.target === this) cerrarModalContraentregaDespacho()">
+    <div class="modal-content modal-contraentrega-content">
+      <h3 style="margin-top: 0;">Confirmar pago de contraentrega</h3>
+      <div id="modal-contraentrega-resumen" class="modal-contraentrega-resumen"></div>
+      <div class="modal-contraentrega-opciones">
+        <button type="button" class="modal-contraentrega-opcion" data-contraentrega-final="efectivo" onclick="seleccionarMetodoContraentregaFinal('efectivo')">Efectivo</button>
+        <button type="button" class="modal-contraentrega-opcion" data-contraentrega-final="tarjeta" onclick="seleccionarMetodoContraentregaFinal('tarjeta')">Tarjeta</button>
+        <button type="button" class="modal-contraentrega-opcion" data-contraentrega-final="qr" onclick="seleccionarMetodoContraentregaFinal('qr')">QR</button>
+        <button type="button" class="modal-contraentrega-opcion" data-contraentrega-final="mixto" onclick="seleccionarMetodoContraentregaFinal('mixto')">Mixto</button>
+      </div>
+      <div id="modal-contraentrega-mixto" class="modal-contraentrega-mixto">
+        <h4>Seleccione 2 medios para el pago mixto final</h4>
+        <div class="modal-contraentrega-mixto-opciones">
+          <label class="metodo-pago-opcion"><input type="checkbox" id="contraentrega-mixto-efectivo" onchange="manejarCambioMetodoMixtoContraentrega()"> Efectivo</label>
+          <label class="metodo-pago-opcion"><input type="checkbox" id="contraentrega-mixto-tarjeta" onchange="manejarCambioMetodoMixtoContraentrega()"> Tarjeta</label>
+          <label class="metodo-pago-opcion"><input type="checkbox" id="contraentrega-mixto-qr" onchange="manejarCambioMetodoMixtoContraentrega()"> QR</label>
+        </div>
+      </div>
+      <div class="modal-contraentrega-ayuda">
+        Este pedido se guardará como venta solo cuando confirme el medio de pago final al despacharlo.
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:10px;">
+        <button type="button" class="btn-guardar-prog" onclick="confirmarModalContraentregaDespacho()">Confirmar pago</button>
+        <button type="button" class="btn-cancelar-prog" onclick="cerrarModalContraentregaDespacho()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-recordatorio-programado" class="modal-programacion" onclick="if (event.target === this) responderRecordatorioPedido(false)">
+    <div class="modal-content modal-recordatorio-programado-content">
+      <h3 style="margin-top: 0;">Recordatorio de entrega</h3>
+      <div id="modal-recordatorio-programado-resumen" class="modal-recordatorio-programado-resumen"></div>
+      <div class="modal-recordatorio-programado-aviso">
+        ¿Este pedido ya fue entregado?
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:10px;">
+        <button type="button" class="btn-guardar-prog" onclick="responderRecordatorioPedido(true)">Sí, ya se entregó</button>
+        <button type="button" class="btn-cancelar-prog" onclick="responderRecordatorioPedido(false)">No todavía</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="menu-contextual-programacion" class="menu-contextual-programacion">
+    <button type="button" onclick="abrirPedidoDesdeMenuContextual()">Ver pedido</button>
+  </div>
+
 <script>
 // --- LÓGICA DE PROGRAMACIÓN DE PEDIDOS ---
 
@@ -6917,6 +7414,11 @@ let direccionDetalleProgramacionActual = '';
 let pedidoDashboardClickId = null;
 let pedidoDashboardClickCount = 0;
 let pedidoDashboardClickTimer = null;
+let pedidoContextMenuId = null;
+const RECORDATORIOS_PROGRAMADOS_STORAGE_KEY = 'ALUMAS_RECORDATORIOS_PROGRAMADOS_V1';
+const RECORDATORIO_PROGRAMADO_INTERVALO_MS = 30 * 60 * 1000;
+let recordatorioPedidoActivo = null;
+let recordatorioPedidoResolviendo = false;
 
 function normalizarPedidoProgramadoId(id) {
   return String(id);
@@ -6930,6 +7432,169 @@ function normalizarFiltroPuntoVentaProgramacion(valor) {
 function esModoTransportadorActivo() {
   return document.body.classList.contains('transportador-mode') ||
     String(localStorage.getItem('USUARIO_ROL') || '').trim().toLowerCase() === 'transportador';
+}
+
+function esModoCelularProgramacion() {
+  return !!window.matchMedia('(max-width: 768px), (hover: none) and (pointer: coarse)').matches;
+}
+
+function cerrarMenuContextualProgramacion() {
+  const menu = document.getElementById('menu-contextual-programacion');
+  if (menu) menu.style.display = 'none';
+  pedidoContextMenuId = null;
+}
+
+function abrirMenuContextualProgramacion(event, id) {
+  if (esModoCelularProgramacion()) return;
+  const menu = document.getElementById('menu-contextual-programacion');
+  if (!menu) return;
+
+  event.preventDefault();
+  const pedidoId = normalizarPedidoProgramadoId(id);
+  pedidoContextMenuId = pedidoId;
+  pedidosSeleccionadosIds = new Set([pedidoId]);
+  pedidoSeleccionadoId = pedidoId;
+  renderDashboard();
+
+  menu.style.display = 'block';
+  const margen = 12;
+  const menuRect = menu.getBoundingClientRect();
+  const maxLeft = Math.max(margen, window.innerWidth - menuRect.width - margen);
+  const maxTop = Math.max(margen, window.innerHeight - menuRect.height - margen);
+  menu.style.left = `${Math.min(event.clientX, maxLeft)}px`;
+  menu.style.top = `${Math.min(event.clientY, maxTop)}px`;
+}
+
+function abrirPedidoDesdeMenuContextual() {
+  const pedidoId = pedidoContextMenuId;
+  cerrarMenuContextualProgramacion();
+  if (!pedidoId) return;
+  abrirDetallePedidoProgramado(pedidoId);
+}
+
+function obtenerUsuarioProgramadorActual() {
+  return {
+    id: getUsuarioIdActual(),
+    nombre: String(localStorage.getItem('USUARIO_NOMBRE') || localStorage.getItem('USUARIO_LOGIN') || '').trim()
+  };
+}
+
+function cargarEstadoRecordatoriosProgramados() {
+  try {
+    const raw = localStorage.getItem(RECORDATORIOS_PROGRAMADOS_STORAGE_KEY)
+    return raw ? JSON.parse(raw) : {}
+  } catch (_) {
+    return {}
+  }
+}
+
+function guardarEstadoRecordatoriosProgramados(data) {
+  try {
+    localStorage.setItem(RECORDATORIOS_PROGRAMADOS_STORAGE_KEY, JSON.stringify(data || {}))
+  } catch (_) {}
+}
+
+function obtenerEstadoRecordatorioPedido(usuarioId, pedidoId) {
+  const estado = cargarEstadoRecordatoriosProgramados()
+  return estado?.[String(usuarioId || '')]?.[normalizarPedidoProgramadoId(pedidoId)] || null
+}
+
+function actualizarEstadoRecordatorioPedido(usuarioId, pedidoId, payload = {}) {
+  const keyUsuario = String(usuarioId || '')
+  if (!keyUsuario) return
+  const keyPedido = normalizarPedidoProgramadoId(pedidoId)
+  const estado = cargarEstadoRecordatoriosProgramados()
+  if (!estado[keyUsuario]) estado[keyUsuario] = {}
+  estado[keyUsuario][keyPedido] = {
+    ...(estado[keyUsuario][keyPedido] || {}),
+    ...payload
+  }
+  guardarEstadoRecordatoriosProgramados(estado)
+}
+
+function limpiarEstadoRecordatorioPedido(usuarioId, pedidoId) {
+  const keyUsuario = String(usuarioId || '')
+  if (!keyUsuario) return
+  const estado = cargarEstadoRecordatoriosProgramados()
+  if (!estado[keyUsuario]) return
+  delete estado[keyUsuario][normalizarPedidoProgramadoId(pedidoId)]
+  if (Object.keys(estado[keyUsuario]).length === 0) {
+    delete estado[keyUsuario]
+  }
+  guardarEstadoRecordatoriosProgramados(estado)
+}
+
+function limpiarRecordatoriosPedidosInexistentes() {
+  const usuarioId = getUsuarioIdActual()
+  if (!usuarioId) return
+  const estado = cargarEstadoRecordatoriosProgramados()
+  const keyUsuario = String(usuarioId)
+  if (!estado[keyUsuario]) return
+  const idsVigentes = new Set(globalPedidos.map((pedido) => normalizarPedidoProgramadoId(pedido.id)))
+  Object.keys(estado[keyUsuario]).forEach((pedidoId) => {
+    if (!idsVigentes.has(normalizarPedidoProgramadoId(pedidoId))) {
+      delete estado[keyUsuario][pedidoId]
+    }
+  })
+  if (Object.keys(estado[keyUsuario]).length === 0) {
+    delete estado[keyUsuario]
+  }
+  guardarEstadoRecordatoriosProgramados(estado)
+}
+
+function parsearFechaHoraPedidoProgramado(fecha, hora) {
+  const fechaTexto = String(fecha || '').trim()
+  const horaTexto = String(hora || '').trim() || '00:00'
+  if (!fechaTexto) return null
+  const valor = new Date(`${fechaTexto}T${horaTexto}:00`)
+  return Number.isFinite(valor.getTime()) ? valor : null
+}
+
+function obtenerBloqueRecordatorioPedido(pedido, ahora = new Date()) {
+  const fechaProgramada = parsearFechaHoraPedidoProgramado(pedido?.fecha, pedido?.hora)
+  if (!fechaProgramada) return null
+  const inicioRecordatorio = fechaProgramada.getTime() + RECORDATORIO_PROGRAMADO_INTERVALO_MS
+  const ahoraMs = ahora.getTime()
+  if (ahoraMs < inicioRecordatorio) return null
+  return Math.floor((ahoraMs - inicioRecordatorio) / RECORDATORIO_PROGRAMADO_INTERVALO_MS)
+}
+
+function hayModalBloqueandoRecordatorio() {
+  const idsModales = [
+    'login-overlay',
+    'modal-programacion',
+    'modal-cliente-rapido',
+    'modal-detalle-programacion',
+    'modal-contraentrega-despacho'
+  ]
+  return idsModales.some((id) => {
+    const el = document.getElementById(id)
+    return el && el.style.display === 'flex'
+  })
+}
+
+function abrirModalRecordatorioPedido(pedido) {
+  const modal = document.getElementById('modal-recordatorio-programado')
+  const resumen = document.getElementById('modal-recordatorio-programado-resumen')
+  if (!modal || !resumen) return
+
+  const fechaProgramada = parsearFechaHoraPedidoProgramado(pedido?.fecha, pedido?.hora)
+  const fechaTexto = fechaProgramada
+    ? fechaProgramada.toLocaleString('es-CO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+    : 'Sin fecha'
+  resumen.innerHTML = `
+    <div><strong>Pedido:</strong> ${escaparHtmlProducto(pedido?.consecutivo ? `REM ${pedido.consecutivo}` : `ID ${String(pedido?.id || '').slice(0, 6)}`)}</div>
+    <div><strong>Cliente:</strong> ${escaparHtmlProducto(pedido?.cliente_nombre || pedido?.transporte?.nombre || 'Cliente general')}</div>
+    <div><strong>Hora programada:</strong> ${escaparHtmlProducto(fechaTexto)}</div>
+  `
+  recordatorioPedidoActivo = pedido
+  modal.style.display = 'flex'
+}
+
+function cerrarModalRecordatorioPedido() {
+  const modal = document.getElementById('modal-recordatorio-programado')
+  if (modal) modal.style.display = 'none'
+  recordatorioPedidoActivo = null
 }
 
 function obtenerDashboardProgramacion(tipo = 'primario') {
@@ -7151,6 +7816,10 @@ function abrirDetallePedidoProgramado(id) {
 }
 
 function ejecutarAccionClickPedidoDashboard(id, cantidadClicks) {
+  if (!esModoCelularProgramacion()) {
+    selectPedidoDashboard(id);
+    return;
+  }
   if (esModoTransportadorActivo()) {
     abrirDetallePedidoProgramado(id);
     return;
@@ -7164,6 +7833,12 @@ function ejecutarAccionClickPedidoDashboard(id, cantidadClicks) {
 
 function manejarClickPedidoDashboard(id) {
   const pedidoId = normalizarPedidoProgramadoId(id);
+  cerrarMenuContextualProgramacion();
+
+  if (!esModoCelularProgramacion()) {
+    selectPedidoDashboard(pedidoId);
+    return;
+  }
 
   if (esModoTransportadorActivo()) {
     ejecutarAccionClickPedidoDashboard(pedidoId, 1);
@@ -7194,6 +7869,11 @@ function manejarClickPedidoDashboard(id) {
 
 function actualizarControlesSeleccionProgramacion() {
   const total = pedidosSeleccionadosIds.size;
+  const pedidosSeleccionados = Array.from(pedidosSeleccionadosIds)
+    .map((id) => globalPedidos.find((p) => normalizarPedidoProgramadoId(p.id) === normalizarPedidoProgramadoId(id)))
+    .filter(Boolean);
+  const hayContraentregaSeleccionada = pedidosSeleccionados.some((pedido) => pedidoEsContraentrega(pedido));
+  const requiereAdminDespacho = hayContraentregaSeleccionada && !esAdminRemision();
 
   document.querySelectorAll('.programacion-selection-info').forEach((info) => {
     info.dataset.hasSelection = total === 0 ? 'false' : 'true';
@@ -7208,8 +7888,10 @@ function actualizarControlesSeleccionProgramacion() {
   });
 
   document.querySelectorAll('.btn-despachar-pedidos').forEach((btn) => {
-    btn.disabled = total === 0;
-    btn.textContent = total > 1 ? `DESPACHADO (${total})` : 'DESPACHADO';
+    btn.disabled = total === 0 || requiereAdminDespacho;
+    btn.textContent = requiereAdminDespacho
+      ? 'DESPACHADO (SOLO ADMIN)'
+      : (total > 1 ? `DESPACHADO (${total})` : 'DESPACHADO');
   });
 
   document.querySelectorAll('.btn-reprogramar-pedido').forEach((btn) => {
@@ -7306,14 +7988,90 @@ async function fetchPedidosProgramados() {
       }
     }
     sincronizarSeleccionProgramacion();
+    limpiarRecordatoriosPedidosInexistentes();
     
     await reprogramarVencidos(globalPedidos);
 
     renderDashboard();
+    setTimeout(verificarRecordatoriosPedidosProgramados, 50);
     return globalPedidos;
   } catch (e) {
     console.error("Error cargando programados:", e);
     return [];
+  }
+}
+
+function verificarRecordatoriosPedidosProgramados() {
+  if (recordatorioPedidoActivo || recordatorioPedidoResolviendo) return;
+  if (hayModalBloqueandoRecordatorio()) return;
+
+  const usuarioId = getUsuarioIdActual()
+  if (!usuarioId) return
+
+  const ahora = new Date()
+  const pedidosPendientes = [...globalPedidos]
+    .filter((pedido) => {
+      if (String(pedido?.estado || '').toUpperCase() !== 'PROGRAMADO') return false
+      if (Number(pedido?.programado_por_usuario_id || 0) !== Number(usuarioId)) return false
+      return obtenerBloqueRecordatorioPedido(pedido, ahora) !== null
+    })
+    .sort((a, b) => {
+      const fechaA = parsearFechaHoraPedidoProgramado(a?.fecha, a?.hora)?.getTime() || 0
+      const fechaB = parsearFechaHoraPedidoProgramado(b?.fecha, b?.hora)?.getTime() || 0
+      return fechaA - fechaB
+    })
+
+  for (const pedido of pedidosPendientes) {
+    const bloque = obtenerBloqueRecordatorioPedido(pedido, ahora)
+    if (bloque === null) continue
+    const estado = obtenerEstadoRecordatorioPedido(usuarioId, pedido.id)
+    if (Number(estado?.ultimo_bloque_mostrado) === Number(bloque)) {
+      continue
+    }
+    abrirModalRecordatorioPedido(pedido)
+    return
+  }
+}
+
+async function responderRecordatorioPedido(entregado) {
+  if (!recordatorioPedidoActivo || recordatorioPedidoResolviendo) {
+    cerrarModalRecordatorioPedido()
+    return
+  }
+
+  const pedido = recordatorioPedidoActivo
+  const usuarioId = getUsuarioIdActual()
+  const bloque = obtenerBloqueRecordatorioPedido(pedido, new Date())
+  if (bloque !== null && usuarioId) {
+    actualizarEstadoRecordatorioPedido(usuarioId, pedido.id, {
+      ultimo_bloque_mostrado: bloque,
+      ultima_respuesta: entregado ? 'si' : 'no',
+      responded_at: new Date().toISOString()
+    })
+  }
+
+  cerrarModalRecordatorioPedido()
+
+  if (!entregado) {
+    return
+  }
+
+  if (pedidoEsContraentrega(pedido) && !esAdminRemision()) {
+    alert('Este pedido es contraentrega. Solo un usuario admin puede marcarlo como despachado al cerrar el pago final.')
+    return
+  }
+
+  recordatorioPedidoResolviendo = true
+  try {
+    await despacharPedidosProgramadosInterno([pedido], { omitirConfirmacion: true, origen: 'recordatorio' })
+    if (usuarioId) {
+      limpiarEstadoRecordatorioPedido(usuarioId, pedido.id)
+    }
+  } catch (error) {
+    alert('No fue posible despachar el pedido desde el recordatorio: ' + (error?.message || error))
+  } finally {
+    recordatorioPedidoResolviendo = false
+    setTimeout(verificarRecordatoriosPedidosProgramados, 200)
   }
 }
 
@@ -7375,11 +8133,13 @@ function crearPedidoItemDashboard(p) {
       horaShow = `${h12} ${ampm}`;
   } catch(e) {}
 
+  const esContraentrega = pedidoEsContraentrega(p);
   item.innerHTML = `
     <div class="pedido-check">✓</div>
     <div class="pedido-info"><strong>${p.consecutivo ? 'REM ' + p.consecutivo : 'ID: ' + p.id.substr(0,4)}</strong></div>
     <div class="pedido-info">${p.cliente_nombre || 'Cliente General'}</div>
     <div class="pedido-info" style="color:#555;">📅 ${fechaStr} ⏰ ${horaShow}</div>
+    ${esContraentrega ? '<div class="pedido-tag-contraentrega">Contraentrega</div>' : ''}
     <div class="pedido-status">${p.estado}</div>
   `;
 
@@ -7387,6 +8147,7 @@ function crearPedidoItemDashboard(p) {
     ? 'Toque para ver detalle interno'
     : '1 clic: seleccionar · 3 clics: ver detalle interno';
   item.onclick = () => manejarClickPedidoDashboard(p.id);
+  item.oncontextmenu = (event) => abrirMenuContextualProgramacion(event, p.id);
 
   return item;
 }
@@ -7608,6 +8369,10 @@ function cerrarModalProgramacion() {
 }
 
 async function guardarProgramacion() {
+  if (!validarContraentregaConfiguracion()) {
+    return;
+  }
+  const usuarioProgramador = obtenerUsuarioProgramadorActual();
   const fecha = document.getElementById('prog-fecha').value;
   const hora = document.getElementById('prog-hora').value;
   
@@ -7705,6 +8470,12 @@ async function guardarProgramacion() {
       if (transporteData.nombre) {
           pedidoExistente.cliente_nombre = transporteData.nombre;
       }
+      if (!pedidoExistente.programado_por_usuario_id && usuarioProgramador.id) {
+          pedidoExistente.programado_por_usuario_id = usuarioProgramador.id;
+      }
+      if (!pedidoExistente.programado_por_usuario_nombre && usuarioProgramador.nombre) {
+          pedidoExistente.programado_por_usuario_nombre = usuarioProgramador.nombre;
+      }
       pedidoExistente.detalle_interno = construirDetalleInternoProgramacion({
           consecutivo: pedidoExistente.consecutivo,
           clienteNombre: pedidoExistente.cliente_nombre,
@@ -7758,7 +8529,9 @@ async function guardarProgramacion() {
     transporte: transporteData,
     tipo_pago: getTipoPago(),
     metodo_pago: getSelectedMetodoPago(),
-    punto_venta: getPuntoVenta()
+    punto_venta: getPuntoVenta(),
+    programado_por_usuario_id: usuarioProgramador.id || null,
+    programado_por_usuario_nombre: usuarioProgramador.nombre || ''
   };
   nuevoPedido.detalle_interno = construirDetalleInternoProgramacion({
     consecutivo: nuevoPedido.consecutivo,
@@ -7846,6 +8619,12 @@ function cargarPedidoProgramado(id) {
       document.getElementById('trans-telefono').value = '';
       // Costo eliminado
   }
+
+  const selectTipoPago = document.getElementById('select-tipo-pago')
+  if (selectTipoPago) {
+      selectTipoPago.value = String(pedido.tipo_pago || 'CONTADO').toUpperCase() === 'CREDITO' ? 'CREDITO' : 'CONTADO'
+  }
+  aplicarMetodoPagoSeleccionado(pedido.metodo_pago, pedido.payment_details)
   
   actualizarTotales();
   if (pedido.transporte || pedido.items.some(item => descripcionActivaAvisoTransporte(item.descripcion))) {
@@ -7894,44 +8673,93 @@ async function cancelarPedido() {
   }
 }
 
+async function despacharPedidosProgramadosInterno(pedidosObjetivo, opciones = {}) {
+  const listaPedidos = Array.isArray(pedidosObjetivo) ? pedidosObjetivo.filter(Boolean) : []
+  if (!listaPedidos.length) {
+    throw new Error('No hay pedidos para despachar.')
+  }
+
+  const idsObjetivo = listaPedidos.map((pedido) => normalizarPedidoProgramadoId(pedido.id))
+  const pedidosContraentrega = listaPedidos.filter((pedido) => pedidoEsContraentrega(pedido))
+
+  if (pedidosContraentrega.length > 0 && !esAdminRemision()) {
+    throw new Error('Los pedidos contraentrega solo pueden ser despachados por usuarios con rol admin.')
+  }
+
+  if (!opciones.omitirConfirmacion) {
+    const mensajeConfirmacion = listaPedidos.length === 1
+      ? '¿Marcar pedido como DESPACHADO? Se eliminará del tablero.'
+      : `¿Marcar ${listaPedidos.length} pedidos como DESPACHADOS? Se eliminarán del tablero.`
+    if (!confirm(mensajeConfirmacion)) {
+      return { cancelado: true, errores: idsObjetivo.slice() }
+    }
+  }
+
+  const pagosContraentrega = new Map()
+  for (const pedido of pedidosContraentrega) {
+    const resultadoPago = await abrirModalContraentregaDespacho(pedido)
+    if (!resultadoPago) {
+      return { cancelado: true, errores: idsObjetivo.slice() }
+    }
+    pagosContraentrega.set(normalizarPedidoProgramadoId(pedido.id), resultadoPago)
+  }
+
+  const errores = []
+  for (const pedido of listaPedidos) {
+    const pedidoId = normalizarPedidoProgramadoId(pedido.id)
+    if (pedidoEsContraentrega(pedido)) {
+      const pagoFinal = pagosContraentrega.get(pedidoId)
+      if (!pagoFinal) {
+        errores.push(pedidoId)
+        continue
+      }
+      try {
+        await guardarVentaDesdePedidoProgramado(pedido, pagoFinal.metodo, pagoFinal.pagosMixtos || [])
+      } catch (_) {
+        errores.push(pedidoId)
+        continue
+      }
+    }
+
+    const resp = await fetch(getApiBase() + '/api/programados/' + pedidoId, {
+      method: 'DELETE'
+    })
+    if (!resp.ok) {
+      errores.push(pedidoId)
+    }
+  }
+
+  const exitosos = idsObjetivo.filter((id) => !errores.includes(id))
+  cerrarModalDetalleProgramacionSiCorresponde(exitosos)
+  pedidosSeleccionadosIds = new Set()
+  pedidoSeleccionadoId = null
+  actualizarControlesSeleccionProgramacion()
+  await fetchPedidosProgramados()
+
+  if (errores.length === idsObjetivo.length) {
+    throw new Error('No fue posible despachar los pedidos seleccionados.')
+  }
+
+  return { cancelado: false, errores, exitosos }
+}
+
 async function despacharPedido() {
   const idsSeleccionados = Array.from(pedidosSeleccionadosIds);
   if (idsSeleccionados.length === 0) {
     alert("Seleccione un pedido del tablero para despachar.");
     return;
   }
-  
-  const mensajeConfirmacion = idsSeleccionados.length === 1
-    ? "¿Marcar pedido como DESPACHADO? Se eliminará del tablero."
-    : `¿Marcar ${idsSeleccionados.length} pedidos como DESPACHADOS? Se eliminarán del tablero.`;
 
-  if (!confirm(mensajeConfirmacion)) return;
-  
+  const pedidosSeleccionados = idsSeleccionados
+    .map((id) => globalPedidos.find((p) => normalizarPedidoProgramadoId(p.id) === normalizarPedidoProgramadoId(id)))
+    .filter(Boolean);
+
   try {
-      const errores = [];
-
-      for (const id of idsSeleccionados) {
-          const resp = await fetch(getApiBase() + '/api/programados/' + id, {
-              method: 'DELETE'
-          });
-          if (!resp.ok) {
-              errores.push(id);
-          }
+      const resultado = await despacharPedidosProgramadosInterno(pedidosSeleccionados, { omitirConfirmacion: false, origen: 'manual' })
+      if (resultado?.cancelado) return
+      if (resultado?.errores?.length > 0) {
+          alert(`Se despacharon ${pedidosSeleccionados.length - resultado.errores.length} pedidos, pero ${resultado.errores.length} no se pudieron actualizar.`);
       }
-      
-      if (errores.length === idsSeleccionados.length) {
-          throw new Error('No fue posible despachar los pedidos seleccionados.');
-      }
-
-      if (errores.length > 0) {
-          alert(`Se despacharon ${idsSeleccionados.length - errores.length} pedidos, pero ${errores.length} no se pudieron actualizar.`);
-      }
-
-      cerrarModalDetalleProgramacionSiCorresponde(idsSeleccionados.filter(id => !errores.includes(id)));
-      pedidosSeleccionadosIds = new Set();
-      pedidoSeleccionadoId = null;
-      actualizarControlesSeleccionProgramacion();
-      await fetchPedidosProgramados(); // Recargar
   } catch (e) {
       alert("Error despachando pedido: " + e.message);
   }
@@ -7940,6 +8768,14 @@ async function despacharPedido() {
 document.addEventListener('DOMContentLoaded', () => {
     initDashboard();
     actualizarControlesSeleccionProgramacion();
+    document.addEventListener('click', (event) => {
+      const menu = document.getElementById('menu-contextual-programacion');
+      if (!menu || menu.style.display !== 'block') return;
+      if (menu.contains(event.target)) return;
+      cerrarMenuContextualProgramacion();
+    });
+    window.addEventListener('resize', cerrarMenuContextualProgramacion);
+    window.addEventListener('scroll', cerrarMenuContextualProgramacion, true);
     // Auto-recargar cada 30 segundos para ver cambios de otros PCs
     setInterval(fetchPedidosProgramados, 30000);
 });
