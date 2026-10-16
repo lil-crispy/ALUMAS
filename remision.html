@@ -4143,6 +4143,7 @@ try {
     });
 
     let postVentaPrintConfig = null;
+    let contraentregaPendientePostProgramacion = false;
 
     function programarPostVentaPrint(config = {}) {
       postVentaPrintConfig = {
@@ -4162,14 +4163,20 @@ try {
       });
     }
 
+    function ejecutarImpresionPostProgramacionContraentrega() {
+      contraentregaPendientePostProgramacion = false
+      aplicarVentaUI()
+      programarPostVentaPrint()
+      imprimirComprobanteInmediato()
+    }
+
     async function imprimirVenta() {
       if (!validarContraentregaConfiguracion()) {
         return;
       }
       if (esPagoContraentregaSeleccionado()) {
+        contraentregaPendientePostProgramacion = true
         await abrirModalProgramacion(false)
-        prellenarCamposProgramacionTransporte()
-        alert('Los pedidos con pago contraentrega deben programarse primero. La venta se guardará cuando un administrador lo despache y confirme el pago final.')
         return;
       }
       const transporteProgramado = await validarProgramacionObligatoriaDeTransporte();
@@ -4841,7 +4848,7 @@ try {
           ocultarLogin()
           actualizarCajaAdminVisibilidad()
           cargarReporte()
-          fetchPedidosProgramados().catch(() => {})
+          fetchPedidosProgramados({ verificarRecordatorios: false, silenciarBloqueActual: true }).catch(() => {})
         }, 900)
       } catch (e) {
         if (errorEl) {
@@ -7416,7 +7423,7 @@ let pedidoDashboardClickCount = 0;
 let pedidoDashboardClickTimer = null;
 let pedidoContextMenuId = null;
 const RECORDATORIOS_PROGRAMADOS_STORAGE_KEY = 'ALUMAS_RECORDATORIOS_PROGRAMADOS_V1';
-const RECORDATORIO_PROGRAMADO_INTERVALO_MS = 30 * 60 * 1000;
+const RECORDATORIO_PROGRAMADO_INTERVALO_MS = 60 * 60 * 1000;
 let recordatorioPedidoActivo = null;
 let recordatorioPedidoResolviendo = false;
 
@@ -7540,6 +7547,23 @@ function limpiarRecordatoriosPedidosInexistentes() {
     delete estado[keyUsuario]
   }
   guardarEstadoRecordatoriosProgramados(estado)
+}
+
+function silenciarRecordatoriosPedidosAlIngresar() {
+  const usuarioId = getUsuarioIdActual()
+  if (!usuarioId) return
+  const ahora = new Date()
+  globalPedidos.forEach((pedido) => {
+    if (String(pedido?.estado || '').toUpperCase() !== 'PROGRAMADO') return
+    if (Number(pedido?.programado_por_usuario_id || 0) !== Number(usuarioId)) return
+    const bloque = obtenerBloqueRecordatorioPedido(pedido, ahora)
+    if (bloque === null) return
+    actualizarEstadoRecordatorioPedido(usuarioId, pedido.id, {
+      ultimo_bloque_mostrado: bloque,
+      ultima_respuesta: 'silenciado_ingreso',
+      responded_at: new Date().toISOString()
+    })
+  })
 }
 
 function parsearFechaHoraPedidoProgramado(fecha, hora) {
@@ -7972,10 +7996,12 @@ function irADia(dia) {
 }
 
 async function initDashboard() {
-  await fetchPedidosProgramados();
+  await fetchPedidosProgramados({ verificarRecordatorios: false, silenciarBloqueActual: true });
 }
 
-async function fetchPedidosProgramados() {
+async function fetchPedidosProgramados(opciones = {}) {
+  const verificarRecordatorios = opciones?.verificarRecordatorios !== false
+  const silenciarBloqueActual = opciones?.silenciarBloqueActual === true
   try {
     const resp = await fetch(getApiBase() + '/api/programados');
     if (!resp.ok) throw new Error('Error API');
@@ -7993,7 +8019,12 @@ async function fetchPedidosProgramados() {
     await reprogramarVencidos(globalPedidos);
 
     renderDashboard();
-    setTimeout(verificarRecordatoriosPedidosProgramados, 50);
+    if (silenciarBloqueActual) {
+      silenciarRecordatoriosPedidosAlIngresar();
+    }
+    if (verificarRecordatorios) {
+      setTimeout(verificarRecordatoriosPedidosProgramados, 50);
+    }
     return globalPedidos;
   } catch (e) {
     console.error("Error cargando programados:", e);
@@ -8364,8 +8395,11 @@ async function abrirModalProgramacion(esReprogramacion = false) {
    if (titulo) titulo.innerText = esReprogramacion ? 'Reprogramar Entrega' : 'Programar Entrega';
  }
 
-function cerrarModalProgramacion() {
+function cerrarModalProgramacion(opciones = {}) {
   document.getElementById('modal-programacion').style.display = 'none';
+  if (!opciones.mantenerFlujoContraentrega) {
+    contraentregaPendientePostProgramacion = false
+  }
 }
 
 async function guardarProgramacion() {
@@ -8555,9 +8589,16 @@ async function guardarProgramacion() {
 
       await fetchPedidosProgramados(); // Recargar lista
       marcarTransporteProgramado(nuevoPedido.id);
-      alert("Pedido programado correctamente.");
+      const debeImprimirContraentrega = contraentregaPendientePostProgramacion && pedidoEsContraentrega(nuevoPedido);
+      if (debeImprimirContraentrega) {
+        cerrarModalProgramacion({ mantenerFlujoContraentrega: true });
+        ejecutarImpresionPostProgramacionContraentrega();
+        return;
+      }
       cerrarModalProgramacion();
+      alert("Pedido programado correctamente.");
   } catch (e) {
+      contraentregaPendientePostProgramacion = false
       alert("Error al guardar en el servidor: " + e.message);
   }
 }
