@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Remisión ALUMAS</title>
-  <link rel="icon" type="image/svg+xml" href="./img/LOGO3.webp" />
+  <link rel="icon" type="image/webp" href="./img/LOGO3.webp" />
 
   <!-- Estilos personalizados -->
   <style>
@@ -1469,6 +1469,35 @@
       background: #1d4ed8;
     }
 
+    .btn-imprimir-copia-detalle {
+      background: #059669;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 9px 14px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .btn-imprimir-copia-detalle:hover {
+      background: #047857;
+    }
+
+    /* Copia impresa del recibo POS 80mm (oculta en pantalla) */
+    #copia-programacion-print {
+      display: none;
+    }
+
+    @media print {
+      body.imprimiendo-copia-programacion #contenido-factura {
+        display: none !important;
+      }
+
+      body.imprimiendo-copia-programacion #copia-programacion-print {
+        display: block !important;
+      }
+    }
+
     .detalle-programacion-vacio {
       color: #64748b;
       font-size: 0.92em;
@@ -1836,6 +1865,9 @@
   
   <!-- Contenedor clonado para impresión Bodega (se llenará dinámicamente al imprimir) -->
   <div id="print-bodega-container" style="display:none;"></div>
+
+  <!-- Contenedor para imprimir copia del recibo POS de un pedido programado -->
+  <div class="contenedor-principal" id="copia-programacion-print"></div>
 
   <script>
     window.jsPDF = window.jspdf.jsPDF;
@@ -2967,16 +2999,25 @@
         marcarProductosFacturacionPendiente();
         celdaProductoActiva = celda;
         if (texto.length < 2) {
+          if (inputDebounceTimer) {
+            clearTimeout(inputDebounceTimer);
+            inputDebounceTimer = null;
+          }
           ocultarDropdownProductos();
           return;
         }
         
+        const terminoBuscado = texto;
         if (inputDebounceTimer) clearTimeout(inputDebounceTimer);
         inputDebounceTimer = setTimeout(async () => {
-             const productos = await buscarProductos(texto);
+             // Si el usuario siguió escribiendo o cambió de celda, se descarta esta consulta
+             if (celda.textContent.trim() !== terminoBuscado) return;
+             if (celdaProductoActiva !== celda) return;
+
+             const productos = await buscarProductos(terminoBuscado);
              
-             // Auto-seleccionar si hay coincidencia exacta de código de barras
-             const exacto = productos.find(p => String(p.codigo_barras || '').trim().toLowerCase() === texto.toLowerCase());
+             // Auto-seleccionar solo si hay UNA coincidencia exacta (código de barras, código, referencia, id o nombre)
+             const exacto = buscarCoincidenciaExacta(productos, terminoBuscado);
              if (exacto) {
                 // --- LÓGICA DE UNIFICACIÓN (Barcode - Input) ---
                 let filaExistente = null;
@@ -3041,7 +3082,7 @@
                 return;
              }
 
-             mostrarDropdownProductos(productos, celda);
+             mostrarDropdownProductos(productos, celda, terminoBuscado);
         }, 200);
       }
     });
@@ -3515,6 +3556,56 @@ try {
     return [];
 }
     }
+    function normalizarCodigoProducto(valor) {
+      return String(valor === null || valor === undefined ? '' : valor).replace(/\s+/g, '').toLowerCase()
+    }
+    function soloDigitosCodigo(valor) {
+      return String(valor === null || valor === undefined ? '' : valor).replace(/\D/g, '')
+    }
+    function esCodigoBarrasPlausible(texto) {
+      const limpio = String(texto === null || texto === undefined ? '' : texto).trim()
+      return /^[0-9]{6,}$/.test(limpio)
+    }
+    function esCoincidenciaExactaProducto(producto, termino) {
+      if (!producto || !termino) return false
+      const objetivo = normalizarCodigoProducto(termino)
+      const objetivoDigitos = soloDigitosCodigo(termino)
+      if (!objetivo) return false
+
+      const codigoBarras = normalizarCodigoProducto(producto.codigo_barras)
+      const codigoBarrasDigitos = soloDigitosCodigo(producto.codigo_barras)
+      const codigoInterno = normalizarCodigoProducto(producto.codigo)
+      const referencia = normalizarCodigoProducto(producto.referencia)
+      const nombre = String(producto.nombre || '').trim().toLowerCase()
+      const idProducto = normalizarCodigoProducto(producto.id)
+
+      // Código de barras: comparación estricta (con y sin separadores)
+      if (codigoBarras && codigoBarras === objetivo) return true
+      if (codigoBarrasDigitos && codigoBarrasDigitos.length >= 6 && objetivoDigitos.length >= 6 && codigoBarrasDigitos === objetivoDigitos) return true
+      if (codigoInterno && codigoInterno === objetivo) return true
+      if (referencia && referencia === objetivo) return true
+      if (nombre && nombre === String(termino).trim().toLowerCase()) return true
+      if (objetivoDigitos.length >= 4 && idProducto && idProducto === objetivo) return true
+      return false
+    }
+    function buscarCoincidenciaExacta(productos, termino) {
+      const lista = Array.isArray(productos) ? productos : []
+      if (!termino) return null
+      const exactos = lista.filter((producto) => esCoincidenciaExactaProducto(producto, termino))
+      if (exactos.length === 0) return null
+      if (exactos.length === 1) return exactos[0]
+
+      // Si hay varias coincidencias exactas, priorizar la del código de barras
+      const objetivo = normalizarCodigoProducto(termino)
+      const objetivoDigitos = soloDigitosCodigo(termino)
+      const porCodigo = exactos.find((producto) => {
+        const codigoBarras = normalizarCodigoProducto(producto.codigo_barras)
+        const codigoBarrasDigitos = soloDigitosCodigo(producto.codigo_barras)
+        if (codigoBarras && codigoBarras === objetivo) return true
+        return !!(codigoBarrasDigitos && objetivoDigitos && codigoBarrasDigitos === objetivoDigitos)
+      })
+      return porCodigo || exactos[0]
+    }
     function construirUrlImagenProductoSugerencia(imagen) {
       const logoRespaldo = './img/LOGO3.webp'
       const valor = String(imagen || '').trim()
@@ -3564,12 +3655,15 @@ try {
       return precioBasePorCliente(producto);
     }
 
-    function mostrarDropdownProductos(productos, celda) {
+    function mostrarDropdownProductos(productos, celda, termino = '') {
       const dropdown = document.getElementById('producto-autocomplete-dropdown');
       const panel = document.getElementById('panel-sugerencias');
       if (!dropdown || !panel) return;
+      const terminoConsulta = String(termino || '').trim();
       celdaProductoActiva = celda;
       currentSuggestedProducts = productos; // Guardar referencia
+      dropdown.dataset.termino = terminoConsulta;
+      dropdown.dataset.navegado = '0';
       dropdown.innerHTML = '';
       if (!productos || productos.length === 0) {
         dropdown.innerHTML = '<div class="no-productos">No se encontraron productos que coincidan con la búsqueda.</div>';
@@ -3580,12 +3674,28 @@ try {
       
       isMouseDown = false; // Reset
 
+      // Si el texto escrito es un código escaneado pero no hay coincidencia exacta,
+      // se avisa para evitar que se agregue un producto equivocado.
+      const exactoEnLista = terminoConsulta ? buscarCoincidenciaExacta(productos, terminoConsulta) : null;
+      if (terminoConsulta && esCodigoBarrasPlausible(terminoConsulta) && !exactoEnLista) {
+        const aviso = document.createElement('div');
+        aviso.className = 'no-productos';
+        aviso.textContent = 'Sin coincidencia exacta de código de barras. Revisa las sugerencias antes de agregar.';
+        dropdown.appendChild(aviso);
+      }
+
+      const indicePreseleccionado = exactoEnLista
+        ? productos.indexOf(exactoEnLista)
+        : 0;
+
       productos.forEach((producto, index) => {
         const item = document.createElement('div');
         item.className = 'producto-item';
         item.dataset.index = index;
+        item.dataset.termino = terminoConsulta;
         
-        if (index === 0) item.classList.add('selected');
+        if (index === indicePreseleccionado) item.classList.add('selected');
+
         
         const precioFinal = Number(producto.precio_final || 0);
         const precioMayor = Number(producto.precio_mayorista || 0);
@@ -3616,6 +3726,7 @@ try {
         // Eventos Mouse para Selección
         item.addEventListener('mousedown', (e) => {
              isMouseDown = true;
+             dropdown.dataset.navegado = '1';
              // Si no presiona Ctrl/Shift, limpiar selección previa
              if (!e.ctrlKey && !e.shiftKey) {
                  dropdown.querySelectorAll('.producto-item.selected').forEach(el => el.classList.remove('selected'));
@@ -3809,8 +3920,9 @@ try {
       if (sugerenciasVisibles) {
          const items = Array.from(dropdown.querySelectorAll('.producto-item'));
          
-         if (e.key === 'ArrowDown') {
+         if (e.key === 'ArrowDown' && items.length > 0) {
             e.preventDefault();
+            dropdown.dataset.navegado = '1';
             if (e.shiftKey) {
                 // Selección múltiple hacia abajo
                 let lastIdx = -1;
@@ -3836,8 +3948,9 @@ try {
             return;
          }
          
-         if (e.key === 'ArrowUp') {
+         if (e.key === 'ArrowUp' && items.length > 0) {
             e.preventDefault();
+            dropdown.dataset.navegado = '1';
             if (e.shiftKey) {
                 // Selección múltiple hacia arriba
                 let firstIdx = items.length;
@@ -3865,24 +3978,51 @@ try {
 
          if (e.key === 'Enter') {
             e.preventDefault();
-            const selectedItems = dropdown.querySelectorAll('.producto-item.selected');
-            if (selectedItems.length > 0) {
-                if (selectedItems.length === 1) {
-                     // Click simple
-                     selectedItems[0].click();
+            const celdaEnter = e.target.closest('td');
+            const terminoEnter = celdaEnter ? celdaEnter.textContent.trim() : '';
+            const destino = celdaEnter || celdaProductoActiva;
+            // Solo se confía en la lista si corresponde al texto que está escrito ahora
+            const listaVigente = !!terminoEnter && String(dropdown.dataset.termino || '') === terminoEnter;
+
+            if (listaVigente && destino) {
+                const seleccionados = Array.from(dropdown.querySelectorAll('.producto-item.selected'))
+                    .map(item => currentSuggestedProducts[parseInt(item.dataset.index, 10)])
+                    .filter(Boolean);
+                const huboNavegacion = dropdown.dataset.navegado === '1';
+                const esCodigoEscaneado = esCodigoBarrasPlausible(terminoEnter);
+
+                let productosAInsertar = [];
+                if (huboNavegacion && seleccionados.length > 0) {
+                    // El usuario eligió explícitamente (flechas, ratón o arrastre)
+                    productosAInsertar = seleccionados;
                 } else {
-                     // Múltiples
-                     const selectedProducts = [];
-                     selectedItems.forEach(item => {
-                         const idx = parseInt(item.dataset.index);
-                         if (currentSuggestedProducts[idx]) {
-                             selectedProducts.push(currentSuggestedProducts[idx]);
-                         }
-                     });
-                     seleccionarProductosMultiples(selectedProducts, celdaProductoActiva);
+                    const exacto = buscarCoincidenciaExacta(currentSuggestedProducts, terminoEnter);
+                    if (exacto) {
+                        productosAInsertar = [exacto];
+                    } else if (currentSuggestedProducts.length === 1) {
+                        productosAInsertar = [currentSuggestedProducts[0]];
+                    } else if (!esCodigoEscaneado && currentSuggestedProducts.length > 0) {
+                        // Búsqueda por texto: se mantiene el comportamiento de tomar la primera sugerencia
+                        productosAInsertar = [currentSuggestedProducts[0]];
+                    }
+                }
+
+                if (productosAInsertar.length === 0) {
+                    // Código escaneado sin coincidencia exacta: no se inserta un producto equivocado
+                    return;
+                }
+
+                if (productosAInsertar.length === 1) {
+                     seleccionarProducto(productosAInsertar[0], destino);
+                } else {
+                     seleccionarProductosMultiples(productosAInsertar, destino);
                 }
                 return;
             }
+
+            // La lista mostrada no corresponde al texto actual (resultado obsoleto): se cierra
+            cerrarPanelSugerencias();
+            if (celdaEnter) celdaActiva = celdaEnter;
          }
          
          if (e.key === 'Escape') {
@@ -3923,20 +4063,14 @@ try {
         case 'Enter':
           e.preventDefault();
 
-          // Lógica para autocompletar con código de barras (Match Exacto)
+          // Lógica para autocompletar con código de barras / código exacto
           if (colIndex === 1) {
             const termino = celdaActiva.textContent.trim();
             if (termino) {
               const productos = await buscarProductos(termino);
-              
-              // Buscar coincidencia exacta
-              const encontrado = productos.find(p => 
-                String(p.id) === termino || 
-                String(p.codigo || '').toLowerCase() === termino.toLowerCase() ||
-                String(p.codigo_barras || '').toLowerCase() === termino.toLowerCase() ||
-                String(p.referencia || '').toLowerCase() === termino.toLowerCase() ||
-                p.nombre.toLowerCase() === termino.toLowerCase()
-              );
+
+              // Solo coincidencias estrictas (código de barras, código, referencia, id o nombre exacto)
+              const encontrado = buscarCoincidenciaExacta(productos, termino);
 
               if (encontrado) {
                 seleccionarProducto(encontrado, celdaActiva);
@@ -7352,6 +7486,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <div id="detalle-programacion-body" class="detalle-programacion-vacio">Sin detalle disponible.</div>
       <div class="detalle-programacion-acciones">
         <button type="button" class="btn-copiar-direccion-detalle" onclick="copiarDireccionDetalleProgramacion()">Copiar dirección</button>
+        <button type="button" class="btn-imprimir-copia-detalle" onclick="imprimirCopiaDetalleProgramacion()">Imprimir copia</button>
         <button type="button" class="btn-cancelar-prog" onclick="cerrarModalDetalleProgramacion()">Cerrar</button>
       </div>
     </div>
@@ -7729,6 +7864,118 @@ function copiarDireccionDetalleProgramacion() {
   }
 
   prompt('Copie la dirección manualmente:', direccion);
+}
+
+function imprimirCopiaDetalleProgramacion() {
+  const pedidoId = detalleProgramacionPedidoIdActual;
+  const pedido = globalPedidos.find(p => normalizarPedidoProgramadoId(p.id) === normalizarPedidoProgramadoId(pedidoId));
+  if (!pedido) {
+    alert('No se encontró el pedido para imprimir.');
+    return;
+  }
+
+  const contenedor = document.getElementById('copia-programacion-print');
+  if (!contenedor) return;
+
+  const detalle = obtenerDetalleInternoPedidoProgramado(pedido);
+  const entrega = detalle?.entrega || {};
+  const transporte = pedido?.transporte || {};
+  const items = (Array.isArray(detalle?.items) ? detalle.items : [])
+    .filter(item => item && (Number(item.cantidad) || String(item.descripcion || '').trim()));
+
+  const consecutivo = detalle?.consecutivo || pedido?.consecutivo || '----';
+  const cliente = detalle?.cliente || pedido?.cliente_nombre || '';
+  const recibe = entrega?.nombre || transporte?.nombre || cliente;
+  const telefono = detalle?.numero_celular || entrega?.celular || transporte?.telefono || '';
+  const direccion = detalle?.direccion || entrega?.direccion || transporte?.direccion || '';
+  const sector = detalle?.sector || entrega?.sector || transporte?.sector || '';
+  const total = detalle?.total_final || pedido?.total || 0;
+  const fechaImpresion = new Date().toLocaleDateString('es-CO');
+
+  const datosEntrega = [];
+  if (recibe) datosEntrega.push(`<strong>RECIBE:</strong> ${escaparHtmlProducto(recibe)}`);
+  if (direccion) {
+    const dirShow = `${escaparHtmlProducto(direccion)}${sector ? ` <span style="font-size:1.2em; font-weight:bold; background-color:yellow;">(${escaparHtmlProducto(sector)})</span>` : ''}`;
+    datosEntrega.push(`<strong>DIR ENTREGA:</strong> ${dirShow}`);
+  }
+  if (telefono) datosEntrega.push(`<strong>TEL:</strong> ${escaparHtmlProducto(telefono)}`);
+
+  const filas = items.map(item => `
+    <tr>
+      <td class="cant" style="text-align:left;">${escaparHtmlProducto(item?.cantidad ?? '')}</td>
+      <td style="text-align:left;">${escaparHtmlProducto(item?.descripcion || '')}</td>
+      <td>${escaparHtmlProducto(formatearPesos(item?.valor_u || 0))}</td>
+      <td>${escaparHtmlProducto(formatearPesos(item?.valor_t || 0))}</td>
+    </tr>
+  `).join('');
+
+  contenedor.innerHTML = `
+    <div class="encabezado">
+      <img src="./img/LOGO4.webp" alt="Logo ALUMAS" style="max-width: 300px; display: block; margin: 0 auto;">
+    </div>
+
+    <div class="consecutivo-display">
+      <span>CONSECUTIVO:</span> <span>${escaparHtmlProducto(consecutivo)}</span>
+    </div>
+
+    <div class="info">
+      <p><strong>FECHA:</strong> ${escaparHtmlProducto(fechaImpresion)}</p>
+      <p><strong>CLIENTE:</strong> ${escaparHtmlProducto(cliente)}</p>
+      <p><strong>NIT:</strong> 901797743-2</p>
+      <p><strong>ATENCIÓN AL CLIENTE:</strong> 3015827791</p>
+      <p><strong>CONSULTAR ENVÍOS:</strong> 3197245235</p>
+      <p class="nota-whatsapp"><strong>Por seguridad, solo atendemos llamadas y mensajes vía WhatsApp.</strong></p>
+      <p><strong>DIR:</strong> CALLE 139#109-46</p>
+      ${datosEntrega.length > 0 ? `<div style="margin-top:5px; border-top:1px dashed #999; padding-top:2px;">${datosEntrega.join(' - ')}</div>` : ''}
+    </div>
+
+    <div class="contenedor-tabla">
+      <table>
+        <thead>
+          <tr>
+            <th class="col-cant">CANT</th>
+            <th class="col-desc">DESCRIPCIÓN</th>
+            <th class="col-valor">VALOR U</th>
+            <th class="col-valor">VALOR T</th>
+          </tr>
+        </thead>
+        <tbody>${filas}</tbody>
+      </table>
+    </div>
+
+    <p class="total">TOTAL: ${escaparHtmlProducto(formatearPesos(total))}</p>
+    <p class="aviso-transporte">OJO: TRANSPORTE LIBRE DE CARGUE Y DESCARGUE</p>
+
+    <img src="./img/LOGO3.webp" alt="Logo ALUMAS" class="logo-grande">
+
+    <div class="mensaje">
+      <p><strong>***GRACIAS POR SU COMPRA***</strong></p>
+      <small>SI NECESITA FACTURA ELECTRÓNICA ENVIAR ESTA REMISIÓN Y EL RUT AL 3015827791</small>
+      <small>EL USO DE LA FACTURA ES INDISPENSABLE PARA CUALQUIER TIPO DE DEVOLUCIÓN.</small>
+      <small>NO SE REMBOLSA EL DINERO EN CASO QUE EL PRODUCTO NO CUMPLA CON EL FUNCIONAMIENTO.</small>
+      <small>SE PUEDE CAMBIAR POR OTRO DEL MISMO VALOR SIEMPRE Y CUANDO ESTÉ EN BUEN ESTADO.</small>
+      <div style="text-align: right; margin-top: 40px;">
+        <img src="./img/firma.webp" alt="Firma" style="width:150px;filter:brightness(0) contrast(1000);-webkit-print-color-adjust:exact;print-color-adjust:exact;mix-blend-mode:multiply;">
+      </div>
+    </div>
+
+    <div style="text-align:center; font-size:11px; margin-top:8px;"><strong>*** COPIA DEL RECIBO ORIGINAL ***</strong></div>
+  `;
+
+  const limpiar = () => {
+    document.body.classList.remove('imprimiendo-copia-programacion');
+    window.removeEventListener('afterprint', limpiar);
+  };
+  window.addEventListener('afterprint', limpiar);
+
+  document.body.classList.add('imprimiendo-copia-programacion');
+
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      window.print();
+      setTimeout(limpiar, 2000);
+    }, 50);
+  });
 }
 
 function habilitarResaltadoDetalleProgramacion() {

@@ -5900,7 +5900,22 @@ async function processVentaWithExistingLogic(conn, body, options = {}) {
         throw error
       }
 
-      await deleteFactusBillByReferenceCode(factusReferenceCode, factusDebugContext)
+      // Factus indica que existe una factura pendiente por enviar a la DIAN con esta
+      // referencia. Se intenta eliminar para poder recrearla, pero si la eliminación
+      // falla (por ejemplo 404 porque el documento ya no existe) NO debe tumbar la venta:
+      // se reintenta la validación de todos modos.
+      try {
+        await deleteFactusBillByReferenceCode(factusReferenceCode, factusDebugContext)
+      } catch (deleteError) {
+        console.warn('[Factus][Venta] No se pudo eliminar la factura pendiente, se reintentará validar:', JSON.stringify({
+          reference_code: factusReferenceCode,
+          venta_id: Number(resolvedConsecutivo),
+          delete_status: deleteError?.statusCode || null,
+          delete_message: deleteError?.message || null,
+          delete_payload: deleteError?.payload || null
+        }))
+      }
+
       factusResponse = await factusApiRequest('/v2/bills/validate', {
         method: 'POST',
         body: factusPayload,
@@ -7651,30 +7666,66 @@ app.get('/api/productos', async (req, res) => {
 
     const productColumns = await getTableColumns('productos')
     const productoSelectFields = buildProductoSelectFields(productColumns)
+    const columnSet = new Set((productColumns || []).map((column) => String(column || '').toLowerCase()))
 
-    // Mejora: Búsqueda por palabras múltiples
-    const words = q.split(/\s+/).filter(w => w.length > 0)
-    
+    // Columnas realmente utilizables para buscar (según la BD existente)
+    const searchableColumns = ['nombre', 'codigo_barras'].filter((column) => columnSet.has(column))
+    for (const optional of ['descripcion', 'referencia', 'codigo']) {
+      if (columnSet.has(optional)) searchableColumns.push(optional)
+    }
+
+    if (searchableColumns.length === 0) {
+      return res.json({ ok: true, productos: [] })
+    }
+
+    const escapeLike = (value) => String(value).replace(/([\\%_])/g, '\\$1')
+    const queryLower = q.toLowerCase()
+    const queryDigits = q.replace(/\D/g, '')
+
+    // Búsqueda por palabras múltiples: cada palabra debe existir en alguna columna buscable
+    const words = q.split(/\s+/).map((word) => escapeLike(word)).filter((word) => word.length > 0)
+
     if (words.length === 0) {
       return res.json({ ok: true, productos: [] })
     }
 
     const whereParts = []
-    const params = []
+    const whereParams = []
 
-    for (const w of words) {
-      whereParts.push('(nombre LIKE ? OR codigo_barras LIKE ?)')
-      const like = `%${w}%`
-      params.push(like, like)
+    for (const word of words) {
+      whereParts.push('(' + searchableColumns.map((column) => `\`${column}\` LIKE ?`).join(' OR ') + ')')
+      searchableColumns.forEach(() => whereParams.push(`%${word}%`))
     }
 
-    const whereClause = whereParts.join(' AND ')
+    // Solo si el término es un código puramente numérico se admite también el ID del producto
+    const buscaPorId = /^\d{4,}$/.test(q)
+    const whereClause = '(' + whereParts.join(' AND ') + ')' + (buscaPorId ? ' OR `id_producto` = ?' : '')
+
+    // Prioridad: código de barras exacto, ID exacto, nombre exacto y luego coincidencias parciales
+    const orderBy = [
+      'CASE WHEN LOWER(TRIM(`codigo_barras`)) = ? THEN 0 ELSE 1 END',
+      'CASE WHEN `id_producto` = ? THEN 0 ELSE 1 END',
+      'CASE WHEN LOWER(TRIM(`nombre`)) = ? THEN 0 ELSE 1 END',
+      'CASE WHEN LOWER(TRIM(`codigo_barras`)) LIKE ? THEN 0 ELSE 1 END',
+      'CASE WHEN LOWER(`nombre`) LIKE ? THEN 0 ELSE 1 END',
+      '`nombre`'
+    ].join(', ')
+    const orderParams = [
+      queryLower,
+      buscaPorId ? Number(queryDigits) : 0,
+      queryLower,
+      `${queryLower}%`,
+      `${escapeLike(queryLower)}%`
+    ]
+
+    if (buscaPorId) whereParams.push(Number(queryDigits))
+
     const sql = `SELECT ${productoSelectFields}
                  FROM productos 
                  WHERE ${whereClause} 
-                 ORDER BY nombre LIMIT 50`
+                 ORDER BY ${orderBy} LIMIT 200`
 
-    const [rows] = await pool.query(sql, params)
+    const [rows] = await pool.query(sql, [...whereParams, ...orderParams])
     res.json({ ok: true, productos: (rows || []).map(enrichProductoWithFacturacion) })
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message })
