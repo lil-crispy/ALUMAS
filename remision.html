@@ -4002,7 +4002,25 @@ try {
         celda.focus();
       }
     });
-  
+
+    // El campo cantidad NO acepta letras ni símbolos: solo dígitos y un punto decimal.
+    // Cubre teclado, dictado, IME, autocompletado, pegado y arrastrar.
+    tabla.addEventListener('beforeinput', (e) => {
+      const celda = e.target && e.target.closest ? e.target.closest('td') : null;
+      if (!celda || !celda.classList.contains('cant')) return;
+      const tipo = e.inputType || '';
+      if (tipo.startsWith('delete') || tipo.startsWith('history')) return;
+      let datos = e.data;
+      if (datos == null && e.dataTransfer) {
+        try { datos = e.dataTransfer.getData('text'); } catch (err) { datos = ''; }
+      }
+      if (!datos) return;
+      const actual = String(celda.textContent || '');
+      if (/[^\d.,]/.test(datos) || (/[.,]/.test(datos) && actual.includes('.'))) {
+        e.preventDefault();
+      }
+    });
+
     tabla.addEventListener('keydown', async (e) => {
       if (document.body.classList.contains('bloqueado')) {
         e.preventDefault();
