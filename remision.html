@@ -365,6 +365,21 @@
         vertical-align: middle;
       }
 
+      /* Valores (VALOR U y VALOR T) más grandes y legibles en el recibo POS 80mm */
+      .valor-u,
+      .valor-t {
+        font-size: 14px;
+        font-weight: 600;
+        line-height: 1.25;
+        padding: 3px 2px;
+        vertical-align: middle;
+      }
+
+      .valor-u input {
+        font-size: 14px;
+        font-weight: 600;
+      }
+
       .logo-grande {
         width: 50%;
         margin: 10px auto;
@@ -2872,6 +2887,9 @@
     function tokenPareceTransporte(token) {
       const valor = normalizarTextoTransporte(token).replace(/\s+/g, '');
       if (!valor) return false;
+
+      // Palabras que empiezan parecido pero NO son transporte (ej. "transparente", "transparencia")
+      if (valor.includes('transparen')) return false;
 
       const clavesDirectas = ['tran', 'trans', 'transp', 'transpo', 'transpor', 'transport', 'transporte', 'trsoporte'];
       if (clavesDirectas.includes(valor)) return true;
