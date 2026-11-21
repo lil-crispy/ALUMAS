@@ -351,32 +351,44 @@
         border: 1px solid #000;
       }
 
-      /* Descripción más grande y legible en el recibo POS 80mm */
-      .col-desc { width: 50%; }
-      .col-valor { width: 22.5%; }
+      /* Anchos ajustados para que cada celda quepa en un solo renglón en el POS 80mm */
+      .col-cant { width: 9%; }
+      .col-desc { width: 43%; }
+      .col-valor { width: 24%; }
 
+      /* Descripción legible */
       table td:nth-child(2) {
         font-size: 14px;
         font-weight: 600;
-        line-height: 1.25;
+        line-height: 1.2;
         white-space: normal;
         word-break: break-word;
-        padding: 3px 2px;
+        padding: 2px 2px;
         vertical-align: middle;
       }
 
-      /* Valores (VALOR U y VALOR T) más grandes y legibles en el recibo POS 80mm */
+      /* Cantidad: compacta y sin partirse a un segundo renglón */
+      .cant {
+        font-size: 10px;
+        line-height: 1.15;
+        padding: 2px 1px;
+        vertical-align: middle;
+        white-space: nowrap;
+      }
+
+      /* Valores (VALOR U y VALOR T): tamaño reducido y en una sola línea */
       .valor-u,
       .valor-t {
-        font-size: 14px;
+        font-size: 11px;
         font-weight: 600;
-        line-height: 1.25;
-        padding: 3px 2px;
+        line-height: 1.15;
+        padding: 2px 1px;
         vertical-align: middle;
+        white-space: nowrap;
       }
 
       .valor-u input {
-        font-size: 14px;
+        font-size: 11px;
         font-weight: 600;
       }
 
